@@ -15,7 +15,14 @@ Item {
         if (!root.modelData || !root.modelData.action)
             return;
         root.list.visibilities.launcher = false;
-        Quickshell.execDetached(["sh", "-c", "hyprctl dispatch " + root.modelData.action]);
+
+        let actionStr = root.modelData.action;
+        if (actionStr.startsWith("command(") && actionStr.endsWith(")")) {
+            actionStr = actionStr.substring(8, actionStr.length - 1);
+            Quickshell.execDetached(["sh", "-c", actionStr]);
+        } else {
+            Quickshell.execDetached(["sh", "-c", "hyprctl dispatch " + actionStr]);
+        }
     }
 
     implicitHeight: Tokens.sizes.launcher.itemHeight
@@ -53,7 +60,7 @@ Item {
             spacing: 0
 
             StyledText {
-                text: (modelData && modelData.bind) ? modelData.bind : qsTr("No keybinds")
+                text: (modelData && modelData.bind) ? modelData.bind.replace(/\b[a-z]/g, l => l.toUpperCase()) : qsTr("No keybinds")
                 font: Tokens.font.body.medium
                 color: Colours.palette.m3onSurface
                 elide: Text.ElideRight

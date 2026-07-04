@@ -25,6 +25,7 @@ StyledListView {
     spacing: Tokens.spacing.small
     orientation: Qt.Vertical
     implicitHeight: Math.max(0, (Tokens.sizes.launcher.itemHeight + spacing) * Math.min(Config.launcher.maxShown, count) - spacing)
+    cacheBuffer: Tokens.sizes.launcher.itemHeight * 10
 
     preferredHighlightBegin: 0
     preferredHighlightEnd: height
@@ -42,6 +43,23 @@ StyledListView {
 
         Behavior on y {
             Anim {}
+        }
+    }
+
+    property string _debouncedSearchText: search.text
+    Timer {
+        id: searchDebounceTimer
+        interval: 80
+        onTriggered: root._debouncedSearchText = search.text
+    }
+    Connections {
+        target: search
+        function onTextChanged(): void {
+            if (root.state === "emoji") {
+                searchDebounceTimer.restart();
+            } else {
+                root._debouncedSearchText = search.text;
+            }
         }
     }
 
@@ -168,12 +186,10 @@ StyledListView {
                 target: model
                 values: {
                     const prefix = GlobalConfig.launcher.actionPrefix;
-                    const text = root.search.text.slice((prefix + "emoji ").length).toLowerCase();
+                    const text = root._debouncedSearchText.slice((prefix + "emoji ").length).toLowerCase();
                     if (!text)
                         return Emojis.getSortedItems();
-                    return Emojis.items.filter(function (item) {
-                        return item.name.toLowerCase().includes(text);
-                    });
+                    return Emojis.search(text);
                 }
             }
             PropertyChanges {

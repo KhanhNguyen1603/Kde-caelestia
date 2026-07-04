@@ -21,8 +21,23 @@ qml_module(caelestia-services
         sessionmanager.hpp
         discordipc.cpp
         discordipc.hpp
+        hyprlandstate.cpp
+        hyprlandstate.hpp
+        keybindsmodel.cpp
+        keybindsmodel.hpp
+        emojidb.cpp
+        emojidb.hpp
+        brightnesswatcher.cpp
+        brightnesswatcher.hpp
+        clipboardmanager.cpp
+        clipboardmanager.hpp
+        schemeloader.cpp
+        schemeloader.hpp
+        palettemanager.cpp
+        palettemanager.hpp
     LIBRARIES
         Qt::DBus
+        Qt::Gui
         PkgConfig::Pipewire
         PkgConfig::Aubio
         PkgConfig::Cava
@@ -31,3 +46,4 @@ qml_module(caelestia-services
         caelestia-config
         caelestia-internal
 )
+

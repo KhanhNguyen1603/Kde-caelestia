@@ -6,28 +6,30 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import Caelestia.Services
 
 /**
  * Provides access to some Hyprland data not available in Quickshell.Hyprland.
  */
 Singleton {
     id: root
-    property var windowList: []
-    property var addresses: []
-    property var windowByAddress: ({})
-    property var workspaces: []
-    property var workspaceIds: []
-    property var workspaceById: ({})
-    property var activeWorkspace: null
-    property var monitors: []
-    property var layers: ({})
+
+    readonly property var windowList: HyprlandState.windowList
+    readonly property var addresses: HyprlandState.addresses
+    readonly property var windowByAddress: HyprlandState.windowByAddress
+    readonly property var workspaces: HyprlandState.workspaces
+    readonly property var workspaceIds: HyprlandState.workspaceIds
+    readonly property var workspaceById: HyprlandState.workspaceById
+    readonly property var activeWorkspace: HyprlandState.activeWorkspace
+    readonly property var monitors: HyprlandState.monitors
+    readonly property var layers: HyprlandState.layers
 
     // Convenient stuff
 
     function toplevelsForWorkspace(workspace) {
         return ToplevelManager.toplevels.values.filter(toplevel => {
             const address = `0x${toplevel.HyprlandToplevel?.address}`;
-            var win = HyprlandData.windowByAddress[address];
+            var win = root.windowByAddress[address];
             return win?.workspace?.id === workspace;
         })
     }
@@ -47,134 +49,32 @@ Singleton {
     // Internals
 
     function updateWindowList() {
-        getClients.running = true;
+        HyprlandState.updateWindowList();
     }
 
     function updateLayers() {
-        getLayers.running = true;
+        HyprlandState.updateLayers();
     }
 
     function updateMonitors() {
-        getMonitors.running = true;
+        HyprlandState.updateMonitors();
     }
 
     function updateWorkspaces() {
-        getWorkspaces.running = true;
-        getActiveWorkspace.running = true;
+        HyprlandState.updateWorkspaces();
+        HyprlandState.updateActiveWorkspace();
     }
 
     function updateAll() {
-        updateWindowList();
-        updateMonitors();
-        updateLayers();
-        updateWorkspaces();
+        HyprlandState.updateAll();
     }
 
     function biggestWindowForWorkspace(workspaceId) {
-        const windowsInThisWorkspace = HyprlandData.windowList.filter(w => w.workspace.id == workspaceId);
+        const windowsInThisWorkspace = root.windowList.filter(w => w.workspace.id == workspaceId);
         return windowsInThisWorkspace.reduce((maxWin, win) => {
             const maxArea = (maxWin?.size?.[0] ?? 0) * (maxWin?.size?.[1] ?? 0);
             const winArea = (win?.size?.[0] ?? 0) * (win?.size?.[1] ?? 0);
             return winArea > maxArea ? win : maxWin;
         }, null);
-    }
-
-    Component.onCompleted: {
-        updateAll();
-    }
-
-    Timer {
-        interval: 200
-        running: true
-        repeat: true
-        onTriggered: {
-            updateAll();
-        }
-    }
-
-    Connections {
-        target: Hyprland
-
-        function onRawEvent(event) {
-            // console.log("Hyprland raw event:", event.name);
-            if (["openlayer", "closelayer", "screencast"].includes(event.name)) return;
-            updateAll()
-        }
-    }
-
-    Process {
-        id: getClients
-        command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl clients -j"]
-        stdout: StdioCollector {
-            id: clientsCollector
-            onStreamFinished: {
-                try {
-                    let parsed = JSON.parse(clientsCollector.text);
-                    root.windowList = parsed.filter(w => w.class && !w.class.toLowerCase().includes("quickshell"));
-                } catch(e) {
-                    root.windowList = [];
-                }
-                let tempWinByAddress = {};
-                for (var i = 0; i < root.windowList.length; ++i) {
-                    var win = root.windowList[i];
-                    tempWinByAddress[win.address] = win;
-                }
-                root.windowByAddress = tempWinByAddress;
-                root.addresses = root.windowList.map(win => win.address);
-            }
-        }
-    }
-
-    Process {
-        id: getMonitors
-        command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl monitors -j"]
-        stdout: StdioCollector {
-            id: monitorsCollector
-            onStreamFinished: {
-                root.monitors = JSON.parse(monitorsCollector.text);
-            }
-        }
-    }
-
-    Process {
-        id: getLayers
-        command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl layers -j"]
-        stdout: StdioCollector {
-            id: layersCollector
-            onStreamFinished: {
-                root.layers = JSON.parse(layersCollector.text);
-            }
-        }
-    }
-
-    Process {
-        id: getWorkspaces
-        command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl workspaces -j"]
-        stdout: StdioCollector {
-            id: workspacesCollector
-            onStreamFinished: {
-                var rawWorkspaces = JSON.parse(workspacesCollector.text);
-                // Filter out invalid workspace ids (e.g. lock-screen temp workspace 2147483647 - N)
-                root.workspaces = rawWorkspaces.filter(ws => ws.id >= 1 && ws.id <= 100);
-                let tempWorkspaceById = {};
-                for (var i = 0; i < root.workspaces.length; ++i) {
-                    var ws = root.workspaces[i];
-                    tempWorkspaceById[ws.id] = ws;
-                }
-                root.workspaceById = tempWorkspaceById;
-                root.workspaceIds = root.workspaces.map(ws => ws.id);
-            }
-        }
-    }
-
-    Process {
-        id: getActiveWorkspace
-        command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl activeworkspace -j"]
-        stdout: StdioCollector {
-            id: activeWorkspaceCollector
-            onStreamFinished: {
-                root.activeWorkspace = JSON.parse(activeWorkspaceCollector.text);
-            }
-        }
     }
 }

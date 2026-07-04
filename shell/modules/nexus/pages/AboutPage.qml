@@ -154,5 +154,19 @@ PageBase {
             label: qsTr("Loaded plugins")
             value: root.pluginCount.toString()
         }
+
+        // Advanced
+        SectionHeader {
+            text: qsTr("Advanced")
+        }
+
+        ToggleRow {
+            first: true
+            last: true
+            text: qsTr("Debug Mode")
+            subtext: qsTr("Enable verbose debug logging for troubleshooting. Run 'caelestia shell -l' to view.")
+            checked: GlobalConfig.general.debugLogs
+            onClicked: GlobalConfig.general.debugLogs = !GlobalConfig.general.debugLogs
+        }
     }
 }

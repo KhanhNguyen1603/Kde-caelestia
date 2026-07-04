@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+set -uo pipefail
+
+CYAN="\033[0;36m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[38;5;220m"
+RST="\033[0m"
+
+die()  { echo -e "${RED}[FATAL] $*${RST}" >&2; exit 1; }
+info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
+ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
+warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
+
+BRANCH="${1:-main}"
+TMP_DIR="/tmp/caelestia-update-$$"
+
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}  Caelestia Update (Branch: $BRANCH)${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+
+# 1. Fetch from GitHub
+echo "PROGRESS: 1/5: Fetching updates from GitHub..."
+info "Cloning latest from GitHub (sparse checkout)..."
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+cd "$TMP_DIR"
+
+git init -q
+git remote add origin https://github.com/ladybug-me/caelestia-dots-kde.git
+git config core.sparseCheckout true
+echo "shell/" >> .git/info/sparse-checkout
+echo "src/" >> .git/info/sparse-checkout
+echo "scripts/" >> .git/info/sparse-checkout
+git pull -q --depth 1 origin "$BRANCH" || die "Failed to pull repository"
+
+# 2. System update via Polkit
+echo "PROGRESS: 2/5: Running system update..."
+echo
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}  Step 1 — System Updates${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+if command -v pacman >/dev/null; then
+    info "Running system update via pacman..."
+    pkexec pacman -Syu --noconfirm || warn "System update encountered an error or was canceled."
+elif command -v dnf >/dev/null; then
+    info "Running system update via dnf..."
+    pkexec dnf upgrade --refresh -y || warn "System update encountered an error or was canceled."
+fi
+
+# 3. Patch the build script to use pkexec instead of sudo
+info "Patching build scripts to use Polkit (pkexec)..."
+sed -i 's/sudo -v || exit 1/true/g' "$TMP_DIR/scripts/08-build-shell.sh"
+sed -i 's/(while true; do sudo -n true; sleep 55; done)/true/g' "$TMP_DIR/scripts/08-build-shell.sh"
+sed -i 's/sudo python3/pkexec python3/g' "$TMP_DIR/scripts/08-build-shell.sh"
+
+export BUNDLE_DIR="$TMP_DIR"
+
+# 4. Deploy Configs
+echo "PROGRESS: 3/5: Deploying configuration files..."
+echo
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}  Step 2 — Deploy Configs${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+bash "$TMP_DIR/scripts/03-deploy-configs.sh" || die "Config deployment failed."
+
+# 5. Build Shell
+echo "PROGRESS: 4/5: Building Caelestia Shell UI..."
+echo
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}  Step 3 — Build Caelestia Shell UI${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+bash "$TMP_DIR/scripts/08-build-shell.sh" || die "Shell build failed."
+
+# 6. Save current commit hash
+if [ -d "$TMP_DIR/.git" ]; then
+    COMMIT_HASH=$(git rev-parse HEAD)
+    mkdir -p ~/.config/quickshell/caelestia
+    echo "$COMMIT_HASH" > ~/.config/quickshell/caelestia/.current_commit
+    info "Saved commit hash: $COMMIT_HASH"
+fi
+
+# 7. Cleanup
+rm -rf "$TMP_DIR"
+
+echo "PROGRESS: done: Update completed successfully"
+echo
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${GREEN}  Update Completed Successfully!${RST}"
+echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"

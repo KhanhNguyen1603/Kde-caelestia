@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import qs.components.misc
 
 Scope {
     id: root
@@ -71,47 +72,27 @@ Scope {
         root.screenshotActive = true
     }
 
-    IpcHandler {
-        target: "region"
-
-        function screenshot() {
-            root.screenshot()
-        }
-        function search() {
-            root.search()
-        }
-        function ocr() {
-            root.ocr()
-        }
-        function record() {
-            root.record()
-        }
-        function recordWithSound() {
-            root.recordWithSound()
-        }
-    }
-
-    GlobalShortcut {
+    CustomShortcut {
         name: "regionScreenshot"
         description: "Takes a screenshot of the selected region"
         onPressed: root.screenshot()
     }
-    GlobalShortcut {
+    CustomShortcut {
         name: "regionSearch"
         description: "Searches the selected region"
         onPressed: root.search()
     }
-    GlobalShortcut {
+    CustomShortcut {
         name: "regionOcr"
         description: "Recognizes text in the selected region"
         onPressed: root.ocr()
     }
-    GlobalShortcut {
+    CustomShortcut {
         name: "regionRecord"
         description: "Records the selected region"
         onPressed: root.record()
     }
-    GlobalShortcut {
+    CustomShortcut {
         name: "regionRecordWithSound"
         description: "Records the selected region with sound"
         onPressed: root.recordWithSound()
