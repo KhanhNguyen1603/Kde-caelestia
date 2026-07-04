@@ -76,7 +76,7 @@
 
   1. **Clone this repository:**
      ```bash
-     git clone https://github.com/ladybug-me/caelestia-dots-kde ~/caelestia-dots-kde
+     git clone -b main --single-branch --depth 1 https://github.com/ladybug-me/caelestia-dots-kde ~/caelestia-dots-kde
      cd ~/caelestia-dots-kde
      ```
   2. **Run the installer:**
