@@ -18,8 +18,8 @@ import qs.utils
 Item {
     id: root
 
-    implicitWidth: container.implicitWidth
-    implicitHeight: container.implicitHeight
+    implicitWidth: bar.isHorizontal ? container.width : container.implicitWidth
+    implicitHeight: bar.isHorizontal ? container.implicitHeight : container.height
 
     required property var bar
 
@@ -78,12 +78,46 @@ Item {
         implicitWidth: bar.isHorizontal ? (__computedContentWidth + padding * 2) : Tokens.sizes.bar.innerWidth
         implicitHeight: bar.isHorizontal ? Tokens.sizes.bar.innerWidth : (__computedContentWidth + padding * 2)
         
-        property real itemSize: Tokens.sizes.bar.innerWidth * 0.8
-        property int maxHorizontalItems: Math.floor((root.width - padding * 2 - itemSize * 0.5) / (itemSize + spacing))
-        property real maxHorizontalSize: maxHorizontalItems >= 1 ? ((maxHorizontalItems + 0.5) * itemSize + maxHorizontalItems * spacing + padding * 2) : root.width
+        width: bar.isHorizontal ? Math.min(implicitWidth, maxHorizontalSize) : implicitWidth
+        height: !bar.isHorizontal ? Math.min(implicitHeight, maxVerticalSize) : implicitHeight
         
-        property int maxVerticalItems: Math.floor((root.height - padding * 2 - itemSize * 0.5) / (itemSize + spacing))
-        property real maxVerticalSize: maxVerticalItems >= 1 ? ((maxVerticalItems + 0.5) * itemSize + maxVerticalItems * spacing + padding * 2) : root.height
+        property string currentZone: {
+            if (!bar) return "middle";
+            if (bar.leftEntries.some(e => e.id === "dock")) return "left";
+            if (bar.rightEntries.some(e => e.id === "dock")) return "right";
+            return "middle";
+        }
+
+        // Actual space available from the dock's position to the next zone boundary
+        property real availableSize: {
+            if (!bar) return 9999;
+            
+            let reservedEnd = 0;
+            if (currentZone === "left") {
+                // If in left, we must leave room for middle (if it exists) and right
+                reservedEnd = (bar.rightZoneSize || 0) + (bar.middleZoneSize > 0 ? bar.middleZoneSize + Tokens.spacing.medium : 0) + Tokens.spacing.medium;
+            } else if (currentZone === "middle") {
+                // If in middle, we must leave room for right
+                reservedEnd = (bar.rightZoneSize || 0) + Tokens.spacing.medium;
+            }
+            
+            reservedEnd += bar.vPadding;
+
+            if (bar.isHorizontal) {
+                let gx = root.mapToItem(bar, 0, 0).x;
+                return Math.max(0, bar.width - gx - reservedEnd);
+            } else {
+                let gy = root.mapToItem(bar, 0, 0).y;
+                return Math.max(0, bar.height - gy - reservedEnd);
+            }
+        }
+
+        property real itemSize: Tokens.sizes.bar.innerWidth * 0.8
+        property int maxHorizontalItems: Math.max(0, Math.floor((availableSize - padding * 2 - itemSize * 0.5) / (itemSize + spacing)))
+        property real maxHorizontalSize: maxHorizontalItems >= 1 ? ((maxHorizontalItems + 0.5) * itemSize + maxHorizontalItems * spacing + padding * 2) : availableSize
+
+        property int maxVerticalItems: Math.max(0, Math.floor((availableSize - padding * 2 - itemSize * 0.5) / (itemSize + spacing)))
+        property real maxVerticalSize: maxVerticalItems >= 1 ? ((maxVerticalItems + 0.5) * itemSize + maxVerticalItems * spacing + padding * 2) : availableSize
 
         property var _appsValues: DesktopEntries.applications.values
         on_AppsValuesChanged: root.rebuildModel()
@@ -101,8 +135,8 @@ Item {
                 id: listView
 
                 anchors.centerIn: parent
-                width: bar.isHorizontal ? container.__computedContentWidth : Tokens.sizes.bar.innerWidth * 0.8
-                height: bar.isHorizontal ? Tokens.sizes.bar.innerWidth * 0.8 : container.__computedContentWidth
+                width: bar.isHorizontal ? (container.width - padding * 2) : Tokens.sizes.bar.innerWidth * 0.8
+                height: bar.isHorizontal ? Tokens.sizes.bar.innerWidth * 0.8 : (container.height - padding * 2)
                 orientation: bar.isHorizontal ? ListView.Horizontal : ListView.Vertical
                 spacing: root.spacing
                 interactive: bar.isHorizontal ? contentWidth > width + 1 : contentHeight > height + 1

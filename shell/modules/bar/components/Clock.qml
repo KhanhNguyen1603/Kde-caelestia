@@ -41,6 +41,7 @@ StyledRect {
 
         StyledText {
             Layout.alignment: Qt.AlignVCenter
+            visible: Config.bar.clock.showDate
             text: Time.format("ddd")
             font: Tokens.font.body.small
             color: root.colour
@@ -48,6 +49,7 @@ StyledRect {
 
         StyledText {
             Layout.alignment: Qt.AlignVCenter
+            visible: Config.bar.clock.showDate
             text: Time.format("d")
             font: Tokens.font.body.small
             color: root.colour

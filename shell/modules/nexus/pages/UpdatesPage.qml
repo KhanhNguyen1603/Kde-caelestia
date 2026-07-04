@@ -17,7 +17,7 @@ PageBase {
     
     title: qsTr("Updates")
 
-    readonly property list<var> branchItems: UpdateChecker.availableBranches.map(b => ({
+    readonly property var branchItems: UpdateChecker.availableBranches.map(b => ({
         label: b,
         value: b,
         icon: "call_split"
@@ -96,6 +96,9 @@ PageBase {
         Repeater {
             model: UpdateChecker.commits
             delegate: CommitRow {
+                required property int index
+                required property var modelData
+
                 first: index === 0
                 last: index === UpdateChecker.commits.length - 1
                 hash: modelData.hash

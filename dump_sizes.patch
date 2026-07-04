@@ -1,0 +1,12 @@
+--- shell/modules/bar/components/Dock.qml
++++ shell/modules/bar/components/Dock.qml
+@@ -21,6 +21,11 @@
+     
+     width: parent ? parent.width : implicitWidth
+     height: parent ? parent.height : implicitHeight
++    
++    onWidthChanged: {
++        console.log("DOCK WIDTH:", width, "PARENT WIDTH:", parent ? parent.width : -1, "IMPLICIT:", implicitWidth);
++    }
+ 
+     required property var bar
