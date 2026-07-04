@@ -3,6 +3,8 @@
 #include <qdir.h>
 #include <qlocalsocket.h>
 #include <qloggingcategory.h>
+#include <qfilesystemwatcher.h>
+#include <qfile.h>
 
 Q_LOGGING_CATEGORY(lcHyprState, "caelestia.services.hyprlandstate", QtInfoMsg)
 
@@ -17,7 +19,15 @@ HyprlandState::HyprlandState(QObject* parent)
 
     const auto his = qEnvironmentVariable("HYPRLAND_INSTANCE_SIGNATURE");
     if (his.isEmpty()) {
-        qCWarning(lcHyprState) << "$HYPRLAND_INSTANCE_SIGNATURE is unset. Unable to connect to Hyprland socket.";
+        qCWarning(lcHyprState) << "$HYPRLAND_INSTANCE_SIGNATURE is unset. Using KDE fallback bridge.";
+        m_kwinWatcher = new QFileSystemWatcher(this);
+        if (QFile::exists("/tmp/qs_kwin_windows.json")) {
+            m_kwinWatcher->addPath("/tmp/qs_kwin_windows.json");
+        }
+        connect(m_kwinWatcher, &QFileSystemWatcher::fileChanged, this, [this]() {
+            updateWindowList();
+        });
+        updateAll();
         return;
     }
 
@@ -65,6 +75,32 @@ void HyprlandState::updateAll() {
 }
 
 void HyprlandState::updateWindowList() {
+    if (m_kwinWatcher) {
+        QFile f("/tmp/qs_kwin_windows.json");
+        if (f.open(QIODevice::ReadOnly)) {
+            const auto doc = QJsonDocument::fromJson(f.readAll());
+            const auto clients = doc.array();
+            QVariantList newList;
+            QVariantMap newByAddress;
+            QVariantList newAddresses;
+            for (const auto& c : clients) {
+                const auto obj = c.toObject();
+                const auto cls = obj.value("class").toString();
+                if (cls.isEmpty() || cls.toLower().contains("quickshell")) continue;
+                const auto variant = obj.toVariantMap();
+                newList.append(variant);
+                const auto addr = obj.value("address").toString();
+                newByAddress.insert(addr, variant);
+                newAddresses.append(addr);
+            }
+            m_windowList = newList;
+            m_windowByAddress = newByAddress;
+            m_addresses = newAddresses;
+            emit windowListChanged();
+        }
+        return;
+    }
+
     if (!m_clientsRefresh.isNull()) {
         m_clientsRefresh->close();
     }

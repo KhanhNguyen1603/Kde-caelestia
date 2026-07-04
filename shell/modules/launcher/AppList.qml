@@ -189,9 +189,7 @@ StyledListView {
                     const text = root._debouncedSearchText.slice((prefix + "emoji ").length).toLowerCase();
                     if (!text)
                         return Emojis.getSortedItems();
-                    return Emojis.items.filter(function (item) {
-                        return item.nameLower && item.nameLower.includes(text);
-                    });
+                    return Emojis.search(text);
                 }
             }
             PropertyChanges {

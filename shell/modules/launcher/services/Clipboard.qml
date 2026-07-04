@@ -2,71 +2,19 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Caelestia
 import Caelestia.Config
-import Caelestia.Images
+import Caelestia.Services
 
 QtObject {
     id: root
 
-    property var items: []
+    readonly property var items: ClipboardManager.items
 
     readonly property string imageCacheDir: `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/caelestia-clipboard`
 
-    property Component waitTimer: Component {
-        Timer {
-            property string imgPath
-            property var callback
-
-            interval: 1000
-            repeat: false
-
-            onTriggered: callback(imgPath)
-        }
-    }
-
-    property Process fetcher: Process {
-        running: false
-        command: ["cliphist", "list"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const result = [];
-                const lines = text.trim().split("\n");
-
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    if (!line)
-                        continue;
-
-                    const match = line.match(/^(\d+)\t(.+)/);
-                    if (!match)
-                        continue;
-
-                    result.push({
-                        id: parseInt(match[1]),
-                        preview: match[2],
-                        isImage: /^\[\[ binary data \d+ KiB png \d+x\d+ \]\]/.test(match[2])
-                    });
-                }
-
-                root.items = result;
-                preloadImages();
-            }
-        }
-    }
-
     function reload(): void {
-        fetcher.running = true;
-    }
-
-    function preloadImages(): void {
-        for (const item of items) {
-            if (item.isImage && item.id) {
-                const imgPath = getImagePath(item.id);
-                Quickshell.execDetached(["sh", "-c", "mkdir -p " + imageCacheDir + " && cliphist decode " + item.id + " > " + imgPath + " 2>&1"]);
-            }
-        }
+        ClipboardManager.reload();
     }
 
     function getSortedItems(): var {
@@ -91,10 +39,20 @@ QtObject {
 
     function ensureImageCached(id: int, onReady: var): void {
         const imgPath = getImagePath(id);
-        Quickshell.execDetached(["sh", "-c", "mkdir -p " + imageCacheDir + " && cliphist decode " + id + " > " + imgPath + " 2>&1"]);
-        const timer = waitTimer.createObject(root, {
-            imgPath: imgPath,
-            callback: onReady
-        });
+        ClipboardManager.decodeImage(id, imgPath);
+        // Give the async decode a moment to complete then call back
+        Qt.callLater(() => { onReady(imgPath); }, 500);
+    }
+
+    property Connections _conn: Connections {
+        target: ClipboardManager
+        function onItemsChanged(): void {
+            // Preload all images via the C++ manager (no sh wrapper)
+            for (const item of root.items) {
+                if (item.isImage && item.id) {
+                    ClipboardManager.decodeImage(item.id, root.getImagePath(item.id));
+                }
+            }
+        }
     }
 }

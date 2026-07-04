@@ -1,17 +1,18 @@
 pragma Singleton
+pragma ComponentBehavior: Bound
 
 import ".."
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Caelestia.Config
+import Caelestia.Services
 import qs.utils
 
 Searcher {
     id: root
 
-    property string currentScheme
-    property string currentVariant
+    property string currentScheme: SchemeLoader.currentScheme
+    property string currentVariant: SchemeLoader.currentVariant
 
     function transformSearch(search: string): string {
         return search.slice(`${GlobalConfig.launcher.actionPrefix}scheme `.length);
@@ -22,7 +23,7 @@ Searcher {
     }
 
     function reload(): void {
-        getCurrent.running = true;
+        SchemeLoader.reloadCurrent();
     }
 
     list: schemes.instances
@@ -32,46 +33,9 @@ Searcher {
 
     Variants {
         id: schemes
-
+        model: SchemeLoader.schemes
+        
         Scheme {}
-    }
-
-    Process {
-        id: getSchemes
-
-        running: true
-        command: ["caelestia", "scheme", "list"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const schemeData = JSON.parse(text);
-                const list = Object.entries(schemeData).map(([name, f]) => Object.entries(f).map(([flavour, colours]) => ({
-                                name,
-                                flavour,
-                                colours
-                            })));
-
-                const flat = [];
-                for (const s of list)
-                    for (const f of s)
-                        flat.push(f);
-
-                schemes.model = flat.sort((a, b) => String(a.name + a.flavour).localeCompare((b.name + b.flavour)));
-            }
-        }
-    }
-
-    Process {
-        id: getCurrent
-
-        running: true
-        command: ["caelestia", "scheme", "get", "-nfv"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const [name, flavour, variant] = text.trim().split("\n");
-                root.currentScheme = `${name} ${flavour}`;
-                root.currentVariant = variant;
-            }
-        }
     }
 
     component Scheme: QtObject {

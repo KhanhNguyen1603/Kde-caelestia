@@ -8,6 +8,7 @@
 #include <qjsonobject.h>
 #include <qjsonarray.h>
 #include <qjsondocument.h>
+#include <qfilesystemwatcher.h>
 
 namespace caelestia::services {
 
@@ -68,6 +69,7 @@ private:
     QVariantList m_windowList;
     QVariantMap m_windowByAddress;
     QVariantList m_addresses;
+    QFileSystemWatcher* m_kwinWatcher{nullptr};
 
     QVariantList m_workspaces;
     QVariantMap m_workspaceById;

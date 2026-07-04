@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Caelestia.Config
+import Caelestia.Services
 import qs.components.misc
 
 Singleton {
@@ -92,17 +93,12 @@ Singleton {
         }
     }
 
-    // DBus Listener ported from end-4dots-kde
-    Process {
-        id: dbusBrightnessListener
-        running: true
-        command: ["dbus-monitor", "type='signal',interface='org.kde.Solid.PowerManagement.Actions.BrightnessControl',member='brightnessChanged'"]
-        stdout: StdioCollector {
-            waitForEnd: false
-            onDataChanged: {
-                if (!dbusSyncTimer.running) {
-                    dbusSyncTimer.start();
-                }
+    // Native D-Bus listener — replaces the former dbus-monitor process
+    Connections {
+        target: BrightnessWatcher
+        function onBrightnessChanged(): void {
+            if (!dbusSyncTimer.running) {
+                dbusSyncTimer.start();
             }
         }
     }
