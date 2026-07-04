@@ -167,7 +167,6 @@ PageBase {
                         IconButton {
                             icon: root.logsExpanded ? "expand_less" : "expand_more"
                             onClicked: root.logsExpanded = !root.logsExpanded
-                            tooltip: root.logsExpanded ? "Hide Logs" : "Show Logs"
                         }
                     }
 
