@@ -29,7 +29,7 @@ EOF
     echo -e "${CYAN}║${RST}                                                                  ${CYAN}║${RST}"
     echo -e "${CYAN}║${RST}  ${WHITE}✨ Caelestia rice — KDE Plasma 6 ✨${RST}                             ${CYAN}║${RST}"
     echo -e "${CYAN}║${RST}                                                                  ${CYAN}║${RST}"
-    echo -e "${CYAN}║${RST}  ${MAGENTA}🌌 Original Hyprland dots:${RST} fufexan/dotfiles                     ${CYAN}║${RST}"
+    echo -e "${CYAN}║${RST}  ${MAGENTA}🌌 Original Hyprland dots:${RST} caelestia-dots                   ${CYAN}║${RST}"
     echo -e "${CYAN}║${RST}  ${BLUE}🚀 KDE port & modifications:${RST} ladybug-me                        ${CYAN}║${RST}"
     echo -e "${CYAN}║${RST}                                                                  ${CYAN}║${RST}"
     echo -e "${CYAN}║${RST}  ${DIM}Quickshell KDE bridge, Custom hyrpctl for KDE,${RST}                  ${CYAN}║${RST}"
