@@ -30,9 +30,11 @@ QtObject {
                     if (spaceIdx < 0)
                         continue;
 
+                    const name = line.substring(spaceIdx + 1).trim();
                     result.push({
                         ch: line.substring(0, spaceIdx),
-                        name: line.substring(spaceIdx + 1).trim()
+                        name: name,
+                        nameLower: name.toLowerCase()
                     });
                 }
 
@@ -72,7 +74,7 @@ QtObject {
     }
 
     function saveFrequencies(): void {
-        freqWriter.arguments = ["-echo", JSON.stringify(frequencies), ">", Paths.config + "emoji-frequencies.json"];
+        freqWriter.command = ["bash", "-c", "echo '" + JSON.stringify(frequencies) + "' > " + Paths.config + "emoji-frequencies.json"];
         freqWriter.running = true;
     }
 
@@ -81,12 +83,27 @@ QtObject {
         saveFrequencies();
     }
 
+    property var _sortedCache: []
+    property bool _sortDirty: true
+
+    property Connections favConnections: Connections {
+        target: GlobalConfig.launcher
+        function onFavouriteEmojisChanged(): void {
+            root._sortDirty = true;
+        }
+    }
+
+    onItemsChanged: root._sortDirty = true
+    onFrequenciesChanged: root._sortDirty = true
+
     function getSortedItems(): var {
         if (!items.length)
             return [];
+        if (!_sortDirty)
+            return _sortedCache;
         const favEmojis = GlobalConfig.launcher.favouriteEmojis || [];
         const favSet = new Set(favEmojis);
-        return [...items].sort((a, b) => {
+        _sortedCache = [...items].sort((a, b) => {
             const aIsFav = favSet.has(a.ch);
             const bIsFav = favSet.has(b.ch);
             if (aIsFav !== bIsFav)
@@ -97,5 +114,7 @@ QtObject {
                 return freqB - freqA;
             return 0;
         });
+        root._sortDirty = false;
+        return _sortedCache;
     }
 }

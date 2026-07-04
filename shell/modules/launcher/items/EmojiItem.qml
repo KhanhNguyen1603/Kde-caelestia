@@ -84,10 +84,12 @@ Item {
                 GlobalConfig.launcher.favouriteEmojis = favEmojis;
             }
 
+            readonly property bool isFav: GlobalConfig.launcher.favouriteEmojis && GlobalConfig.launcher.favouriteEmojis.includes(root.modelData?.ch)
+
             MaterialIcon {
                 anchors.centerIn: parent
-                text: GlobalConfig.launcher.favouriteEmojis && GlobalConfig.launcher.favouriteEmojis.includes(root.modelData?.ch) ? "favorite" : "favorite_border"
-                fill: GlobalConfig.launcher.favouriteEmojis && GlobalConfig.launcher.favouriteEmojis.includes(root.modelData?.ch) ? 1 : 0
+                text: favIcon.isFav ? "favorite" : "favorite_border"
+                fill: favIcon.isFav ? 1 : 0
                 color: favIcon.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
             }
         }
