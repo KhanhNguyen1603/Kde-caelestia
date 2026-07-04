@@ -18,7 +18,7 @@ else
     git -C "$REPO" fetch origin >/dev/null 2>&1
 fi
 
-PENDING=$(git -C "$REPO" log --oneline ${_localCommit}..origin/${BRANCH} 2>/dev/null | wc -l)
+PENDING=$(git -C "$REPO" log --oneline ${_localCommit}..${BRANCH} 2>/dev/null | wc -l)
 
 if [ "$PENDING" -gt 0 ]; then
     notify-send -u normal -i system-software-update -a "Caelestia Updates" "System Update Available" "$PENDING new commits on $BRANCH branch. Open Updates page to install."

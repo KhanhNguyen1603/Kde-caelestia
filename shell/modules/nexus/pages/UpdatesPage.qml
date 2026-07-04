@@ -246,8 +246,7 @@ PageBase {
                 root.updateRunning = false;
                 if (code === 0) {
                     Toaster.toast(qsTr("Update Successful"), qsTr("The update is complete. Please log out to apply changes."), "done");
-                    UpdateChecker.loaded = false; // Reset to force re-read
-                    UpdateChecker.checkUpdates();
+                    UpdateChecker.reload();
                 } else {
                     Toaster.toast(qsTr("Update Failed"), qsTr("The update script returned error code %1").arg(code), "error");
                 }

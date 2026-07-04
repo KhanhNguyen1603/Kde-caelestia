@@ -43,6 +43,11 @@ fi
         gitProcess.running = true;
     }
 
+    function reload() {
+        loaded = false;
+        localCommitProcess.running = true;
+    }
+
     // Process to read local commit
     Process {
         id: localCommitProcess
