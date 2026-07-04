@@ -21,6 +21,8 @@ qml_module(caelestia-services
         sessionmanager.hpp
         discordipc.cpp
         discordipc.hpp
+        hyprlandstate.cpp
+        hyprlandstate.hpp
     LIBRARIES
         Qt::DBus
         PkgConfig::Pipewire
