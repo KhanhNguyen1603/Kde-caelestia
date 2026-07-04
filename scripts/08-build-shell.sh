@@ -266,4 +266,10 @@ systemctl --user enable --now qs-kwin-bridge.service &>/dev/null || true
 qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript ~/.local/share/kwin/scripts/quickshell-kde-bridge/contents/code/main.js quickshell-kde-bridge &>/dev/null || true
 qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start &>/dev/null || true
 
+# Save current commit for the update checker
+mkdir -p ~/.config/quickshell/caelestia
+if [ -d "$BUNDLE_DIR/.git" ]; then
+    git -C "$BUNDLE_DIR" rev-parse HEAD > ~/.config/quickshell/caelestia/.current_commit 2>/dev/null || true
+fi
+
 ok "Caelestia Shell and KDE Bridges built and installed successfully to user directory."
