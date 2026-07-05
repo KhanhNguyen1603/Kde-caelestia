@@ -21,6 +21,7 @@ Singleton {
     readonly property var workspaceIds: HyprlandState.workspaceIds
     readonly property var workspaceById: HyprlandState.workspaceById
     readonly property var activeWorkspace: HyprlandState.activeWorkspace
+    readonly property var activeWindow: HyprlandState.activeWindow
     readonly property var monitors: HyprlandState.monitors
     readonly property var layers: HyprlandState.layers
 

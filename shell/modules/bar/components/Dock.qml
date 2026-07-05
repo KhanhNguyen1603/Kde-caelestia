@@ -680,7 +680,7 @@ Item {
         onTriggered: root.rebuildModel()
     }
 
-    property var activeTop: Hyprland.activeToplevel
+    property var activeTop: Hyprland.activeToplevel || HyprlandData.activeWindow
 
     onActiveTopChanged: {
         root.rebuildModel()

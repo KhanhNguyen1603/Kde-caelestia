@@ -5,6 +5,7 @@
 #include <qloggingcategory.h>
 #include <qfilesystemwatcher.h>
 #include <qfile.h>
+#include <unistd.h>
 
 Q_LOGGING_CATEGORY(lcHyprState, "caelestia.services.hyprlandstate", QtInfoMsg)
 
@@ -21,10 +22,20 @@ HyprlandState::HyprlandState(QObject* parent)
     if (his.isEmpty()) {
         qCWarning(lcHyprState) << "$HYPRLAND_INSTANCE_SIGNATURE is unset. Using KDE fallback bridge.";
         m_kwinWatcher = new QFileSystemWatcher(this);
-        if (QFile::exists(qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp") + "/qs_kwin_windows.json")) {
-            m_kwinWatcher->addPath(qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp") + "/qs_kwin_windows.json");
+        QString fallbackRuntimeDir = QString("/run/user/%1").arg(getuid());
+        QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", fallbackRuntimeDir);
+        QString filePath = runtimeDir + "/qs_kwin_windows.json";
+        if (!QFile::exists(filePath)) {
+            QFile f(filePath);
+            if (f.open(QIODevice::WriteOnly)) {
+                f.write("[]");
+                f.close();
+            }
         }
-        connect(m_kwinWatcher, &QFileSystemWatcher::fileChanged, this, [this]() {
+        if (QFile::exists(filePath)) {
+            m_kwinWatcher->addPath(filePath);
+        }
+        connect(m_kwinWatcher, &QFileSystemWatcher::fileChanged, this, [this](const QString&) {
             updateWindowList();
         });
         updateAll();
@@ -62,7 +73,14 @@ QVariantList HyprlandState::addresses() const { return m_addresses; }
 QVariantList HyprlandState::workspaces() const { return m_workspaces; }
 QVariantMap HyprlandState::workspaceById() const { return m_workspaceById; }
 QVariantList HyprlandState::workspaceIds() const { return m_workspaceIds; }
-QVariantMap HyprlandState::activeWorkspace() const { return m_activeWorkspace; }
+QVariantMap HyprlandState::activeWorkspace() const {
+    return m_activeWorkspace;
+}
+
+QVariantMap HyprlandState::activeWindow() const {
+    return m_activeWindow;
+}
+
 QVariantList HyprlandState::monitors() const { return m_monitors; }
 QVariantMap HyprlandState::layers() const { return m_layers; }
 
@@ -83,6 +101,7 @@ void HyprlandState::updateWindowList() {
             QVariantList newList;
             QVariantMap newByAddress;
             QVariantList newAddresses;
+            QVariantMap newActiveWindow;
             for (const auto& c : clients) {
                 const auto obj = c.toObject();
                 const auto cls = obj.value("class").toString();
@@ -92,10 +111,20 @@ void HyprlandState::updateWindowList() {
                 const auto addr = obj.value("address").toString();
                 newByAddress.insert(addr, variant);
                 newAddresses.append(addr);
+                
+                if (obj.value("focused").toBool()) {
+                    newActiveWindow = variant;
+                }
             }
             m_windowList = newList;
             m_windowByAddress = newByAddress;
             m_addresses = newAddresses;
+            
+            if (m_activeWindow != newActiveWindow) {
+                m_activeWindow = newActiveWindow;
+                emit activeWindowChanged();
+            }
+            
             emit windowListChanged();
         }
         return;

@@ -5,7 +5,7 @@ import dbus.mainloop.glib
 from gi.repository import GLib
 import os, sys, json, subprocess
 
-RUNTIME_DIR = os.environ.get('XDG_RUNTIME_DIR', '/tmp')
+RUNTIME_DIR = os.environ.get('XDG_RUNTIME_DIR', f"/run/user/{os.getuid()}")
 STATE_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_windows.json')
 WORKSPACES_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_workspaces.json')
 ACTIVEWORKSPACE_FILE = os.path.join(RUNTIME_DIR, 'qs_kwin_activeworkspace.json')

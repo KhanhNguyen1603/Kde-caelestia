@@ -26,6 +26,7 @@ class HyprlandState : public QObject {
     Q_PROPERTY(QVariantList workspaceIds READ workspaceIds NOTIFY workspacesChanged)
 
     Q_PROPERTY(QVariantMap activeWorkspace READ activeWorkspace NOTIFY activeWorkspaceChanged)
+    Q_PROPERTY(QVariantMap activeWindow READ activeWindow NOTIFY activeWindowChanged)
     Q_PROPERTY(QVariantList monitors READ monitors NOTIFY monitorsChanged)
     Q_PROPERTY(QVariantMap layers READ layers NOTIFY layersChanged)
 
@@ -41,6 +42,7 @@ public:
     [[nodiscard]] QVariantList workspaceIds() const;
 
     [[nodiscard]] QVariantMap activeWorkspace() const;
+    [[nodiscard]] QVariantMap activeWindow() const;
     [[nodiscard]] QVariantList monitors() const;
     [[nodiscard]] QVariantMap layers() const;
 
@@ -55,6 +57,7 @@ signals:
     void windowListChanged();
     void workspacesChanged();
     void activeWorkspaceChanged();
+    void activeWindowChanged();
     void monitorsChanged();
     void layersChanged();
 
@@ -76,6 +79,7 @@ private:
     QVariantList m_workspaceIds;
 
     QVariantMap m_activeWorkspace;
+    QVariantMap m_activeWindow;
     QVariantList m_monitors;
     QVariantMap m_layers;
 
