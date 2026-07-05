@@ -106,6 +106,12 @@ Item {
         }
     }
     
+    Component.onDestruction: {
+        if (isPlaying && !_previousDnd) {
+            Notifs.dnd = false;
+        }
+    }
+    
     function jump() {
         if (dinoY === 0 && isPlaying) {
             dinoVelocityY = jumpForce;
