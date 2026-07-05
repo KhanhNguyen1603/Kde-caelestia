@@ -654,7 +654,7 @@ Item {
                                         currentActionText = "Opening app...";
                                         var app = String(args.app_name || "");
                                         var safeApp = shellQuote("Name=.*" + app);
-                                        runAgentCommand('grep -i -m 1 "^Exec=" $(find /usr/share/applications ~/.local/share/applications -name "*.desktop" -exec grep -il ' + safeApp + ' {} +) | cut -d "=" -f 2- | sed "s/ %[a-zA-Z]//g" | xargs -I {} sh -c "setsid {} >/dev/null 2>&1 &"', "exec_" + toolName);
+                                        runAgentCommand(['grep -i -m 1 "^Exec=" $(find /usr/share/applications ~/.local/share/applications -name "*.desktop" -exec grep -il "$1" {} +) | cut -d "=" -f 2- | sed "s/ %[a-zA-Z]//g" | xargs -I {} sh -c "setsid {} >/dev/null 2>&1 &"', "--", safeApp], "exec_" + toolName);
 
                                     } else if (toolName === "set_timer") {
                                         currentActionText = "Setting timer...";

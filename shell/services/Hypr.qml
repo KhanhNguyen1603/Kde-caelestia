@@ -65,7 +65,7 @@ Singleton {
             Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "setCurrentDesktop", ws]);
             return;
         }
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch " + request]);
+        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
     }
 
     function cycleSpecialWorkspace(direction: string): void {
@@ -73,7 +73,7 @@ Singleton {
 
         if (openSpecials.length === 0)
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch " + request]);
+        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
 
         const activeSpecial = focusedMonitor.lastIpcObject.specialWorkspace.name ?? "";
 
@@ -83,12 +83,12 @@ Singleton {
                 if (workspace && workspace.lastIpcObject.windows > 0) {
                     dispatch(usingLua ? `hl.dsp.focus({ workspace = "${lastSpecialWorkspace}" })` : `workspace ${lastSpecialWorkspace}`);
                     return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch " + request]);
+        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
                 }
             }
             dispatch(usingLua ? `hl.dsp.focus({ workspace = "${openSpecials[0].name}" })` : `workspace ${openSpecials[0].name}`);
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch " + request]);
+        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
         }
 
         const currentIndex = openSpecials.findIndex(w => w.name === activeSpecial);
@@ -119,7 +119,7 @@ Singleton {
     onCapsLockChanged: {
         if (!GlobalConfig.utilities.toasts.capsLockChanged)
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch " + request]);
+        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
 
         if (capsLock)
             Toaster.toast(qsTr("Caps lock enabled"), qsTr("Caps lock is currently enabled"), "keyboard_capslock_badge");
@@ -130,7 +130,7 @@ Singleton {
     onNumLockChanged: {
         if (!GlobalConfig.utilities.toasts.numLockChanged)
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch " + request]);
+        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
 
         if (numLock)
             Toaster.toast(qsTr("Num lock enabled"), qsTr("Num lock is currently enabled"), "looks_one");

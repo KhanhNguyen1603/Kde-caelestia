@@ -273,7 +273,7 @@ Singleton {
         Logger.log("Wallhaven: Downloading", wallpaper.path, "to", tmpPath);
         Logger.log("Wallhaven: Will move to", dstPath, "(ext:", ext, ")");
 
-        downloadProc.command = ["sh", "-c", "curl -L -s -o '" + tmpPath + "' '" + wallpaper.path + "'"];
+        downloadProc.command = ["sh", "-c", 'curl -L -s -o "$1" "$2"', "--", tmpPath, wallpaper.path];
         downloadProc.running = true;
     }
 
@@ -308,7 +308,7 @@ Singleton {
                 Logger.log("Wallhaven: Download complete, moving to", dst);
                 moveProc.source = src;
                 moveProc.destination = dst;
-                moveProc.command = ["sh", "-c", "test -f '" + src + "' && mv '" + src + "' '" + dst + "'"];
+                moveProc.command = ["sh", "-c", 'test -f "$1" && mv "$1" "$2"', "--", src, dst];
                 moveProc.running = true;
             }
             currentWallpaper = null;

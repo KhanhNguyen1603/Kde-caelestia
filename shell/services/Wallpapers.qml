@@ -25,7 +25,7 @@ Searcher {
 
     onActualCurrentChanged: {
         // Sync KDE Plasma wallpaper
-        Quickshell.execDetached(["sh", "-c", "qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript 'var allDesktops = desktops();for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \"org.kde.image\";d.currentConfigGroup = Array(\"Wallpaper\", \"org.kde.image\", \"General\");d.writeConfig(\"Image\", \"file://" + actualCurrent + "\")}'"]);
+        Quickshell.execDetached(["sh", "-c", 'qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var allDesktops = desktops();for (i=0;i<allDesktops.length;i++) {d = allDesktops[i];d.wallpaperPlugin = \\"org.kde.image\\";d.currentConfigGroup = Array(\\"Wallpaper\\", \\"org.kde.image\\", \\"General\\");d.writeConfig(\\"Image\\", \\"file://$1\\")}"', "--", actualCurrent]);
     }
 
     readonly property var categories: {
