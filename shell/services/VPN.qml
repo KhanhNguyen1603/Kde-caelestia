@@ -323,13 +323,10 @@ Singleton {
 
     Component.onCompleted: root.enabled && statusCheckTimer.start()
 
-    Process {
-        id: nmMonitor
-
-        running: root.enabled
-        command: ["nmcli", "monitor"]
-        stdout: SplitParser {
-            onRead: statusCheckTimer.restart()
+    Connections {
+        target: Nmcli
+        function onMonitorEvent(): void {
+            statusCheckTimer.restart();
         }
     }
 

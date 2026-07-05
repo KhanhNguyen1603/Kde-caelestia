@@ -58,7 +58,7 @@ fi
     // Process to read local commit and saved branch
     Process {
         id: localCommitProcess
-        running: true
+        running: GlobalConfig.general.checkUpdates
         command: ["bash", "-c", "echo \"$(cat ~/.config/quickshell/caelestia/.current_commit 2>/dev/null)|$(cat ~/.config/quickshell/caelestia/.update_branch 2>/dev/null)\""]
         stdout: StdioCollector {
             onStreamFinished: {

@@ -21,21 +21,29 @@ Singleton {
     
     Process {
         id: wsPoller
-        command: ["bash", "-c", "qdbus6 org.kde.KWin /KWin org.kde.KWin.currentDesktop"]
+        command: ["qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.currentDesktop"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 const num = parseInt(text);
                 if (!isNaN(num) && num > 0) root.mockActiveWs = num;
-                wsTimer.start();
             }
         }
     }
     
     Timer {
-        id: wsTimer
-        interval: 1000
+        id: wsDebounce
+        interval: 100
         onTriggered: wsPoller.running = true
+    }
+
+    Process {
+        id: wsMonitor
+        command: ["dbus-monitor", "--session", "interface='org.kde.KWin.VirtualDesktopManager',member='currentChanged'"]
+        running: true
+        stdout: SplitParser {
+            onRead: wsDebounce.restart()
+        }
     }
 
     readonly property var activeToplevel: ToplevelManager.activeToplevel

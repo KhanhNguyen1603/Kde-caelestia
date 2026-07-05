@@ -32,9 +32,18 @@ Item {
             }
         }
     }
+    onActiveChanged: {
+        if (active) {
+            readTokenProc.running = true;
+            DiscordIpc.connectIpc(root.clientId);
+        } else {
+            DiscordIpc.disconnectIpc();
+        }
+    }
+
     Component.onCompleted: {
-        readTokenProc.running = true;
         if (root.active) {
+            readTokenProc.running = true;
             DiscordIpc.connectIpc(root.clientId);
         }
     }
@@ -71,12 +80,14 @@ Item {
 
     Connections {
         target: Hyprland.toplevels
+        enabled: root.active
         ignoreUnknownSignals: true
         function onValuesChanged() { root.updatePresence(); }
     }
 
     Connections {
         target: GlobalConfig.services
+        enabled: root.active
         function onArpcSteamAutoDetectChanged() { root.updatePresence(); }
         function onArpcTargetWindowsChanged() { root.updatePresence(); }
         function onArpcCaelestiaInfoChanged() { root.updatePresence(); }
@@ -91,6 +102,7 @@ Item {
 
     Connections {
         target: Colours
+        enabled: root.active
         function onSchemeChanged() { root.updatePresence(); }
         function onLightChanged() { root.updatePresence(); }
         function onVariantChanged() { root.updatePresence(); }
@@ -310,12 +322,4 @@ Item {
         DiscordIpc.clearActivity();
     }
 
-    onActiveChanged: {
-        if (!active) {
-            DiscordIpc.disconnectIpc();
-        } else {
-            readTokenProc.running = true; // refresh token just in case
-            DiscordIpc.connectIpc(root.clientId);
-        }
-    }
 }

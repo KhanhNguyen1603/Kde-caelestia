@@ -9,7 +9,7 @@ import qs.components.containers
 import qs.services
 
 Variants {
-    model: Quickshell.screens
+    model: BadApplePlayer.shouldPlay ? Quickshell.screens : []
 
     StyledWindow {
         id: root

@@ -106,48 +106,61 @@ Singleton {
         return stream.properties["application.name"] || stream.description || stream.name || qsTr("Unknown Application");
     }
 
-    function playSound(sfx: SoundEffect, setting: bool): void {
-        if (!GlobalConfig.audio.sounds.enabled || !setting)
+    Component {
+        id: sfxComponent
+        SoundEffect {}
+    }
+
+    property var _sfxCache: ({})
+
+    function playSoundSource(sourcePath: string, enabled: bool, volume: real): void {
+        if (!GlobalConfig.audio.sounds.enabled || !enabled)
             return;
+            
+        let sfx = root._sfxCache[sourcePath];
+        if (!sfx) {
+            sfx = sfxComponent.createObject(root, { source: sourcePath, volume: volume });
+            root._sfxCache[sourcePath] = sfx;
+        } else {
+            sfx.volume = volume;
+        }
         sfx.play();
     }
 
     function playNotification(): void {
-        if (GlobalConfig.audio.sounds.enabled) {
-            notificationSound.play();
-        }
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/notifications/" + GlobalConfig.audio.sounds.notificationSound), true, GlobalConfig.audio.sounds.notificationVolume);
     }
 
     function playCameraClick(): void {
-        playSound(sfxCameraClick, GlobalConfig.audio.sounds.cameraClick);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/camera_click.wav"), GlobalConfig.audio.sounds.cameraClick, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playChargingStarted(): void {
-        playSound(sfxChargingStarted, GlobalConfig.audio.sounds.chargingStarted);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/ChargingStarted.wav"), GlobalConfig.audio.sounds.chargingStarted, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playEffectTick(): void {
-        playSound(sfxEffectTick, GlobalConfig.audio.sounds.effectTick);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/Effect_Tick.wav"), GlobalConfig.audio.sounds.effectTick, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playLock(): void {
-        playSound(sfxLock, GlobalConfig.audio.sounds.lock);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/Lock.wav"), GlobalConfig.audio.sounds.lock, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playUnlock(): void {
-        playSound(sfxUnlock, GlobalConfig.audio.sounds.unlock);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/Unlock.wav"), GlobalConfig.audio.sounds.unlock, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playLowBattery(): void {
-        playSound(sfxLowBattery, GlobalConfig.audio.sounds.lowBattery);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/LowBattery.wav"), GlobalConfig.audio.sounds.lowBattery, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playVideoRecord(): void {
-        playSound(sfxVideoRecord, GlobalConfig.audio.sounds.screenRecord);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/VideoRecord.wav"), GlobalConfig.audio.sounds.screenRecord, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     function playVideoStop(): void {
-        playSound(sfxVideoStop, GlobalConfig.audio.sounds.screenRecord);
+        playSoundSource(Qt.resolvedUrl("../assets/sounds/VideoStop.wav"), GlobalConfig.audio.sounds.screenRecord, GlobalConfig.audio.sounds.sfxVolume);
     }
 
     onSinkChanged: {
@@ -226,66 +239,4 @@ Singleton {
         target: "audio"
     }
 
-    SoundEffect {
-        id: sfxCameraClick
-
-        source: Qt.resolvedUrl("../assets/sounds/camera_click.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxChargingStarted
-
-        source: Qt.resolvedUrl("../assets/sounds/ChargingStarted.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxEffectTick
-
-        source: Qt.resolvedUrl("../assets/sounds/Effect_Tick.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxLock
-
-        source: Qt.resolvedUrl("../assets/sounds/Lock.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxUnlock
-
-        source: Qt.resolvedUrl("../assets/sounds/Unlock.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxLowBattery
-
-        source: Qt.resolvedUrl("../assets/sounds/LowBattery.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxVideoRecord
-
-        source: Qt.resolvedUrl("../assets/sounds/VideoRecord.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: sfxVideoStop
-
-        source: Qt.resolvedUrl("../assets/sounds/VideoStop.wav")
-        volume: GlobalConfig.audio.sounds.sfxVolume
-    }
-
-    SoundEffect {
-        id: notificationSound
-
-        source: Qt.resolvedUrl("../assets/sounds/notifications/" + GlobalConfig.audio.sounds.notificationSound)
-        volume: GlobalConfig.audio.sounds.notificationVolume
-    }
 }

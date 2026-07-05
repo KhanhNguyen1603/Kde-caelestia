@@ -198,13 +198,21 @@ Item {
                         Behavior on opacity { Anim { type: Anim.DefaultSpatial } }
                     }
 
-                    AiAssistant {
+                    Loader {
+                        property bool hasBeenActive: false
+                        active: hasBeenActive || root.activeTab === "ai"
+                        onActiveChanged: if (active) hasBeenActive = true
+
                         anchors.top: parent.top
                         anchors.bottom: parent.bottom
                         width: parent.width
                         x: root.activeTab === "ai" ? 0 : (indicator.activeIndex < 1 ? width : -width)
                         opacity: root.activeTab === "ai" ? 1 : 0
                         visible: opacity > 0
+                        
+                        sourceComponent: AiAssistant {
+                            anchors.fill: parent
+                        }
                         
                         Behavior on x { Anim { type: Anim.DefaultSpatial } }
                         Behavior on opacity { Anim { type: Anim.DefaultSpatial } }

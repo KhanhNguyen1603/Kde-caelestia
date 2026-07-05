@@ -58,6 +58,7 @@ Singleton {
     readonly property string connectionParamBssid: "802-11-wireless.bssid"
 
     signal connectionFailed(string ssid)
+    signal monitorEvent()
 
     function detectPasswordRequired(error: string): bool {
         if (!error || error.length === 0) {
@@ -188,6 +189,7 @@ Singleton {
             if (index >= 0) {
                 activeProcesses.splice(index, 1);
             }
+            proc.destroy();
         });
 
         Qt.callLater(() => {
@@ -1273,7 +1275,10 @@ Singleton {
                 LC_ALL: "C.UTF-8"
             })
         stdout: SplitParser {
-            onRead: root.refreshOnConnectionChange()
+            onRead: {
+                root.refreshOnConnectionChange();
+                root.monitorEvent();
+            }
         }
         onExited: monitorRestartTimer.start() // qmllint disable signal-handler-parameters
     }
