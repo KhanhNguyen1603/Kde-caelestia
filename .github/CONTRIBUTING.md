@@ -66,11 +66,6 @@ _For testing Quickshell widget changes without a full KDE installation:_
 - **VSCode**: Install the official "Qt Qml" extension, then set `qmlls` custom exe path to `/usr/bin/qmlls6` in settings
 - **Live reload**: Changes to `.qml` files reload automatically when saved
 
-### Python Scripts
-
-If your changes involve Python scripts or packages:
-- Use the virtual environment created by `uv` (see `sdata/uv/README.md`)
-- Run: `cd sdata/uv && nix-shell` (or use `uv venv`)
 
 ## Testing Your Changes
 
