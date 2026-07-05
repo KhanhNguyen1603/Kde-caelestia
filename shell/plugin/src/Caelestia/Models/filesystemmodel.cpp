@@ -434,37 +434,49 @@ void FileSystemModel::applyChanges(const QSet<QString>& removedPaths, const QSet
         return compareEntries(a, b);
     });
 
-    // Batch insert new entries
-    int insertStart = -1;
-    QList<FileSystemEntry*> batchItems;
+    // Pre-calculate insertion rows for all new entries before any mutations
+    QList<int> insertRows;
+    insertRows.reserve(newEntries.size());
     for (const auto& entry : std::as_const(newEntries)) {
         const auto it = std::lower_bound(
             m_entries.begin(), m_entries.end(), entry, [this](const FileSystemEntry* a, const FileSystemEntry* b) {
                 return compareEntries(a, b);
             });
-        const auto row = static_cast<int>(it - m_entries.begin());
+        insertRows << static_cast<int>(it - m_entries.begin());
+    }
 
-        if (insertStart == -1) {
-            insertStart = row;
+    // Batch insert new entries
+    int offset = 0;
+    int currentOriginalRow = -1;
+    QList<FileSystemEntry*> batchItems;
+    for (int i = 0; i < newEntries.size(); ++i) {
+        const auto entry = newEntries[i];
+        const int originalRow = insertRows[i];
+
+        if (currentOriginalRow == -1) {
+            currentOriginalRow = originalRow;
             batchItems << entry;
-        } else if (row == insertStart + batchItems.size()) {
+        } else if (originalRow == currentOriginalRow) {
             batchItems << entry;
         } else {
-            beginInsertRows(QModelIndex(), insertStart, insertStart + static_cast<int>(batchItems.size()) - 1);
-            for (int i = 0; i < batchItems.size(); ++i) {
-                m_entries.insert(insertStart + i, batchItems[i]);
+            int insertPos = currentOriginalRow + offset;
+            beginInsertRows(QModelIndex(), insertPos, insertPos + static_cast<int>(batchItems.size()) - 1);
+            for (int j = 0; j < batchItems.size(); ++j) {
+                m_entries.insert(insertPos + j, batchItems[j]);
             }
             endInsertRows();
 
-            insertStart = row;
+            offset += batchItems.size();
+            currentOriginalRow = originalRow;
             batchItems.clear();
             batchItems << entry;
         }
     }
     if (!batchItems.isEmpty()) {
-        beginInsertRows(QModelIndex(), insertStart, insertStart + static_cast<int>(batchItems.size()) - 1);
-        for (int i = 0; i < batchItems.size(); ++i) {
-            m_entries.insert(insertStart + i, batchItems[i]);
+        int insertPos = currentOriginalRow + offset;
+        beginInsertRows(QModelIndex(), insertPos, insertPos + static_cast<int>(batchItems.size()) - 1);
+        for (int j = 0; j < batchItems.size(); ++j) {
+            m_entries.insert(insertPos + j, batchItems[j]);
         }
         endInsertRows();
     }
