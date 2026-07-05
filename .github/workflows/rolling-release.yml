@@ -14,13 +14,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Update Rolling Tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -f rolling
-          git push -f origin rolling
-
       - name: Extract Version
         id: version
         run: |
@@ -30,6 +23,28 @@ jobs:
             VERSION="v2.0.1" # fallback
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Sync Version in Repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Update AboutPage.qml
+          sed -i -E "s/text: \"v[0-9]+\.[0-9]+\.[0-9]+\"/text: \"${{ env.VERSION }}\"/g" shell/modules/nexus/pages/AboutPage.qml
+          
+          # Update CMakeLists.txt
+          sed -i -E "s/set\(VERSION \"v[0-9]+\.[0-9]+\.[0-9]+\"\)/set(VERSION \"${{ env.VERSION }}\")/g" shell/CMakeLists.txt
+          
+          git add shell/modules/nexus/pages/AboutPage.qml shell/CMakeLists.txt
+          git commit -m "chore: sync version to ${{ env.VERSION }} [skip ci]" || echo "No changes to commit"
+          git push origin main
+
+      - name: Update Rolling Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f rolling
+          git push -f origin rolling
 
       - name: Create or Update Release
         env:
