@@ -139,7 +139,9 @@ void DinoGameBackend::tick() {
         return;
     }
 
-    m_gameSpeed = 6.0 + std::floor(m_score / 100.0) * 0.05;
+    if (std::floor(m_score) > 0 && static_cast<int>(std::floor(m_score)) % 100 == 0) {
+        m_gameSpeed += 0.05;
+    }
 
     QVariantList newObstacles;
     qreal dWidth = m_isDucking ? 59 : 44;
