@@ -96,20 +96,14 @@ trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
 
 info "Checking for broken spectacle dependencies..."
 if ! /usr/bin/spectacle -h >/dev/null 2>&1; then
-    missing_libs=$(ldd /usr/bin/spectacle 2>/dev/null | grep "libopencv_.* => not found" | awk '{print $1}' || true)
-    if [ -n "$missing_libs" ]; then
-        warn "Spectacle is missing OpenCV dependencies. Attempting to fix by symlinking..."
-        for missing in $missing_libs; do
-            base_lib=$(echo "$missing" | grep -o 'libopencv_[^.]*\.so')
-            if [ -n "$base_lib" ]; then
-                installed=$(ls /usr/lib/${base_lib}.* 2>/dev/null | grep -v "$missing$" | head -n 1 || true)
-                if [ -n "$installed" ]; then
-                    sudo ln -sf "$installed" "/usr/lib/$missing"
-                fi
-            fi
-        done
-        ok "Spectacle OpenCV fix applied."
+    warn "Spectacle is missing OpenCV dependencies. Attempting to fix by symlinking..."
+    if [ -f "/usr/lib/libopencv_imgproc.so.5.0.0" ]; then
+        sudo ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413
     fi
+    if [ -f "/usr/lib/libopencv_core.so.5.0.0" ]; then
+        sudo ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413
+    fi
+    ok "Spectacle OpenCV fix applied."
 fi
 
 if ! sudo python3 -c '
