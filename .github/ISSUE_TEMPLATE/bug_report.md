@@ -6,6 +6,7 @@ labels: bug
 assignees: ''
 
 ---
+# Please ensure a duplicate of this issue has not already been reported
 
 ## Problem
 
