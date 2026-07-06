@@ -21,12 +21,6 @@ body:
 
   - type: textarea
     attributes:
-      label: Use case
-      description: Explain why this would be useful. Include your workflow if relevant.
-      placeholder: Describe the problem this feature would solve.
-
-  - type: textarea
-    attributes:
       label: Additional context
       description: Add links, screenshots, or references if they help explain the request.
       placeholder: Mockups, examples, or other notes.
