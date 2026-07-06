@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick.Layouts
 import Caelestia.Config
 import qs.components.controls
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
@@ -43,7 +44,7 @@ PageBase {
         // Behaviour
         SectionHeader {
             first: true
-            text: qsTr("Behaviour")
+            text: Strings.localizeEnglishSpelling(qsTr("Behaviour"))
         }
 
         ToggleRow {
@@ -117,7 +118,7 @@ PageBase {
         NavRow {
             icon: "dock"
             label: qsTr("Dock")
-            status: qsTr("Positioning, recoloring")
+            status: Strings.localizeEnglishSpelling(qsTr("Positioning, recolouring"))
             onClicked: root.nState.openSubPage(11)
         }
 

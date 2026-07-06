@@ -81,8 +81,8 @@ PageBase {
 
         ToggleRow {
             first: true
-            text: qsTr("Favourite")
-            subtext: root.favouriteByRegex ? qsTr("Matched by a regex in favouriteApps — edit the config file to change") : qsTr("Pin to the top of the launcher")
+            text: Strings.localizeEnglishSpelling(qsTr("Favourite"))
+            subtext: root.favouriteByRegex ? Strings.localizeEnglishSpelling(qsTr("Matched by a regex in launcher favourites — edit the config file to change")) : qsTr("Pin to the top of the launcher")
             enabled: !root.favouriteByRegex
             checked: root.app && Strings.testRegexList(GlobalConfig.launcher.favouriteApps, root.app.id)
             onToggled: {

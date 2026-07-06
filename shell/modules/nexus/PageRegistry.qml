@@ -1,6 +1,7 @@
 pragma Singleton
 
 import QtQuick
+import qs.utils
 
 QtObject {
     id: root
@@ -10,7 +11,7 @@ QtObject {
         {
             label: qsTr("Wallpaper & style"),
             icon: "palette",
-            description: qsTr("Wallpaper, fonts, colours"),
+            description: Strings.localizeEnglishSpelling(qsTr("Wallpaper, fonts, colours")),
             category: "appearance"
         },
 
@@ -66,7 +67,7 @@ QtObject {
         {
             label: qsTr("Apps"),
             icon: "apps",
-            description: qsTr("Default apps, favourites, hidden apps"),
+            description: Strings.localizeEnglishSpelling(qsTr("Default apps, favourites, hidden apps")),
             category: "shell"
         },
         {

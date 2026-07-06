@@ -6,6 +6,7 @@ import Quickshell
 import Caelestia.Config
 import qs.components
 import qs.components.controls
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
@@ -184,7 +185,7 @@ PageBase {
                 { id: "bluetooth",      label: qsTr("Bluetooth") },
                 { id: "mic",            label: qsTr("Microphone") },
                 { id: "settings",       label: qsTr("Settings") },
-                { id: "colorpicker",    label: qsTr("Color Picker") },
+                { id: "colorpicker",    label: Strings.localizeEnglishSpelling(qsTr("Colour Picker")) },
                 { id: "dnd",            label: qsTr("Do Not Disturb") },
                 { id: "vpn",            label: qsTr("VPN") },
                 { id: "wallpaper",      label: qsTr("Wallpaper") },

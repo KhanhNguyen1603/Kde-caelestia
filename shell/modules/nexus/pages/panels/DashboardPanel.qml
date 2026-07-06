@@ -6,6 +6,7 @@ import Caelestia.Config
 import M3Shapes
 import qs.components
 import qs.components.controls
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
@@ -222,8 +223,8 @@ PageBase {
 
         ToggleRow {
             Layout.fillWidth: true
-            text: qsTr("Recolor media GIF")
-            subtext: qsTr("Apply system theme colors to the media GIF")
+            text: Strings.localizeEnglishSpelling(qsTr("Recolour media GIF"))
+            subtext: Strings.localizeEnglishSpelling(qsTr("Apply system theme colours to the media GIF"))
             checked: Config.dashboard.colorizeMediaGif
             onToggled: GlobalConfig.dashboard.colorizeMediaGif = checked
         }
@@ -238,8 +239,8 @@ PageBase {
 
         ToggleRow {
             Layout.fillWidth: true
-            text: qsTr("Randomize shape colors")
-            subtext: qsTr("Randomly shift shape colors while morphing")
+            text: Strings.localizeEnglishSpelling(qsTr("Randomize shape colours"))
+            subtext: Strings.localizeEnglishSpelling(qsTr("Randomly shift shape colours while morphing"))
             checked: Config.dashboard.randomizeMediaShapeColors
             onToggled: GlobalConfig.dashboard.randomizeMediaShapeColors = checked
         }
@@ -307,7 +308,7 @@ PageBase {
 
         // Behaviour
         SectionHeader {
-            text: qsTr("Behaviour")
+            text: Strings.localizeEnglishSpelling(qsTr("Behaviour"))
         }
 
         StepperRow {

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick.Layouts
 import Caelestia.Config
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
@@ -88,7 +89,7 @@ PageBase {
 
         // Behaviour
         SectionHeader {
-            text: qsTr("Behaviour")
+            text: Strings.localizeEnglishSpelling(qsTr("Behaviour"))
         }
 
         ToggleRow {

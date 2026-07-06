@@ -56,7 +56,7 @@ class LauncherConfig : public ConfigObject {
             vmap({
                 { u"name"_s, u"Scheme"_s },
                 { u"icon"_s, u"palette"_s },
-                { u"description"_s, u"Change the current colour scheme"_s },
+                { u"description"_s, u"Change the current color scheme"_s },
                 { u"command"_s, QStringList{ u"autocomplete"_s, u"scheme"_s } },
             }),
             vmap({

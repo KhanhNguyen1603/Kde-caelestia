@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick.Layouts
 import Caelestia.Config
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
@@ -24,7 +25,7 @@ PageBase {
         }
 
         ToggleRow {
-            text: qsTr("Recolour icons")
+            text: Strings.localizeEnglishSpelling(qsTr("Recolour icons"))
             checked: Config.bar.tray.recolour
             onToggled: GlobalConfig.bar.tray.recolour = checked
         }

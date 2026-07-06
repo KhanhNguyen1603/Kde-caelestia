@@ -4,6 +4,7 @@ import Quickshell
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.utils
 
 Item {
     id: root
@@ -67,7 +68,7 @@ Item {
             }
 
             StyledText {
-                text: (modelData && modelData.description) ? modelData.description : ((modelData && modelData.action) ? modelData.action : "")
+                text: (modelData && modelData.description) ? Strings.localizeEnglishSpelling(modelData.description) : ((modelData && modelData.action) ? modelData.action : "")
                 font: Tokens.font.body.small
                 color: Colours.palette.m3outline
                 elide: Text.ElideRight

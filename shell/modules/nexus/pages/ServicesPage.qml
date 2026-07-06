@@ -6,6 +6,7 @@ import Caelestia.Services
 import qs.components
 import qs.components.controls
 import qs.services
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
@@ -225,7 +226,7 @@ PageBase {
         }
 
         ToggleRow {
-            text: qsTr("Smart colour scheme")
+            text: Strings.localizeEnglishSpelling(qsTr("Smart colour scheme"))
             subtext: qsTr("Derive theme mode and variant from the wallpaper")
             checked: GlobalConfig.services.smartScheme
             onToggled: GlobalConfig.services.smartScheme = checked

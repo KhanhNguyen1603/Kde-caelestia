@@ -3,12 +3,13 @@ import QtQuick.Layouts
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.utils
 import qs.modules.nexus.common
 
 PageBase {
     id: root
 
-    title: qsTr("Colours")
+    title: Strings.localizeEnglishSpelling(qsTr("Colours"))
     isSubPage: true
 
     Item {
