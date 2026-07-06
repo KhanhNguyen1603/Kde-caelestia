@@ -65,6 +65,7 @@ Item {
 
     readonly property int padding: Tokens.padding.medium
     readonly property int spacing: Tokens.spacing.small
+    readonly property real configuredItemSize: Math.max(16, Config.bar.dock.iconSize || 32)
 
     StyledRect {
         id: container
@@ -137,7 +138,7 @@ Item {
             return result;
         }
 
-        property real itemSize: Tokens.sizes.bar.innerWidth * 0.8
+        property real itemSize: root.configuredItemSize
         property int maxHorizontalItems: Math.max(0, Math.floor((availableSize - padding * 2 - itemSize * 0.5) / (itemSize + spacing)))
         property real maxHorizontalSize: maxHorizontalItems >= 1 ? ((maxHorizontalItems + 0.5) * itemSize + maxHorizontalItems * spacing + padding * 2) : availableSize
 
@@ -160,8 +161,8 @@ Item {
                 id: listView
 
                 anchors.centerIn: parent
-                width: bar.isHorizontal ? (container.width - padding * 2) : Tokens.sizes.bar.innerWidth * 0.8
-                height: bar.isHorizontal ? Tokens.sizes.bar.innerWidth * 0.8 : (container.height - padding * 2)
+                width: bar.isHorizontal ? (container.width - padding * 2) : container.itemSize
+                height: bar.isHorizontal ? container.itemSize : (container.height - padding * 2)
                 orientation: bar.isHorizontal ? ListView.Horizontal : ListView.Vertical
                 spacing: root.spacing
                 interactive: bar.isHorizontal ? contentWidth > width + 1 : contentHeight > height + 1
@@ -222,8 +223,8 @@ Item {
             Item {
                 id: delegateContainer
 
-                width: Tokens.sizes.bar.innerWidth * 0.8
-                height: Tokens.sizes.bar.innerWidth * 0.8
+                width: container.itemSize
+                height: container.itemSize
                 implicitWidth: width
                 implicitHeight: height
 
@@ -476,7 +477,7 @@ Item {
         // Don't close dock context menu
         if (bar.popouts.hasCurrent && bar.popouts.currentName === "dockcontext") return;
 
-        const itemSize = Tokens.sizes.bar.innerWidth * 0.8;
+        const itemSize = container.itemSize;
         const itemWidthWithSpacing = itemSize + spacing;
         const adjustedPos = isHorizontal ? relPos - container.x - padding : relPos - container.y - padding;
         

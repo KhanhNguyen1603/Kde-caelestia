@@ -136,6 +136,7 @@ class BarDock : public ConfigObject {
 
     CONFIG_PROPERTY(bool, monitorCenter, true)
     CONFIG_PROPERTY(bool, recolourIcons, false)
+    CONFIG_PROPERTY(int, iconSize, 32)
 
 public:
     explicit BarDock(QObject* parent = nullptr)
