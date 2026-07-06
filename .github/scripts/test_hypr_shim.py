@@ -26,7 +26,7 @@ def main():
                 continue
                 
             filepath = os.path.join(dirpath, filename)
-            with open(filepath, "r") as f:
+            with open(filepath, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
                 
             # Find dispatch("verb args") or dispatch(`verb args`) or dispatch('verb args')

@@ -36,7 +36,7 @@ jobs:
           sed -i -E "s/set\(VERSION \"v[0-9]+\.[0-9]+\.[0-9]+\"\)/set(VERSION \"$VERSION\")/g" shell/CMakeLists.txt
 
           # Update README dropdown
-          sed -i -E "s/<b> 🌠 v[0-9]+\.[0-9]+\.[0-9]+ new features<\/b>/<b> 🌠 $VERSION new features<\/b>/g" .github/README.md
+          sed -i -E "s/<b>  v[0-9]+\.[0-9]+\.[0-9]+ new features<\/b>/<b> $VERSION new features<\/b>/g" .github/README.md
           
           git add shell/modules/nexus/pages/AboutPage.qml shell/CMakeLists.txt .github/README.md
           git commit -m "chore: sync version to $VERSION [skip ci]" || echo "No changes to commit"

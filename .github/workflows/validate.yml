@@ -1,0 +1,25 @@
+name: Validate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  repo-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run repository integrity tests
+        run: python3 .github/scripts/test_repo_integrity.py
+
+      - name: Validate hyprctl shim mappings
+        run: python3 .github/scripts/test_hypr_shim.py
