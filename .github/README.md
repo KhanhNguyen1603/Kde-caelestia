@@ -2,7 +2,7 @@
 
 # ✧ C A E L E S T I A <img src="assets/caelestia.svg" width="35" align="top"> ✧
 
-<p align="center"> <b>v2.0.1</b> </p>
+<p align="center"> <b>v2.0.2</b> </p>
 
 ### A KDE adaptation of the celestial aesthetic
 
@@ -113,7 +113,7 @@
 </details>
 
 <details>
-  <summary><b> 🌠 v2.0.1 new features</b></summary>
+  <summary><b> 🌠 v2.0.2 new features</b></summary>
   <br/>
 
   - 🌙 **Bar**: MacOS-style app dock, Configurable Panel Position, Material workspace icons, DND toggle, and a live drag-and-drop components editor.
