@@ -27,6 +27,10 @@ Item {
 
     property var launchingApps: ({})
     property bool isDragging: false
+    property real spacing: Tokens.spacing.medium
+    property real padding: Tokens.padding.medium
+    
+    HoverHandler { id: dockHover }
 
     ListModel { id: dockModel }
 
