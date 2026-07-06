@@ -44,7 +44,7 @@ warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 ensure_dots_content() {
     local dots_dir="$BUNDLE_DIR/src/dots"
 
-    if [[ -f "$dots_dir/starship.toml" ]]; then
+    if [[ -d "$dots_dir/fish" || -d "$dots_dir/hypr" ]]; then
         return 0
     fi
 
@@ -57,7 +57,7 @@ ensure_dots_content() {
             die "Failed to initialize src/dots submodule."
     fi
 
-    [[ -f "$dots_dir/starship.toml" ]] || \
+    [[ -d "$dots_dir/fish" || -d "$dots_dir/hypr" ]] || \
         die "Missing src/dots content. Run: git submodule update --init --recursive src/dots"
 }
 

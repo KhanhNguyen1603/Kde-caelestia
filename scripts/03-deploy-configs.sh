@@ -13,7 +13,7 @@ echo ""
 
 mkdir -p "$BACKUP_DIR/config" "$BACKUP_DIR/local"
 
-if [[ ! -f "$DOTS_DIR/starship.toml" ]]; then
+if [[ ! -d "$DOTS_DIR/fish" && ! -d "$DOTS_DIR/hypr" ]]; then
     echo "  [ERR] Missing src/dots content. Run: git submodule update --init --recursive src/dots"
     exit 1
 fi
