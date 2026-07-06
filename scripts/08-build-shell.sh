@@ -4,11 +4,13 @@ set -uo pipefail
 
 CYAN="\033[0;36m"
 GREEN="\033[0;32m"
+YELLOW="\033[38;5;220m"
 RED="\033[0;31m"
 RST="\033[0m"
 
 info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
+warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 err()  { echo -e "${RED}[ERR]   $*${RST}"; }
 
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -91,6 +93,11 @@ sudo -v || exit 1
 (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
 SUDO_LOOP_PID=$!
 trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
+
+echo "Fixing opencv build failure"
+sudo ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413
+sudo ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413
+
 
 if ! sudo python3 -c '
 import sys, os, glob

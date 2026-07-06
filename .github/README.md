@@ -101,10 +101,11 @@
 <details> 
   <summary><b>💫 Updates</b></summary>
   <br/>
-
+    
+    NOTE: You must backup your ~/.config if you have made changes to the dot or shell files
   - Updating is simple now with integrated experience.
-  - Gui: Open Shell settings -> Updates -> Select the update type (stable or bleeding edge) -> Install Updates
-  - Manual: just run `bash update.sh` and select the branch from which you want to update. 
+  - **Gui**: Open Shell settings -> Updates -> Select the update type (stable or bleeding edge) -> Install Updates
+  - **Manual**: just run `bash update.sh` and select the branch from which you want to update. 
   - branches: main (stable) and testing (bleeding edge)
   - Shell settings are **not** changed during updates. 
 
@@ -239,6 +240,26 @@ Then rebuild the shell by running setup.sh again.
     <h2>✦ Troubleshooting ✦</h2>
 </div>
 
+<details>
+  <summary><b>❌️ Critical Error Handling</b></summary>
+  <br/>
+
+  If something got **really messed up** (setup broken, build error, great panic..)
+
+  **Complete Shell Reset**
+  1. **Get Access to a terminal**: Win+Enter or Alt+Ctl+T or The last hope tty: Ctl + Alt + F3 or any other Fn key that works.
+  2. **Uninstall.sh**: Open terminal where setup.sh is, run `bash uninstall.sh`. **NOTE**: Enter `0` when it asks for which backup to restore.
+  3. **Delete all shell files**: Run `rm -rf ~/.config/caelestia ~/.config/quickshell`. Also delete the cloned repo folder.
+  4. **Reboot**: Run `reboot` (May be a laggy one, if stuck, do a power on off). You will be seeing a wallpaper only after restarting with light theme 👀. Its the normal KDE shell without any panels. You can add any panels if you want by `Right Click -> Edit Mode`.
+  5. **Clone the latest main repo**: Run
+     ```bash
+     git clone -b main --single-branch --depth 1 https://github.com/ladybug-me/caelestia-dots-kde ~/caelestia
+     cd ~/caelestia
+     bash setup.sh
+     ```
+  7. **Reboot**: Run `reboot` and you are back with a stable environment once again.
+    
+</details>
 <details>
   <summary><b>🐞 Viewing Debug Logs & Supported Components</b></summary>
   <br/>

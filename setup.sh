@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-# ╔══════════════════════════════════════════════════════════════╗
-# ║        Caelestia KDE Port — Unified Installer               ║
-# ║                                                              ║
-# ║  Original Hyprland dots: Caelestia                           ║
-# ║  KDE port & modifications: ladybug-me                        ║
-# ║                                                              ║
-# ║  Idempotent — safe to run multiple times.                    ║
-# ╚══════════════════════════════════════════════════════════════╝
+# ==============================================================
+#   Caelestia KDE Port - Unified Installer
+#
+#   Original Hyprland dots: Caelestia
+#   KDE port and modifications: ladybug-me
+#   Installer behavior: idempotent and safe for reruns
+# ==============================================================
 
 set -uo pipefail
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+# -- Paths ---------------------------------------------------------------------
 BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$BUNDLE_DIR/scripts"
 export BUNDLE_DIR
 
-# ── Download/Cache Configuration ───────────────────────────────────────────────
+# -- Download/Cache Configuration -----------------------------------------------
 export CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde"
 export BUILDDIR="$CACHE_DIR/makepkg-build"
 export PKGDEST="$CACHE_DIR/makepkg-packages"
@@ -26,7 +25,7 @@ export SRCPKGDEST="$CACHE_DIR/makepkg-srcpackages"
 mkdir -p "$CACHE_DIR" "$BUILDDIR" "$PKGDEST" "$SRCDEST" "$SRCPKGDEST"
 rm -f "$CACHE_DIR/failed_steps.txt" "$CACHE_DIR/failed_packages.txt"
 
-# ── Colors ─────────────────────────────────────────────────────────────────────
+# -- Colors --------------------------------------------------------------------
 RST="\033[0m"
 BOLD="\033[1m"
 PURPLE="\033[38;5;135m"
@@ -37,12 +36,12 @@ GREEN="\033[38;5;84m"
 RED="\033[38;5;196m"
 YELLOW="\033[38;5;220m"
 
-die()  { echo -e "${RED} ☄️  [FATAL] $*${RST}" >&2; exit 1; }
-info() { echo -e "${BLUE} 🔭 [INFO]  $*${RST}"; }
-ok()   { echo -e "${GREEN} ✨ [OK]    $*${RST}"; }
-warn() { echo -e "${YELLOW} ⚠️  [WARN]  $*${RST}"; }
+die()  { echo -e "${RED}[FATAL] $*${RST}" >&2; exit 1; }
+info() { echo -e "${BLUE}[INFO]  $*${RST}"; }
+ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
+warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 
-# ── Pre-flight checks & OS Detection ───────────────────────────────────────────
+# -- Pre-flight checks and OS detection -----------------------------------------
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     case "$ID" in
@@ -86,7 +85,7 @@ elif [[ "$BASE_DISTRO" == "fedora" ]] && ! command -v dnf >/dev/null 2>&1; then
     die "dnf not found. This installer requires Fedora or a Fedora-based distro."
 fi
 
-# ── Step runner ────────────────────────────────────────────────────────────────
+# -- Step runner ----------------------------------------------------------------
 # Runs a step script. On failure prints a warning and prompts for retry/ignore/exit.
 run_step() {
     local name="$1" script="$2"
@@ -98,10 +97,10 @@ run_step() {
         printf '%s\n' "${SUDO_PASS:-}" | sudo -S -v &>/dev/null || true
         
         if bash "$script"; then
-            ok "$name — done"
+            ok "$name - done"
             break
         else
-            warn "$name — encountered errors"
+            warn "$name - encountered errors"
             echo -e "${YELLOW}What would you like to do? [r]etry, [i]gnore, [e]xit:${RST} "
             read -r -t 60 step_action || step_action="i"
             case "${step_action,,}" in
@@ -226,7 +225,7 @@ collect_installer_preferences() {
 
 # ══════════════════════════════════════════════════════════════
 #  BANNER
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
 bash "$SCRIPTS_DIR/00-banner.sh"
 
 # ══════════════════════════════════════════════════════════════
@@ -236,7 +235,7 @@ collect_installer_preferences
 
 # ══════════════════════════════════════════════════════════════
 #  ONE-TIME SUDO PASSWORD (kept alive for the full install)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
 echo -e "${YELLOW}This installer needs sudo for package installation.${RST}"
 while true; do
     IFS= read -s -p "Please enter your sudo password: " SUDO_PASS
@@ -259,13 +258,13 @@ trap 'printf "%s\n" "$SUDO_PASS" | sudo -S rm -f /etc/sudoers.d/caelestia-instal
 #  STEP 0 — System update (after configuration + auth)
 # ══════════════════════════════════════════════════════════════
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 if [[ "$BASE_DISTRO" == "arch" ]]; then
     echo -e "${CYAN}  Step 0/11 — System Update (pacman -Syu)${RST}"
 else
     echo -e "${CYAN}  Step 0/11 — System Update (dnf upgrade)${RST}"
 fi
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 echo
 if [[ "$BASE_DISTRO" == "arch" ]]; then
     info "Running sudo pacman -Syu now that configuration is complete..."
@@ -289,98 +288,98 @@ fi
 echo
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
 if [[ "$BASE_DISTRO" == "arch" ]]; then
-    echo -e "${CYAN}  Step 1/11 — Prerequisites (yay)${RST}"
+    echo -e "${CYAN}  Step 1/11 - Prerequisites (yay)${RST}"
 else
-    echo -e "${CYAN}  Step 1/11 — Prerequisites (dnf, yq, createrepo_c)${RST}"
+    echo -e "${CYAN}  Step 1/11 - Prerequisites (dnf, yq, createrepo_c)${RST}"
 fi
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Ensure prerequisites" "$SCRIPTS_DIR/01-ensure-prereqs.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 2 — Packages (PKGBUILDs + supplemental)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 2 - Packages (PKGBUILDs + supplemental)
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 2/11 — Package Installation${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 2/11 - Package Installation${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Package installation" "$SCRIPTS_DIR/02-packages.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 3 — Backup and Deploy configs
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 3 - Backup and Deploy configs
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 3/11 — Config Deployment${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 3/11 - Config Deployment${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Backup KDE Themes" "$SCRIPTS_DIR/00-backup-themes.sh"
 run_step "Config deployment" "$SCRIPTS_DIR/03-deploy-configs.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 4 — Apply KDE settings (Darkly, Kvantum, polonium)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 4 - Apply KDE settings (Darkly, Kvantum, polonium)
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 4/11 — KDE Settings${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 4/11 - KDE Settings${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "KDE settings" "$SCRIPTS_DIR/04-deploy-kde.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 5 — Keyboard shortcuts & workspaces
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 5 - Keyboard shortcuts & workspaces
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 5/11 — Keyboard Shortcuts & Workspaces${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 5/11 - Keyboard Shortcuts and Workspaces${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Keyboard shortcuts" "$BUNDLE_DIR/src/keyboardshortcuts/register.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 6 — Services
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 6 - Services
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 6/11 — Services${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 6/11 - Services${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Services" "$SCRIPTS_DIR/06-services.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 7 — Install KDE extra apps (kvantum, darkly, kde-material-you-colors)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 7 - Install KDE extra apps (kvantum, darkly, kde-material-you-colors)
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 7/11 — KDE Theme Apps${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 7/11 - KDE Theme Apps${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "KDE theme apps" "$SCRIPTS_DIR/07-kde-apps.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 8 — Build and Install Caelestia Shell
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 8 - Build and Install Caelestia Shell
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 8/11 — Build Caelestia Shell${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 8/11 - Build Caelestia Shell${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Build Caelestia Shell" "$SCRIPTS_DIR/08-build-shell.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 9 — Apply live system tweaks
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 9 - Apply live system tweaks
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 9/11 — System Tweaks${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 9/11 - System Tweaks${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "System tweaks" "$SCRIPTS_DIR/09-system-tweaks.sh"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 10 — Autostart (Quickshell + kde-material-you-colors)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 10 - Autostart (Quickshell + kde-material-you-colors)
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 10/11 — Autostart${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 10/11 - Autostart${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Autostart" "$SCRIPTS_DIR/10-autostart.sh"
 
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
 #  CLEANUP CACHE
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
 if [[ "${REMOVE_CACHE:-}" == "true" ]]; then
     echo
     info "Cleaning up downloaded packages and build files..."
@@ -388,11 +387,11 @@ if [[ "${REMOVE_CACHE:-}" == "true" ]]; then
     ok "Downloaded packages and build files removed."
 fi
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 11 — Finalize (summary + logout instructions)
-# ══════════════════════════════════════════════════════════════
+# ==============================================================
+#  STEP 11 - Finalize (summary + logout instructions)
+# ==============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 11/11 — Finalize${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
+echo -e "${CYAN}  Step 11/11 - Finalize${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Finalize" "$SCRIPTS_DIR/11-finalize.sh"
