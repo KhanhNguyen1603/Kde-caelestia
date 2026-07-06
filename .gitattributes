@@ -1,0 +1,3 @@
+# Keep shell scripts Linux-compatible
+*.sh text eol=lf
+src/bin/* text eol=lf

@@ -1,3 +1,7 @@
 [submodule "shell/plugin/src/QMLTermWidget"]
 	path = shell/plugin/src/QMLTermWidget
 	url = https://github.com/Swordfish90/qmltermwidget.git
+[submodule "caelestia"]
+	path = src/dots
+	url = https://github.com/caelestia-dots/caelestia.git
+	branch = main

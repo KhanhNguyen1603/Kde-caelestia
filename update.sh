@@ -59,6 +59,13 @@ git checkout "$BRANCH" || die "Failed to checkout $BRANCH"
 info "Pulling latest changes for $BRANCH..."
 git pull origin "$BRANCH" || die "Failed to pull from origin/$BRANCH"
 
+if [[ -f "$BUNDLE_DIR/.gitmodules" ]]; then
+    info "Syncing src/dots submodule..."
+    git submodule sync -- src/dots >/dev/null 2>&1 || true
+    git submodule update --init --recursive src/dots || \
+        die "Failed to initialize src/dots submodule"
+fi
+
 if [ "$STASHED" -eq 1 ]; then
     echo
     warn "Your local uncommitted changes were backed up to the git stash to allow a clean update."

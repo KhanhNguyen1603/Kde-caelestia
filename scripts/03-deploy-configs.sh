@@ -3,6 +3,7 @@
 
 BUNDLE_DIR="${BUNDLE_DIR:?BUNDLE_DIR not set}"
 SRC_DIR="$BUNDLE_DIR/src"
+DOTS_DIR="$SRC_DIR/dots"
 BACKUP_DIR="$BUNDLE_DIR/backups/$(date +%Y%m%d_%H%M%S)"
 
 echo
@@ -12,6 +13,11 @@ echo ""
 
 mkdir -p "$BACKUP_DIR/config" "$BACKUP_DIR/local"
 
+if [[ ! -d "$DOTS_DIR/fish" && ! -d "$DOTS_DIR/hypr" ]]; then
+    echo "  [ERR] Missing src/dots content. Run: git submodule update --init --recursive src/dots"
+    exit 1
+fi
+
 echo "  Recording previous login shell..."
 getent passwd "$USER" | cut -d: -f7 > "$BACKUP_DIR/previous_shell.txt"
 
@@ -20,18 +26,18 @@ cp -r "$HOME/.config" "$BACKUP_DIR/" 2>/dev/null || true
 
 echo "  Deploying Caelestia configs..."
 for config in btop fastfetch fish foot hypr kitty micro thunar; do
-    if [[ -d "$SRC_DIR/dots/$config" ]]; then
+    if [[ -d "$DOTS_DIR/$config" ]]; then
         # Remove ((COMMENTED OUT FOR SOME REASON))
         rm -rf "$HOME/.config/$config"
         # Deploy
-        cp -r "$SRC_DIR/dots/$config" "$HOME/.config/$config"
+        cp -r "$DOTS_DIR/$config" "$HOME/.config/$config"
         echo "    Deployed: $config"
     fi
 done
 
 # Deploy starship.toml
-if [[ -f "$SRC_DIR/dots/starship.toml" ]]; then
-    cp "$SRC_DIR/dots/starship.toml" "$HOME/.config/starship.toml"
+if [[ -f "$DOTS_DIR/starship.toml" ]]; then
+    cp "$DOTS_DIR/starship.toml" "$HOME/.config/starship.toml"
     echo "    Deployed: starship.toml"
 fi
 

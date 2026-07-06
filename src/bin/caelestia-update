@@ -33,7 +33,16 @@ git config core.sparseCheckout true
 echo "shell/" >> .git/info/sparse-checkout
 echo "src/" >> .git/info/sparse-checkout
 echo "scripts/" >> .git/info/sparse-checkout
+echo ".gitmodules" >> .git/info/sparse-checkout
 git pull -q --depth 1 origin "$BRANCH" || die "Failed to pull repository"
+
+if [[ -f "$TMP_DIR/.gitmodules" ]]; then
+    info "Initializing src/dots submodule..."
+    git submodule sync -- src/dots >/dev/null 2>&1 || true
+    git submodule update --init --recursive src/dots || die "Failed to initialize src/dots submodule"
+fi
+
+[[ -f "$TMP_DIR/src/dots/starship.toml" ]] || die "Missing src/dots content after update"
 
 # 2. System update via Polkit
 echo "PROGRESS: 2/5: Running system update..."

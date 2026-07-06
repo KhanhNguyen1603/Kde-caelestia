@@ -41,6 +41,26 @@ info() { echo -e "${BLUE}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
 warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 
+ensure_dots_content() {
+    local dots_dir="$BUNDLE_DIR/src/dots"
+
+    if [[ -d "$dots_dir/fish" || -d "$dots_dir/hypr" ]]; then
+        return 0
+    fi
+
+    if command -v git >/dev/null 2>&1 && \
+       git -C "$BUNDLE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 && \
+       [[ -f "$BUNDLE_DIR/.gitmodules" ]]; then
+        info "Initializing src/dots submodule..."
+        git -C "$BUNDLE_DIR" submodule sync -- src/dots >/dev/null 2>&1 || true
+        git -C "$BUNDLE_DIR" submodule update --init --recursive src/dots || \
+            die "Failed to initialize src/dots submodule."
+    fi
+
+    [[ -d "$dots_dir/fish" || -d "$dots_dir/hypr" ]] || \
+        die "Missing src/dots content. Run: git submodule update --init --recursive src/dots"
+}
+
 KDE_INHIBIT_COOKIE=""
 SYSTEMD_INHIBIT_PID=""
 
@@ -366,6 +386,7 @@ echo -e "${CYAN}---------------------------------------------${RST}"
 echo -e "${CYAN}  Step 3/11 - Config Deployment${RST}"
 echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Backup KDE Themes" "$SCRIPTS_DIR/00-backup-themes.sh"
+ensure_dots_content
 run_step "Config deployment" "$SCRIPTS_DIR/03-deploy-configs.sh"
 
 # ==============================================================
