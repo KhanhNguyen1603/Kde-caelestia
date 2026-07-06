@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# installDP.sh — Arch package installation for Caelestia KDE Port
+# installDP.sh - Arch package installation for Caelestia KDE Port
 
 set -uo pipefail
 
@@ -10,7 +10,7 @@ log "Installing Arch packages..."
 
 # Ensure yay
 if ! command -v yay >/dev/null 2>&1; then
-    log "yay not found — installing..."
+    log "yay not found - installing..."
     sudo pacman -S --needed --noconfirm base-devel git || true
     tmpdir="$(mktemp -d)"
     git clone https://aur.archlinux.org/yay-bin.git "$tmpdir"

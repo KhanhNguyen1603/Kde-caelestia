@@ -276,20 +276,20 @@ collect_installer_preferences() {
     done
 }
 
-# ══════════════════════════════════════════════════════════════
+# =============================================================
 #  BANNER
 # ==============================================================
 bash "$SCRIPTS_DIR/00-banner.sh"
 
-# ══════════════════════════════════════════════════════════════
+# =============================================================
 #  ASK USER PREFERENCES (all prompts up front)
-# ══════════════════════════════════════════════════════════════
+# =============================================================
 collect_installer_preferences
 
 # Keep display/idle timers inhibited while installer runs so long steps are not interrupted.
 enable_install_awake_guard
 
-# ══════════════════════════════════════════════════════════════
+# =============================================================
 #  ONE-TIME SUDO PASSWORD (kept alive for the full install)
 # ==============================================================
 echo -e "${YELLOW}This installer needs sudo for package installation.${RST}"
@@ -308,15 +308,15 @@ export SUDO_PASS
 # Temporarily grant NOPASSWD to the user to prevent yay/makepkg from prompting
 printf '%s\n' "$SUDO_PASS" | sudo -S sh -c "echo '$USER ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/caelestia-installer-temp && chmod 0440 /etc/sudoers.d/caelestia-installer-temp"
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 0 — System update (after configuration + auth)
-# ══════════════════════════════════════════════════════════════
+# =============================================================
+#  STEP 0 - System update (after configuration + auth)
+# =============================================================
 echo
 echo -e "${CYAN}---------------------------------------------${RST}"
 if [[ "$BASE_DISTRO" == "arch" ]]; then
-    echo -e "${CYAN}  Step 0/11 — System Update (pacman -Syu)${RST}"
+    echo -e "${CYAN}  Step 0/11 - System Update (pacman -Syu)${RST}"
 else
-    echo -e "${CYAN}  Step 0/11 — System Update (dnf upgrade)${RST}"
+    echo -e "${CYAN}  Step 0/11 - System Update (dnf upgrade)${RST}"
 fi
 echo -e "${CYAN}---------------------------------------------${RST}"
 echo
@@ -336,11 +336,11 @@ else
     fi
 fi
 
-# ══════════════════════════════════════════════════════════════
-#  STEP 1 — Ensure prerequisites
-# ══════════════════════════════════════════════════════════════
+# =============================================================
+#  STEP 1 - Ensure prerequisites
+# =============================================================
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo -e "${CYAN}---------------------------------------------${RST}"
 if [[ "$BASE_DISTRO" == "arch" ]]; then
     echo -e "${CYAN}  Step 1/11 - Prerequisites (yay)${RST}"
 else
