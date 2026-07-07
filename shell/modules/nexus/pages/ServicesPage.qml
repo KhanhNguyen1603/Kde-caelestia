@@ -336,6 +336,7 @@ PageBase {
 
         StepperRow {
             last: true
+            enabled: root.idleSuspendEnabledState
             label: qsTr("Idle suspend timer")
             subtext: root.idleSuspendEnabledState
                      ? qsTr("Suspend after %1 minute(s) of inactivity").arg(root.idleSuspendMinutesState)
@@ -344,7 +345,10 @@ PageBase {
             from: 1
             to: 180
             stepSize: 1
-            onMoved: v => root.setSuspendTimeoutMinutes(v)
+            onMoved: v => {
+                if (root.idleSuspendEnabledState)
+                    root.setSuspendTimeoutMinutes(v)
+            }
         }
 
         // Service tuning
