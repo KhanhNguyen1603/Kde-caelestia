@@ -302,6 +302,10 @@ Singleton {
             id: wallpaper.id,
             ext: ext
         };
+        if (activeDownloadRunning || downloadProc.running) {
+            console.warn("Wallhaven: Download already in progress");
+            return;
+        }
         resetDownloadState(wallpaper.id);
         downloadProc.wallpaperId = wallpaper.id;
         downloadProc.tmpPath = tmpPath;
@@ -313,7 +317,7 @@ Singleton {
         downloadProc.command = [
             "python3",
             "-c",
-            'import math, os, sys, urllib.request\nurl, tmp_path, dst_path = sys.argv[1:4]\nos.makedirs(os.path.dirname(dst_path), exist_ok=True)\ntry:\n    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"})\n    with urllib.request.urlopen(req) as response, open(tmp_path, "wb") as handle:\n        total = response.headers.get("Content-Length")\n        total = int(total) if total else 0\n        downloaded = 0\n        while True:\n            chunk = response.read(262144)\n            if not chunk:\n                break\n            handle.write(chunk)\n            downloaded += len(chunk)\n            if total > 0:\n                print(f"PROGRESS {downloaded / total:.6f}", flush=True)\n            else:\n                pseudo = min(0.92, 1.0 - math.exp(-downloaded / 1200000.0))\n                print(f"PROGRESS {pseudo:.6f}", flush=True)\n    print("PROGRESS 1", flush=True)\n    os.replace(tmp_path, dst_path)\nexcept Exception as exc:\n    try:\n        if os.path.exists(tmp_path):\n            os.remove(tmp_path)\n    except OSError:\n        pass\n    print(str(exc), file=sys.stderr, flush=True)\n    raise',
+            'import math, os, sys, urllib.request\nurl, tmp_path, dst_path = sys.argv[1:4]\nos.makedirs(os.path.dirname(dst_path), exist_ok=True)\ntry:\n    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"})\n    with urllib.request.urlopen(req) as response, open(tmp_path, "wb") as handle:\n        total = response.headers.get("Content-Length")\n        total = int(total) if total else 0\n        downloaded = 0\n        while True:\n            chunk = response.read(262144)\n            if not chunk:\n                break\n            handle.write(chunk)\n            downloaded += len(chunk)\n            if total > 0:\n                print(f"PROGRESS {downloaded / total:.6f}", flush=True)\n            else:\n                pseudo = min(0.92, 1.0 - math.exp(-downloaded / 1200000.0))\n                print(f"PROGRESS {pseudo:.6f}", flush=True)\n    print("PROGRESS 1", flush=True)\n    os.replace(tmp_path, dst_path)\nexcept Exception as exc:\n    try:\n        if os.path.exists(tmp_path):\n            os.remove(tmp_path)\n    except OSError:\n        pass\n    print(str(exc), file=sys.stderr, flush=True)\n    sys.exit(1)',
             wallpaper.path,
             tmpPath,
             dstPath
@@ -353,6 +357,7 @@ Singleton {
             if (code !== 0) {
                 const errorText = downloadErr.text.trim();
                 resetDownloadState();
+                currentWallpaper = null;
                 downloadFailed(wallpaperId, errorText ? errorText : ("Download failed: " + code));
                 return;
             }

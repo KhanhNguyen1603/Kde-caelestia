@@ -305,7 +305,7 @@ Item {
                                     anchors.leftMargin: Tokens.padding.small
                                     anchors.rightMargin: Tokens.padding.small
 
-                                    text: modelData.resolution || modelData.dimension_x && modelData.dimension_y ? `${modelData.dimension_x}x${modelData.dimension_y}` : ""
+                                    text: modelData.resolution ? modelData.resolution : (modelData.dimension_x && modelData.dimension_y ? `${modelData.dimension_x}x${modelData.dimension_y}` : "")
                                     elide: Text.ElideRight
                                     font: Tokens.font.label.small
                                     color: "white"
@@ -357,9 +357,8 @@ Item {
                 }
 
                 TextButton {
-                    text: root.selectedWallpaperDownloading ? qsTr("Downloading...") : qsTr("Download & Set")
-                    enabled: !root.selectedWallpaperDownloading
-                    onClicked: {
+                    text: root.downloadState === "progress" ? qsTr("Downloading...") : qsTr("Download & Set")
+                    enabled: root.downloadState !== "progress"
                         const wallpaper = root.selectedWallpaper;
                         if (wallpaper) {
                             root.isDownloading = true;
