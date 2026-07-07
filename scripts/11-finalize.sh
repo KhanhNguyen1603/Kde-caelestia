@@ -85,12 +85,9 @@ print_line
 echo
 echo -e "${YELLOW}Next steps:${RST}"
 echo -e "  1) Log out now, then log back in."
-echo -e "  2) If a kernel update occurred, reboot immediately."
+echo -e "  2) If a kernel update occurred, reboot immediately. If no update occured, we still recommend a reboot to ensure all changes take effect."
 echo -e "  3) Remove all KDE panels after login (Super+D -> panel config)."
 echo -e "  4) To enter desktop edit mode later: Super+D -> right click desktop."
-echo
-echo -e "${CYAN}You can re-run this installer at any time. It is idempotent.${RST}"
-echo -e "${CYAN}Troubleshooting is available in the project documentation.${RST}"
 echo
 
 # Cleanup cmake build cache as it contains absolute paths

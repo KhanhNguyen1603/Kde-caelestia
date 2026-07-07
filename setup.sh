@@ -41,6 +41,9 @@ info() { echo -e "${BLUE}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
 warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 
+# Track total installer runtime.
+INSTALL_START_EPOCH="$(date +%s)"
+
 ensure_dots_content() {
     local dots_dir="$BUNDLE_DIR/src/dots"
 
@@ -469,3 +472,13 @@ echo -e "${CYAN}---------------------------------------------${RST}"
 echo -e "${CYAN}  Step 11/11 - Finalize${RST}"
 echo -e "${CYAN}---------------------------------------------${RST}"
 run_step "Finalize" "$SCRIPTS_DIR/11-finalize.sh"
+
+# Print total elapsed installation time.
+INSTALL_END_EPOCH="$(date +%s)"
+INSTALL_ELAPSED_SEC="$((INSTALL_END_EPOCH - INSTALL_START_EPOCH))"
+INSTALL_HOURS="$((INSTALL_ELAPSED_SEC / 3600))"
+INSTALL_MINUTES="$(((INSTALL_ELAPSED_SEC % 3600) / 60))"
+INSTALL_SECONDS="$((INSTALL_ELAPSED_SEC % 60))"
+
+echo
+ok "Total installation time: ${INSTALL_HOURS}h ${INSTALL_MINUTES}m ${INSTALL_SECONDS}s"
