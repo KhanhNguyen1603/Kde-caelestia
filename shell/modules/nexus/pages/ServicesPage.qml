@@ -12,6 +12,9 @@ import qs.modules.nexus.common
 PageBase {
     id: root
 
+    property bool idleSuspendEnabledState: false
+    property int idleSuspendMinutesState: 10
+
     // Lyrics backends, ordered to match LyricsBackend::Backend (Auto, Local, LRCLIB, NetEase)
     readonly property list<MenuItem> lyricsItems: [
         MenuItem {
@@ -57,6 +60,129 @@ PageBase {
             return 2;
         return 3; // None
     }
+
+    function isSuspendIdleAction(action: var): bool {
+        if (!action)
+            return false;
+
+        if (typeof action === "string") {
+            const normalized = action.trim().toLowerCase();
+            return normalized === "suspendthenhibernate" || normalized === "suspend" || normalized === "suspend-then-hibernate" || normalized === "systemctl suspend" || normalized === "systemctl suspend-then-hibernate";
+        }
+
+        const isArrayLike = action instanceof Array || (typeof action === "object" && action.length !== undefined);
+        if (isArrayLike) {
+            for (const a of action) {
+                if (root.isSuspendIdleAction(a))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    function cloneEntry(entry: var): var {
+        const out = {};
+        for (const k in entry)
+            out[k] = entry[k];
+        return out;
+    }
+
+    function clonedIdleTimeouts(): var {
+        const source = GlobalConfig.general.idle.timeouts ?? [];
+        const copy = [];
+
+        for (const entry of source)
+            copy.push(root.cloneEntry(entry));
+
+        return copy;
+    }
+
+    function refreshIdleSuspendState(): void {
+        root.idleSuspendEnabledState = root.suspendTimeoutEnabled();
+        root.idleSuspendMinutesState = root.suspendTimeoutMinutes();
+    }
+
+    function suspendTimeoutMinutes(): int {
+        const entries = GlobalConfig.general.idle.timeouts ?? [];
+
+        for (const entry of entries) {
+            if (root.isSuspendIdleAction(entry.idleAction)) {
+                const seconds = Number(entry.timeout);
+                if (isFinite(seconds) && seconds > 0)
+                    return Math.max(1, Math.round(seconds / 60));
+            }
+        }
+
+        return 10;
+    }
+
+    function suspendTimeoutEnabled(): bool {
+        const entries = GlobalConfig.general.idle.timeouts ?? [];
+
+        for (const entry of entries) {
+            if (root.isSuspendIdleAction(entry.idleAction))
+                return entry.enabled ?? true;
+        }
+
+        return false;
+    }
+
+    function setSuspendTimeoutMinutes(minutes: int): void {
+        const sanitizedMinutes = Math.max(1, Math.min(180, Math.round(minutes)));
+        const timeoutSeconds = sanitizedMinutes * 60;
+        const updated = root.clonedIdleTimeouts();
+        let found = false;
+
+        for (let i = 0; i < updated.length; i++) {
+            if (!root.isSuspendIdleAction(updated[i].idleAction))
+                continue;
+
+            updated[i].timeout = timeoutSeconds;
+            if (updated[i].enabled === undefined)
+                updated[i].enabled = true;
+            found = true;
+        }
+
+        if (!found) {
+            updated.push({
+                timeout: timeoutSeconds,
+                idleAction: ["suspendThenHibernate"],
+                enabled: true,
+                respectInhibitors: true
+            });
+        }
+
+        GlobalConfig.general.idle.timeouts = updated;
+        root.refreshIdleSuspendState();
+    }
+
+    function setSuspendTimeoutEnabled(enabled: bool): void {
+        const updated = root.clonedIdleTimeouts();
+        let found = false;
+
+        for (let i = 0; i < updated.length; i++) {
+            if (!root.isSuspendIdleAction(updated[i].idleAction))
+                continue;
+
+            updated[i].enabled = enabled;
+            found = true;
+        }
+
+        if (!found && enabled) {
+            updated.push({
+                timeout: 600,
+                idleAction: ["suspendThenHibernate"],
+                enabled: true,
+                respectInhibitors: true
+            });
+        }
+
+        GlobalConfig.general.idle.timeouts = updated;
+        root.refreshIdleSuspendState();
+    }
+
+    Component.onCompleted: root.refreshIdleSuspendState()
 
     title: qsTr("Services")
 
@@ -193,6 +319,36 @@ PageBase {
             to: 200
             stepSize: 5
             onMoved: v => GlobalConfig.services.maxVolume = v / 100
+        }
+
+        // Idle behavior
+        SectionHeader {
+            text: qsTr("Idle & sleep")
+        }
+
+        ToggleRow {
+            first: true
+            text: qsTr("Idle suspend")
+            subtext: qsTr("Suspend the system after inactivity")
+            checked: root.idleSuspendEnabledState
+            onToggled: root.setSuspendTimeoutEnabled(checked)
+        }
+
+        StepperRow {
+            last: true
+            enabled: root.idleSuspendEnabledState
+            label: qsTr("Idle suspend timer")
+            subtext: root.idleSuspendEnabledState
+                     ? qsTr("Suspend after %1 minute(s) of inactivity").arg(root.idleSuspendMinutesState)
+                     : qsTr("Enable idle suspend to apply a timer")
+            value: root.idleSuspendMinutesState
+            from: 1
+            to: 180
+            stepSize: 1
+            onMoved: v => {
+                if (root.idleSuspendEnabledState)
+                    root.setSuspendTimeoutMinutes(v)
+            }
         }
 
         // Service tuning
