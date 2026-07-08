@@ -42,16 +42,24 @@ ensure_konsave() {
 }
 
 restore_user_konsave_conf() {
-    if [[ "$HAD_USER_KONSAVE_CONF" == "true" && -f "$USER_KONSAVE_CONF_BACKUP" ]]; then
+    if [[ -f "$USER_KONSAVE_CONF_BACKUP" ]]; then
         mkdir -p "$(dirname "$USER_KONSAVE_CONF")"
         cp "$USER_KONSAVE_CONF_BACKUP" "$USER_KONSAVE_CONF"
-    else
+        return 0
+    fi
+
+    # If we did not create a backup, do not delete an existing user config.
+    if [[ "$HAD_USER_KONSAVE_CONF" != "true" ]]; then
         rm -f "$USER_KONSAVE_CONF"
     fi
 }
 
-trap restore_user_konsave_conf EXIT
+# Remember whether the user already had a konsave config before we modify it.
+if [[ -f "$USER_KONSAVE_CONF" ]]; then
+    HAD_USER_KONSAVE_CONF=true
+fi
 
+trap restore_user_konsave_conf EXIT
 echo "  Backing up current KDE configuration with konsave..."
 
 mkdir -p "$CACHE_DIR"

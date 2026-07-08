@@ -12,6 +12,14 @@ if [[ -f "$BACKUP_DIR_FILE" ]]; then
     BACKUP_DIR="$(cat "$BACKUP_DIR_FILE" 2>/dev/null || true)"
 fi
 
+# Only reuse the cached backup dir if it belongs to *this* bundle's backups and matches the timestamp format.
+if [[ -n "$BACKUP_DIR" ]]; then
+    case "$BACKUP_DIR" in
+        "$BUNDLE_DIR/backups/"[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]) ;; 
+        *) BACKUP_DIR="" ;; 
+    esac
+fi
+
 if [[ -n "$BACKUP_DIR" ]] && [[ ! -d "$BACKUP_DIR" ]]; then
     BACKUP_DIR=""
 fi
