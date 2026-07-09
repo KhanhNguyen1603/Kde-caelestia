@@ -365,6 +365,7 @@ Item {
 
                     property bool isActive: {
                         const dummy = root.modelUpdateTrigger;
+                        if (!modelData) return false;
                         for (const top of modelData.toplevels) {
                             if (top.focused) return true;
                         }
@@ -373,6 +374,7 @@ Item {
 
                     property bool hasWindows: {
                         const dummy = root.modelUpdateTrigger;
+                        if (!modelData) return false;
                         return modelData.toplevels.length > 0;
                     }
 
@@ -384,6 +386,7 @@ Item {
                         anchors.centerIn: parent
                         implicitSize: Math.round(((delegateItem.width || 0) * 0.7) / 2) * 2 || 0
                         source: {
+                            if (!modelData) return "";
                             if (modelData.entry && modelData.entry.icon) {
                                 return Quickshell.iconPath(modelData.entry.icon, "image-missing");
                             }
@@ -410,7 +413,7 @@ Item {
 
                     Loader {
                         anchors.fill: icon
-                        active: root.launchingApps[modelData.appClass || modelData.id] || false
+                        active: modelData ? (root.launchingApps[modelData.appClass || modelData.id] || false) : false
                         sourceComponent: CircularIndicator {
                             running: true
                             strokeWidth: 2
@@ -441,6 +444,7 @@ Item {
                         
                         model: {
                             const dummy = root.modelUpdateTrigger;
+                            if (!modelData) return 0;
                             return Math.min(2, modelData.toplevels.length);
                         }
                         

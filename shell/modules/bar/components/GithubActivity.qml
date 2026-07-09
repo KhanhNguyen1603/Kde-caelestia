@@ -120,7 +120,7 @@ StyledRect {
         command: ["bash", "-c", `
         set -Eeuo pipefail
         export GITHUB_TOKEN="$(secret-tool lookup service caelestia-shell account github 2>/dev/null || echo '')"
-        : "\${GITHUB_TOKEN:?Missing GITHUB_TOKEN}"
+        : "\${GITHUB_TOKEN:?No token set — go to Settings → Panels → Taskbar → GitHub to add one}"
 
         # Resolve login via token if GITHUB_USERNAME is unset
         login="\${GITHUB_USERNAME-}"
@@ -270,6 +270,22 @@ PY
         running: true
         repeat: true
         triggeredOnStart: true
-        onTriggered: proc.exec(proc.command)
+        onTriggered: {
+            // Don't re-poll if the token is known to be absent — it won't change until
+            // the user saves one via Settings → Panels → Taskbar → GitHub, which fires
+            // GithubStore.refresh() and restarts the process directly.
+            if (root.lastError.length > 0 && !BarComponents.GithubStore.available)
+                return;
+            proc.exec(proc.command);
+        }
+    }
+
+    Connections {
+        target: BarComponents.GithubStore
+        function onRefresh(): void {
+            root.lastError = "";
+            BarComponents.GithubStore.available = false;
+            proc.exec(proc.command);
+        }
     }
 }

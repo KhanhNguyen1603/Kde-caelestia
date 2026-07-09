@@ -9,4 +9,6 @@ Singleton {
     property string username: ""
     property string lastError: ""
     property bool available: false
+
+    signal refresh()
 }

@@ -94,6 +94,9 @@ sudo -v || exit 1
 SUDO_LOOP_PID=$!
 trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
 
+# Prime the sudo cache immediately so the loop runs before the next commands
+sudo -n true || exit 1
+
 echo "Fixing opencv build failure"
 sudo ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413
 sudo ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413

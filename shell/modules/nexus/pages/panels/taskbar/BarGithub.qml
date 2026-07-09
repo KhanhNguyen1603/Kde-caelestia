@@ -7,6 +7,7 @@ import qs.components
 import qs.components.controls
 import qs.modules.nexus.common
 import qs.services
+import qs.modules.bar.components as BarComponents
 import Quickshell
 import Quickshell.Io
 
@@ -16,11 +17,20 @@ PageBase {
     title: qsTr("GitHub")
     isSubPage: true
 
-    function saveToken(token) {
+    function saveToken(token: string): void {
         if (!token) {
-            Quickshell.execDetached(["secret-tool", "clear", "service", "caelestia-shell", "account", "github"]);
+            saveProc.command = ["secret-tool", "clear", "service", "caelestia-shell", "account", "github"];
         } else {
-            Quickshell.execDetached(["bash", "-c", "secret-tool store --label=\"Caelestia GitHub Token\" service caelestia-shell account github <<< \"$1\"", "--", token]);
+            saveProc.command = ["bash", "-c", "secret-tool store --label=\"Caelestia GitHub Token\" service caelestia-shell account github <<< \"$1\"", "--", token];
+        }
+        saveProc.running = true;
+    }
+
+    property Process saveProc: Process {
+        id: saveProc
+        onExited: code => {
+            if (code === 0)
+                BarComponents.GithubStore.refresh();
         }
     }
 
