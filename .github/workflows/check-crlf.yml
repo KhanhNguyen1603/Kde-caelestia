@@ -1,0 +1,17 @@
+name: Check Line Endings
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  check-crlf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for CRLF line endings
+        run: bash .github/scripts/check_crlf.sh
