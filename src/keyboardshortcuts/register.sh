@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# register.sh — Helper script to deploy Quickshell keyboard shortcuts via swhkd.
+# register.sh - Helper script to deploy Quickshell keyboard shortcuts via swhkd.
 #
 # Strategy:
 #   1. Assume install.sh has provided sudo privileges (keepalive).
@@ -134,21 +134,21 @@ BACKUP_FILE="$BACKUP_DIR/kglobalshortcutsrc_$(date +%Y%m%d_%H%M%S)"
 SWHKDRC_FILE="$SCRIPT_DIR/shortcuts.md"
 
 echo
-echo "════════════════════════════════════════════════════════"
+echo "========================================================"
 echo "  Quickshell Keyboard Shortcut Deployment (keyd)"
-echo "════════════════════════════════════════════════════════"
+echo "========================================================"
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 # SUDO Setup (Inherited or Standalone)
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 sudo -v || exit 1
 (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
 SUDO_LOOP_PID=$!
 trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 # Step 0: Ensure keyd is installed and running
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 info "Step 0: Checking for keyd..."
 if ! command -v keyd &> /dev/null; then
     if [[ "$BASE_DISTRO" == "arch" ]]; then
@@ -178,9 +178,9 @@ if systemctl is-active --quiet swhkd@$USER.service 2>/dev/null; then
     ok "Removed legacy swhkd services."
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 # Step 1: Backup and resolve collisions in KDE kglobalshortcutsrc
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 info "Step 1: Resolving shortcut collisions in KDE..."
 if [[ -f "$CONFIG_FILE" ]] && [[ -f "$SWHKDRC_FILE" ]]; then
     mkdir -p "$BACKUP_DIR"
@@ -262,12 +262,12 @@ else:
 PYEOF
     ok "KDE collision check complete."
 else
-    warn "kglobalshortcutsrc or configuration not found — skipping collision check."
+    warn "kglobalshortcutsrc or configuration not found - skipping collision check."
 fi
 
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 # Step 2: Deploy keyd configuration (native kernel level execution)
-# ─────────────────────────────────────────────────────────────────────────────
+# ----------------------------------------------------------------------------
 info "Step 2: Deploying keyd configuration..."
 
 if [[ ! -f "$SWHKDRC_FILE" ]]; then
@@ -371,8 +371,8 @@ systemctl --user restart plasma-kglobalaccel.service 2>/dev/null || true
 ok "KDE reloaded."
 
 echo
-echo -e "${GREEN}════════════════════════════════════════════════════════${RST}"
+echo -e "${GREEN}========================================================${RST}"
 echo -e "${GREEN}  Custom shortcuts deployed securely to kernel space.${RST}"
 echo -e "${GREEN}  Native keyd is active and bypassing display servers.${RST}"
-echo -e "${GREEN}════════════════════════════════════════════════════════${RST}"
+echo -e "${GREEN}========================================================${RST}"
 echo
