@@ -100,6 +100,7 @@ fi
 (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
 SUDO_LOOP_PID=$!
 trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
+export CAELESTIA_SUDO_KEEPALIVE_ACTIVE=1
 
 info "Deploying core configs and KDE bridges..."
 # This script deploys Python bridges and mock hyprctl which the shell needs

@@ -88,14 +88,20 @@ fi
 # Patch system-wide caelestia-cli hypr.py to use mock hyprctl
 info "Patching caelestia-cli to use KDE mock hyprctl..."
 
-# Ensure sudo privileges for patching without timing out
-sudo -v || exit 1
-(while true; do sudo -n true; sleep 55; done) 2>/dev/null &
-SUDO_LOOP_PID=$!
-trap 'kill $SUDO_LOOP_PID 2>/dev/null || true' EXIT
+# Ensure sudo privileges for patching without timing out.
+# If an outer script already maintains sudo keepalive, avoid a second prompt here.
+SUDO_LOOP_PID=""
+if [ "${CAELESTIA_SUDO_KEEPALIVE_ACTIVE:-0}" = "1" ] && sudo -n true 2>/dev/null; then
+    :
+else
+    sudo -v || exit 1
+    (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
+    SUDO_LOOP_PID=$!
+    trap 'kill "$SUDO_LOOP_PID" 2>/dev/null || true' EXIT
 
-# Prime the sudo cache immediately so the loop runs before the next commands
-sudo -n true || exit 1
+    # Prime the sudo cache immediately so the loop runs before the next commands
+    sudo -n true || exit 1
+fi
 
 echo "Fixing opencv build failure"
 sudo ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413
