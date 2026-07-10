@@ -17,6 +17,40 @@ warn() { echo -e "${RED}[WARN]  $*${RST}"; }
 err()  { echo -e "${RED}[ERR]   $*${RST}"; }
 
 CONFLICT_STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/disabled-remappers.txt"
+SKIP_KEYD_SETUP="false"
+
+ask_conflict_action() {
+    local answer=""
+
+    while true; do
+        echo
+        echo "Conflicting key remappers were detected. Choose how to proceed:"
+        echo "  [d] Disable conflicting remappers and continue with keyd (recommended)"
+        echo "  [s] Skip keyd setup for this install run"
+        echo "  [a] Abort keyboard shortcut step"
+        read -r -p "Enter choice [d/s/a] (default: d): " answer
+        answer="${answer:-d}"
+
+        case "${answer,,}" in
+            d|disable)
+                return 0
+                ;;
+            s|skip)
+                SKIP_KEYD_SETUP="true"
+                warn "Skipping keyd setup by user choice."
+                sudo systemctl disable --now keyd 2>/dev/null || true
+                return 0
+                ;;
+            a|abort)
+                err "Aborting keyboard shortcut setup by user choice."
+                exit 1
+                ;;
+            *)
+                warn "Invalid choice. Please select d, s, or a."
+                ;;
+        esac
+    done
+}
 
 disable_conflicting_remappers() {
     info "Step 0.5: Checking for conflicting key remapping services..."
@@ -68,8 +102,40 @@ disable_conflicting_remappers() {
         mapfile -t active_user_units < <(printf '%s\n' "${active_user_units[@]}" | awk '!seen[$0]++')
     fi
 
-    if (( ${#active_system_units[@]} == 0 && ${#active_user_units[@]} == 0 )); then
+    local -a detected_units=()
+    local -a detected_processes=()
+
+    if (( ${#active_system_units[@]} > 0 )); then
+        detected_units+=("${active_system_units[@]}")
+    fi
+
+    if (( ${#active_user_units[@]} > 0 )); then
+        detected_units+=("${active_user_units[@]}")
+    fi
+
+    for proc in "${known_processes[@]}"; do
+        if pgrep -x "$proc" >/dev/null 2>&1; then
+            detected_processes+=("$proc")
+        fi
+    done
+
+    if (( ${#detected_units[@]} == 0 && ${#detected_processes[@]} == 0 )); then
         ok "No active conflicting remapper services detected."
+        return 0
+    fi
+
+    warn "Detected potential conflicting remappers."
+    if (( ${#detected_units[@]} > 0 )); then
+        warn "Detected service units: ${detected_units[*]}"
+    fi
+    if (( ${#detected_processes[@]} > 0 )); then
+        warn "Detected processes: ${detected_processes[*]}"
+    fi
+
+    ask_conflict_action
+
+    if [[ "$SKIP_KEYD_SETUP" == "true" ]]; then
+        return 0
     fi
 
     for unit in "${active_system_units[@]}"; do
@@ -170,6 +236,12 @@ if systemctl is-active --quiet keyd 2>/dev/null; then
 fi
 
 disable_conflicting_remappers
+
+if [[ "$SKIP_KEYD_SETUP" == "true" ]]; then
+    warn "Keyd setup was skipped. Existing remapper setup was left unchanged."
+    ok "Keyboard shortcut step completed without enabling keyd."
+    exit 0
+fi
 
 # Clean up legacy swhkd if present
 if systemctl is-active --quiet swhkd@$USER.service 2>/dev/null; then
