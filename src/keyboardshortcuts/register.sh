@@ -38,7 +38,6 @@ ask_conflict_action() {
             s|skip)
                 SKIP_KEYD_SETUP="true"
                 warn "Skipping keyd setup by user choice."
-                sudo systemctl disable --now keyd 2>/dev/null || true
                 return 0
                 ;;
             a|abort)
@@ -230,7 +229,9 @@ else
     ok "keyd is already installed."
 fi
 
+KEYD_WAS_ACTIVE="false"
 if systemctl is-active --quiet keyd 2>/dev/null; then
+    KEYD_WAS_ACTIVE="true"
     info "Stopping keyd temporarily while checking other remappers..."
     sudo systemctl stop keyd 2>/dev/null || warn "Could not stop keyd before conflict checks (continuing)."
 fi
@@ -238,6 +239,10 @@ fi
 disable_conflicting_remappers
 
 if [[ "$SKIP_KEYD_SETUP" == "true" ]]; then
+    if [[ "$KEYD_WAS_ACTIVE" == "true" ]]; then
+        info "Restoring keyd (it was active before this step)..."
+        sudo systemctl start keyd 2>/dev/null || warn "Could not restart keyd."
+    fi
     warn "Keyd setup was skipped. Existing remapper setup was left unchanged."
     ok "Keyboard shortcut step completed without enabling keyd."
     exit 0
@@ -374,7 +379,12 @@ uid = os.environ.get('UID', '1000')
 user = os.environ.get('USER', __import__('getpass').getuser())
 wayland_display = os.environ.get('WAYLAND_DISPLAY', 'wayland-0')
 display = os.environ.get('DISPLAY', ':0')
-runuser_cmd = shutil.which('runuser') or '/usr/bin/runuser'
+runuser_cmd = (
+    shutil.which('runuser')
+    or ('/usr/sbin/runuser' if os.path.exists('/usr/sbin/runuser') else None)
+    or ('/usr/bin/runuser' if os.path.exists('/usr/bin/runuser') else None)
+    or 'runuser'
+)
 
 lines = open(sys.argv[1]).read().strip().split('\n')
 sections = {'main': []}
