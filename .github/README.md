@@ -341,6 +341,17 @@ Then rebuild the shell by running setup.sh again.
   
   Another cause is you ran setup.sh or register.sh with sudo.
   See [Issue#5](https://github.com/ladybug-me/caelestia-dots-kde/issues/5) for this.
+
+  Another common cause is a conflict with other key remappers (for example: Kanata, KMonad, input-remapper, xremap).
+  During keyboard shortcut setup, the installer now disables known conflicting remapper services before enabling keyd.
+  If a conflicting remapper process is still running, keyd is disabled as a safety guard and the step exits with an actionable error.
+
+  MangoHud hotkeys can also be affected by keyd keycode behavior on some systems.
+  The generated keyd config includes the workaround below by default:
+  ```ini
+  [main]
+  rightshift = rightshift
+  ```
   
   *Special case:* If a kernel update happened, you might see "no uinput device" when running `sudo keyd`. Rebooting will fix this.
 

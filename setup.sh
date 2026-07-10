@@ -498,6 +498,7 @@ echo
 echo -e "${CYAN}---------------------------------------------${RST}"
 echo -e "${CYAN}  Step 5/11 - Keyboard Shortcuts and Workspaces${RST}"
 echo -e "${CYAN}---------------------------------------------${RST}"
+warn "Conflicting key remappers (for example Kanata/KMonad/input-remapper/xremap) will be disabled before keyd is enabled."
 run_step "Keyboard shortcuts" "$BUNDLE_DIR/src/keyboardshortcuts/register.sh"
 
 # ==============================================================
