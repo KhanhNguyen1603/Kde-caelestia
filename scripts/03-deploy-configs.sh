@@ -7,26 +7,27 @@ DOTS_DIR="$SRC_DIR/dots"
 FISH_DIR="$SRC_DIR/dots-extra"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde"
 BACKUP_DIR_FILE="$CACHE_DIR/backup-dir.txt"
-BACKUP_DIR=""
-
-if [[ -f "$BACKUP_DIR_FILE" ]]; then
-    BACKUP_DIR="$(cat "$BACKUP_DIR_FILE" 2>/dev/null || true)"
-fi
-
-# Only reuse the cached backup dir if it belongs to *this* bundle's backups and matches the timestamp format.
-if [[ -n "$BACKUP_DIR" ]]; then
-    case "$BACKUP_DIR" in
-        "$BUNDLE_DIR/backups/"[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]) ;; 
-        *) BACKUP_DIR="" ;; 
-    esac
-fi
-
-if [[ -n "$BACKUP_DIR" ]] && [[ ! -d "$BACKUP_DIR" ]]; then
+if [[ -z "${BACKUP_DIR:-}" ]]; then
     BACKUP_DIR=""
-fi
+    if [[ -f "$BACKUP_DIR_FILE" ]]; then
+        BACKUP_DIR="$(cat "$BACKUP_DIR_FILE" 2>/dev/null || true)"
+    fi
 
-if [[ -z "$BACKUP_DIR" ]]; then
-    BACKUP_DIR="$BUNDLE_DIR/backups/$(date +%Y%m%d_%H%M%S)"
+    # Only reuse the cached backup dir if it belongs to *this* bundle's backups and matches the timestamp format.
+    if [[ -n "$BACKUP_DIR" ]]; then
+        case "$BACKUP_DIR" in
+            "$BUNDLE_DIR/backups/"[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]) ;; 
+            *) BACKUP_DIR="" ;; 
+        esac
+    fi
+
+    if [[ -n "$BACKUP_DIR" ]] && [[ ! -d "$BACKUP_DIR" ]]; then
+        BACKUP_DIR=""
+    fi
+
+    if [[ -z "$BACKUP_DIR" ]]; then
+        BACKUP_DIR="$BUNDLE_DIR/backups/$(date +%Y%m%d_%H%M%S)"
+    fi
 fi
 
 echo
@@ -125,7 +126,7 @@ if [[ -d "$SRC_DIR/bin" ]]; then
     # Copy scripts, but skip C++ source files and build files
     for file in "$SRC_DIR/bin/"*; do
         if [[ ! "$file" == *.cpp && ! "$file" == *CMakeLists.txt && ! -d "$file" ]]; then
-            cp "$file" "$HOME/.local/bin/" 2>/dev/null || true
+            cp --remove-destination "$file" "$HOME/.local/bin/" 2>/dev/null || true
         fi
     done
     

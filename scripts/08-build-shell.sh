@@ -71,18 +71,19 @@ if [ -d "$BUNDLE_DIR/src/bin" ]; then
     cd "$BUNDLE_DIR/src/bin/build"
     cmake ..
     make -j$(nproc)
-    cp hyprctl ~/.local/bin/
+    cp --remove-destination hyprctl ~/.local/bin/
+    chmod +x ~/.local/bin/hyprctl
+    
+    # Also copy the map file and python bridge for the QML shell to use
+    cp --remove-destination "$BUNDLE_DIR/src/bin/hypr_kwin_map.json" ~/.local/bin/
+    cp --remove-destination "$BUNDLE_DIR/src/bin/qs-kwin-bridge.py" ~/.local/bin/ 2>/dev/null || true
+    chmod +x ~/.local/bin/qs-kwin-bridge.py 2>/dev/null || true
+
+    # Copy the wl-screenrec wrapper
+    cp --remove-destination "$BUNDLE_DIR/scripts/record.sh" ~/.local/bin/caelestia-record
+    chmod +x ~/.local/bin/caelestia-record
     cd "$BUNDLE_DIR"
     rm -rf "$BUNDLE_DIR/src/bin/build"
-    
-    cp "$BUNDLE_DIR/src/bin/hypr_kwin_map.json" ~/.local/bin/
-    cp "$BUNDLE_DIR/src/bin/qs-kwin-bridge.py" ~/.local/bin/ 2>/dev/null || true
-    chmod +x ~/.local/bin/hyprctl ~/.local/bin/qs-kwin-bridge.py
-fi
-
-if [ -f "$BUNDLE_DIR/scripts/record.sh" ]; then
-    cp "$BUNDLE_DIR/scripts/record.sh" ~/.local/bin/caelestia-record
-    chmod +x ~/.local/bin/caelestia-record
 fi
 
 # Patch system-wide caelestia-cli hypr.py to use mock hyprctl
@@ -94,23 +95,26 @@ SUDO_LOOP_PID=""
 if [ "${CAELESTIA_SUDO_KEEPALIVE_ACTIVE:-0}" = "1" ] && sudo -n true 2>/dev/null; then
     :
 else
-    sudo -v || exit 1
-    (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
-    SUDO_LOOP_PID=$!
-    trap 'kill "$SUDO_LOOP_PID" 2>/dev/null || true' EXIT
-
-    # Prime the sudo cache immediately so the loop runs before the next commands
-    sudo -n true || exit 1
+    if sudo -v 2>/dev/null; then
+        (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
+        SUDO_LOOP_PID=$!
+        trap 'kill "$SUDO_LOOP_PID" 2>/dev/null || true' EXIT
+    else
+        warn "Sudo keepalive failed, IGNORE if running GUI update process"
+    fi
 fi
 
-echo "Fixing opencv build failure"
-sudo ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413
-sudo ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413
+info "Fixing opencv build failure and patching caelestia-cli (requires root)..."
+sudo bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
+USER_HOME="$1"
+USER_CACHE="$2"
 
+ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413 2>/dev/null || echo "[WARN] Failed to link opencv imgproc"
+ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413 2>/dev/null || echo "[WARN] Failed to link opencv core"
 
-if ! sudo python3 -c '
+if ! python3 -c '
 import sys, os, glob
-search_paths = sys.path + glob.glob("'"$HOME"'/.local/lib/python*/site-packages")
+search_paths = sys.path + glob.glob("'"$USER_HOME"'/.local/lib/python*/site-packages")
 file_path = None
 for p in search_paths:
     candidate = os.path.join(p, "caelestia", "utils", "hypr.py")
@@ -166,14 +170,12 @@ except Exception as e:
     print(f"Failed to patch hypr.py: {e}")
     sys.exit(1)
 '; then
-    echo "Caelestia CLI Hyprctl Mock Patch" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_patches.txt"
+    echo "Caelestia CLI Hyprctl Mock Patch" >> "$USER_CACHE/caelestia-kde/failed_patches.txt"
 fi
 
-# Patch system-wide caelestia-cli record.py to fix audio and dolphin issues
-info "Patching caelestia-cli record.py..."
-if ! sudo python3 -c '
+if ! python3 -c '
 import sys, os, glob
-search_paths = sys.path + glob.glob("'"$HOME"'/.local/lib/python*/site-packages")
+search_paths = sys.path + glob.glob("'"$USER_HOME"'/.local/lib/python*/site-packages")
 file_path = None
 for p in search_paths:
     candidate = os.path.join(p, "caelestia", "subcommands", "record.py")
@@ -268,8 +270,9 @@ except Exception as e:
     print(f"Failed to patch record.py: {e}")
     sys.exit(1)
 '; then
-    echo "Caelestia CLI Record/Dolphin Patch" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_patches.txt"
+    echo "Caelestia CLI Record/Dolphin Patch" >> "$USER_CACHE/caelestia-kde/failed_patches.txt"
 fi
+EOF
 
 # Install kwin script
 if [ -d "$BUNDLE_DIR/src/kwin-script" ]; then

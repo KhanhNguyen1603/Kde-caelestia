@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
+import QtCore
 import Quickshell.Io
 import Caelestia
 import Caelestia.Config
@@ -17,16 +18,25 @@ PageBase {
     
     title: qsTr("Updates")
 
-    readonly property list<MenuItem> branchItems: [
-        MenuItem {
-            text: "main"
-            icon: "call_split"
-        },
-        MenuItem {
-            text: "dev"
-            icon: "call_split"
+    property list<MenuItem> branchItems
+
+    function updateBranchItems() {
+        let items = [];
+        for (let i = 0; i < UpdateChecker.availableBranches.length; i++) {
+            items.push(Qt.createQmlObject('import qs.components.controls; MenuItem { text: "' + UpdateChecker.availableBranches[i] + '"; icon: "call_split" }', root));
         }
-    ]
+        root.branchItems = items;
+    }
+
+    Item {
+        visible: false
+        Connections {
+            target: UpdateChecker
+            function onAvailableBranchesChanged() { root.updateBranchItems(); }
+        }
+    }
+    
+    Component.onCompleted: root.updateBranchItems();
 
     readonly property var activeBranchItem: branchItems.find(i => i.text === UpdateChecker.currentBranch) || branchItems[0]
 
@@ -35,6 +45,15 @@ PageBase {
     property real updateProgress: 0.0
     property string updateStatus: ""
     property bool logsExpanded: false
+
+    Item {
+        Settings {
+            id: updaterSettings
+            category: "Updater"
+            property bool deployConfigs: true
+            property bool buildShell: true
+        }
+    }
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -114,6 +133,35 @@ PageBase {
                 author: modelData.author
                 date: modelData.date
             }
+        }
+
+        SectionHeader {
+            text: qsTr("Customize Installation")
+        }
+
+        NavRow {
+            first: true
+            icon: "folder"
+            label: qsTr("Open Backup Folder")
+            status: qsTr("View your previously backed-up configuration files")
+            onClicked: {
+                backupFolderProcess.running = true;
+            }
+        }
+
+        ToggleRow {
+            text: qsTr("Deploy Configurations")
+            subtext: qsTr("Update your custom dotfiles in ~/.config")
+            checked: updaterSettings.deployConfigs
+            onToggled: updaterSettings.deployConfigs = checked
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Build Shell UI")
+            subtext: qsTr("Compile and install Quickshell UI updates")
+            checked: updaterSettings.buildShell
+            onToggled: updaterSettings.buildShell = checked
         }
 
         SectionHeader {
@@ -216,7 +264,7 @@ PageBase {
         }
         Process {
             id: updateProcess
-            command: ["bash", "-c", `${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}`]
+            command: ["bash", "-c", `CAELESTIA_SKIP_DEPLOY=${updaterSettings.deployConfigs ? 0 : 1} CAELESTIA_SKIP_BUILD=${updaterSettings.buildShell ? 0 : 1} ${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}`]
             
             stdout: SplitParser {
                 onRead: text => {
@@ -256,6 +304,11 @@ PageBase {
         Process {
             id: logoutProcess
             command: ["qdbus6", "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown.logout"]
+        }
+        
+        Process {
+            id: backupFolderProcess
+            command: GlobalConfig.general.apps.explorer.concat([Paths.absolutePath("~/.config/caelestia-update/backups")])
         }
     }
 }
