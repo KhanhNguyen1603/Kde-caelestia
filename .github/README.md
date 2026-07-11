@@ -2,7 +2,7 @@
 
 # C A E L E S T I A <img src="assets/caelestia.svg" width="35" align="top">
 
-<p align="center"> <b>v2.0.2</b> </p>
+<p align="center"> <b>v2.1.0</b> </p>
 
 ### A KDE adaptation of the celestial aesthetic
 
