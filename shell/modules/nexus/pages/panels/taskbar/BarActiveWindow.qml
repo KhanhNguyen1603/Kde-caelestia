@@ -27,28 +27,20 @@ PageBase {
                 return false;
             }
             onToggled: {
-                let currentEntries = GlobalConfig.bar.entries;
-                let newEntries = [
-                    { "id": "logo", "enabled": true },
-                    { "id": "workspaces", "enabled": true },
-                    { "id": "spacer", "enabled": true },
-                    { "id": "activeWindow", "enabled": true },
-                    { "id": "dock", "enabled": false },
-                    { "id": "spacer", "enabled": true },
-                    { "id": "tray", "enabled": true },
-                    { "id": "github", "enabled": true },
-                    { "id": "clock", "enabled": true },
-                    { "id": "statusIcons", "enabled": true },
-                    { "id": "power", "enabled": true }
-                ];
+                let newEntries = [...GlobalConfig.bar.entries];
+                let found = false;
                 for (let i = 0; i < newEntries.length; i++) {
                     if (newEntries[i].id === "activeWindow") {
                         newEntries[i].enabled = checked;
-                    } else if (newEntries[i].id !== "spacer") {
-                        let existing = currentEntries.find(e => e.id === newEntries[i].id);
-                        if (existing !== undefined) newEntries[i].enabled = existing.enabled;
+                        found = true;
+                        break;
                     }
                 }
+
+                if (!found) {
+                    newEntries.push({ id: "activeWindow", enabled: checked, zone: "left" });
+                }
+
                 GlobalConfig.bar.entries = newEntries;
             }
         }

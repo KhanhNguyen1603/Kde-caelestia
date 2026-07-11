@@ -3,10 +3,13 @@ pragma ComponentBehavior: Bound
 import "popouts" as BarPopouts
 import "components"
 import "components/workspaces"
+import "components/performance"
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Services.UPower
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.services
 
@@ -354,6 +357,48 @@ Item {
                 delegate: WrappedLoader {
                     visible: !root.fullscreen
                     sourceComponent: StatusIcons {}
+                }
+            }
+            DelegateChoice {
+                roleValue: "perfCpu"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen && Cpu.name.length > 0
+                    sourceComponent: PerfCpu {}
+                }
+            }
+            DelegateChoice {
+                roleValue: "perfMemory"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen && Memory.total > 1
+                    sourceComponent: PerfMemory {}
+                }
+            }
+            DelegateChoice {
+                roleValue: "perfStorage"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen && Storage.disks.length > 0
+                    sourceComponent: PerfStorage {}
+                }
+            }
+            DelegateChoice {
+                roleValue: "perfNetwork"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen
+                    sourceComponent: PerfNetwork {}
+                }
+            }
+            DelegateChoice {
+                roleValue: "perfGpu"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen && Gpu.type !== Gpu.None
+                    sourceComponent: PerfGpu {}
+                }
+            }
+            DelegateChoice {
+                roleValue: "perfBattery"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen && UPower.displayDevice.isLaptopBattery
+                    sourceComponent: PerfBattery {}
                 }
             }
             DelegateChoice {

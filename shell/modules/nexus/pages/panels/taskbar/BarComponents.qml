@@ -1,29 +1,44 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.effects
 import qs.components.controls
 import qs.services
 import qs.modules.nexus.common
+import qs.modules.bar.components as BarComponents
+import Quickshell.Services.UPower
 
 PageBase {
     id: root
 
     title: qsTr("Toggle & rearrange")
     isSubPage: true
-    scrollable: false
+    scrollable: true
 
     readonly property var componentMeta: {
         "logo": { icon: "rocket_launch", name: qsTr("Logo") },
         "workspaces": { icon: "workspaces", name: qsTr("Workspaces") },
-        "github": { icon: "commit", name: qsTr("Github") },
+        "github": {
+            icon: "commit",
+            name: qsTr("GitHub"),
+            available: BarComponents.GithubStore.available,
+            unavailableText: qsTr("GitHub token not detected")
+        }
         "activeWindow": { icon: "dock_to_right", name: qsTr("Active window") },
         "tray": { icon: "expand_more", name: qsTr("System tray") },
         "clock": { icon: "schedule", name: qsTr("Clock") },
         "statusIcons": { icon: "wifi", name: qsTr("Status icons") },
+        "perfCpu": { icon: "memory", name: qsTr("CPU"), available: Cpu.name.length > 0, unavailableText: qsTr("CPU sensor not detected") },
+        "perfMemory": { icon: "memory_alt", name: qsTr("Memory"), available: Memory.total > 1, unavailableText: qsTr("Memory sensor not detected") },
+        "perfStorage": { icon: "hard_disk", name: qsTr("Storage"), available: Storage.disks.length > 0, unavailableText: qsTr("Storage disks not detected") },
+        "perfNetwork": { icon: "swap_vert", name: qsTr("Network") },
+        "perfGpu": { icon: "desktop_windows", name: qsTr("GPU"), available: Gpu.type !== Gpu.None, unavailableText: qsTr("GPU not detected") },
+        "perfBattery": { icon: "battery_full", name: qsTr("Battery"), available: UPower.displayDevice.isLaptopBattery, unavailableText: qsTr("Battery not detected") },
         "dock": { icon: "apps", name: qsTr("Dock") },
         "power": { icon: "power_settings_new", name: qsTr("Power menu") }
     }
@@ -32,6 +47,8 @@ PageBase {
     property string globalDragSourceList: ""
     property int globalDragSourceIndex: -1
     property string globalDragHoveredList: ""
+    readonly property real zonePadding: Tokens.padding.medium
+    readonly property real emptyZoneHeight: 72
 
     function getModel(name) {
         if (name === "left") return leftModel;
@@ -69,6 +86,51 @@ PageBase {
             if (!activeCounts[key]) {
                 libraryModel.append({ "compId": key, "isPlaceholder": false });
             }
+        }
+    }
+
+    function defaultEntries() {
+        return [
+            { id: "logo", enabled: true, zone: "left" },
+            { id: "workspaces", enabled: true, zone: "left" },
+            { id: "activeWindow", enabled: true, zone: "left" },
+            { id: "dock", enabled: true, zone: "middle" },
+            { id: "tray", enabled: true, zone: "right" },
+            { id: "github", enabled: true, zone: "right" },
+            { id: "clock", enabled: true, zone: "right" },
+            { id: "statusIcons", enabled: true, zone: "right" },
+            { id: "perfCpu", enabled: false, zone: "right" },
+            { id: "perfMemory", enabled: false, zone: "right" },
+            { id: "perfStorage", enabled: false, zone: "right" },
+            { id: "perfNetwork", enabled: false, zone: "right" },
+            { id: "perfGpu", enabled: false, zone: "right" },
+            { id: "perfBattery", enabled: false, zone: "right" },
+            { id: "power", enabled: true, zone: "right" }
+        ];
+    }
+
+    function resetToDefaults() {
+        const entries = defaultEntries();
+        GlobalConfig.bar.entries = entries;
+
+        leftModel.clear();
+        middleModel.clear();
+        rightModel.clear();
+        libraryModel.clear();
+
+        for (const entry of entries) {
+            if (!entry.enabled) {
+                libraryModel.append({ compId: entry.id, isPlaceholder: false });
+                continue;
+            }
+
+            const zone = entry.zone || "left";
+            if (zone === "left")
+                leftModel.append({ compId: entry.id, isPlaceholder: false });
+            else if (zone === "middle")
+                middleModel.append({ compId: entry.id, isPlaceholder: false });
+            else
+                rightModel.append({ compId: entry.id, isPlaceholder: false });
         }
     }
 
@@ -114,8 +176,8 @@ PageBase {
         // Left Side: Active Components Zones
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             Layout.preferredWidth: 1
+            Layout.alignment: Qt.AlignTop
             spacing: Tokens.spacing.medium
 
             Text {
@@ -133,7 +195,7 @@ PageBase {
             // Left Zone
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                implicitHeight: Math.max(root.emptyZoneHeight, leftList.contentHeight + root.zonePadding * 2)
                 color: Colours.palette.m3surfaceContainer
                 radius: Tokens.rounding.large
                 
@@ -185,8 +247,7 @@ PageBase {
             // Middle Zone
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredHeight: 1
+                implicitHeight: Math.max(root.emptyZoneHeight, middleList.contentHeight + root.zonePadding * 2)
                 color: Colours.palette.m3surfaceContainer
                 radius: Tokens.rounding.large
                 
@@ -238,7 +299,7 @@ PageBase {
             // Right Zone
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                implicitHeight: Math.max(root.emptyZoneHeight, rightList.contentHeight + root.zonePadding * 2)
                 color: Colours.palette.m3surfaceContainer
                 radius: Tokens.rounding.large
                 
@@ -291,8 +352,8 @@ PageBase {
         // Right Side: Library
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             Layout.preferredWidth: 1
+            Layout.alignment: Qt.AlignTop
             spacing: Tokens.spacing.medium
 
             RowLayout {
@@ -316,11 +377,19 @@ PageBase {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                TextButton {
+                    text: qsTr("RESET")
+                    type: TextButton.Filled
+                    ToolTip.text: qsTr("Restore the default taskbar component layout")
+                    ToolTip.visible: hovered
+                    onClicked: root.resetToDefaults()
+                }
             }
 
             StyledRect {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
+                implicitHeight: Math.max(root.emptyZoneHeight, libList.contentHeight + root.zonePadding * 2)
                 color: "transparent"
                 
                 Text {
@@ -379,6 +448,7 @@ PageBase {
             required property int index
             required property string compId
             required property bool isPlaceholder
+            readonly property bool isAvailable: (componentMeta[compId]?.available ?? true)
             
             property string sourceList: {
                 if (ListView.view === leftList) return "left";
@@ -432,17 +502,17 @@ PageBase {
                 radius: Tokens.rounding.medium
                 border.color: isDraggingThis ? Colours.palette.m3outline : (sourceList === "library" ? Colours.palette.m3outlineVariant : "transparent")
                 border.width: isDraggingThis ? 2 : (sourceList === "library" ? 1 : 0)
-                opacity: isPlaceholder ? 0.2 : 1.0
+                opacity: isPlaceholder ? 0.2 : (delegateWrapper.isAvailable ? 1.0 : 0.55)
 
                 MouseArea {
                     id: activeDragArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    drag.target: isPlaceholder ? null : activeDelegate
+                    drag.target: isPlaceholder || !delegateWrapper.isAvailable ? null : activeDelegate
                     drag.axis: Drag.XAndYAxis
                     
                     onPressed: {
-                        if (isPlaceholder) return;
+                        if (isPlaceholder || !delegateWrapper.isAvailable) return;
                         root.isGlobalDragging = true;
                         root.globalDragSourceList = sourceList;
                         root.globalDragSourceIndex = index;
@@ -450,7 +520,7 @@ PageBase {
                     }
                     
                     onReleased: {
-                        if (isPlaceholder) return;
+                        if (isPlaceholder || !delegateWrapper.isAvailable) return;
                         
                         let finalHovered = root.globalDragHoveredList;
                         root.isGlobalDragging = false;
@@ -514,7 +584,13 @@ PageBase {
                     
                     Text {
                         Layout.fillWidth: true
-                        text: componentMeta[compId]?.name ?? compId
+                        text: {
+                            const base = componentMeta[compId]?.name ?? compId;
+                            if (delegateWrapper.isAvailable)
+                                return base;
+                            const reason = componentMeta[compId]?.unavailableText ?? qsTr("Not detected");
+                            return `${base} (${reason})`;
+                        }
                         font: Tokens.font.body.small
                         color: sourceList !== "library" ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
                     }
