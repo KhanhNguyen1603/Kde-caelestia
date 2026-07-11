@@ -28,7 +28,7 @@ PageBase {
             name: qsTr("GitHub"),
             available: BarComponents.GithubStore.available,
             unavailableText: qsTr("GitHub token not detected")
-        }
+        },
         "activeWindow": { icon: "dock_to_right", name: qsTr("Active window") },
         "tray": { icon: "expand_more", name: qsTr("System tray") },
         "clock": { icon: "schedule", name: qsTr("Clock") },
