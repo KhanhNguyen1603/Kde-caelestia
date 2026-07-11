@@ -1,76 +1,104 @@
 #!/usr/bin/env python3
 import sys
 import argparse
-from playwright.sync_api import sync_playwright
+import urllib.request
+import urllib.parse
+import re
 
 def search_web(query, page_num):
-    with sync_playwright() as p:
-        try:
-            browser = p.firefox.launch(headless=True)
-            page = browser.new_page()
-            
-            start_index = (page_num - 1) * 5
-            page.goto(f"https://html.duckduckgo.com/html/?q={query}")
-            
-            results = []
-            elements = page.query_selector_all(".result")
-            
-            start_idx = (page_num - 1) * 5
-            end_idx = start_idx + 5
-            
-            for i, el in enumerate(elements):
-                if i < start_idx: continue
-                if i >= end_idx: break
+    try:
+        url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        )
+        html = urllib.request.urlopen(req, timeout=15).read().decode('utf-8', errors='ignore')
+        
+        titles = re.findall(r'<h2 class="result__title">\s*<a[^>]*>(.*?)</a>', html, re.IGNORECASE | re.DOTALL)
+        urls = re.findall(r'<a[^>]*class="result__url"[^>]*href="([^"]+)"', html, re.IGNORECASE | re.DOTALL)
+        snippets = re.findall(r'<a[^>]*class="result__snippet[^>]*>(.*?)</a>', html, re.IGNORECASE | re.DOTALL)
+        
+        results = []
+        
+        parsed_urls = []
+        for u in urls:
+            if u.startswith('//'):
+                parsed_urls.append("https:" + u)
+            elif 'uddg=' in u:
+                try:
+                    parsed = urllib.parse.parse_qs(urllib.parse.urlparse(u).query)
+                    if 'uddg' in parsed:
+                        parsed_urls.append(parsed['uddg'][0])
+                    else:
+                        parsed_urls.append(u)
+                except:
+                    parsed_urls.append(u)
+            else:
+                parsed_urls.append(u)
                 
-                title_el = el.query_selector(".result__title")
-                snippet_el = el.query_selector(".result__snippet")
-                url_el = el.query_selector(".result__url")
+        def strip_tags(text):
+            return re.sub(r'<[^>]+>', '', text).strip()
+            
+        start_idx = (page_num - 1) * 5
+        end_idx = start_idx + 5
+        
+        for i in range(min(len(titles), len(snippets), len(parsed_urls))):
+            if i < start_idx: continue
+            if i >= end_idx: break
+            
+            title = strip_tags(titles[i])
+            snippet = strip_tags(snippets[i])
+            u = parsed_urls[i]
+            
+            if not u.startswith("http"):
+                u = "https://" + u
                 
-                title = title_el.inner_text().strip() if title_el else ""
-                snippet = snippet_el.inner_text().strip() if snippet_el else ""
-                url = url_el.inner_text().strip() if url_el else ""
+            if title and u:
+                results.append(f"Title: {title}\nURL: {u}\nSnippet: {snippet}")
                 
-                if url and not url.startswith("http"):
-                    url = "https://" + url
-                
-                if title and url:
-                    results.append(f"Title: {title}\nURL: {url}\nSnippet: {snippet}")
+        if not results:
+            return "No useful results found for this page."
             
-            browser.close()
-            
-            if not results:
-                return "No useful results found for this page."
-            
-            return "\n\n".join(results)
-            
-        except Exception as e:
-            return f"Error during web search: {str(e)}"
+        return "\n\n".join(results)
+    except Exception as e:
+        return f"Error during web search: {str(e)}"
 
 def read_webpage(url):
-    with sync_playwright() as p:
-        try:
-            browser = p.firefox.launch(headless=True)
-            page = browser.new_page()
-            page.goto(url, timeout=15000)
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        )
+        html = urllib.request.urlopen(req, timeout=15).read().decode('utf-8', errors='ignore')
+        
+        # Remove script and style tags completely
+        html = re.sub(r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        html = re.sub(r'<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Remove header, footer, nav
+        html = re.sub(r'<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        html = re.sub(r'<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        html = re.sub(r'<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        html = re.sub(r'<aside\b[^<]*(?:(?!<\/aside>)<[^<]*)*<\/aside>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        
+        # Extract text from remaining body
+        body_match = re.search(r'<body[^>]*>(.*?)</body>', html, re.IGNORECASE | re.DOTALL)
+        if body_match:
+            body_html = body_match.group(1)
+        else:
+            body_html = html
             
-            # Extract main text body, strip scripts and styles
-            text = page.evaluate('''() => {
-                const elementsToRemove = document.querySelectorAll('script, style, nav, footer, header, aside');
-                elementsToRemove.forEach(el => el.remove());
-                return document.body.innerText;
-            }''')
+        # Strip remaining tags
+        text = re.sub(r'<[^>]+>', ' ', body_html)
+        # Collapse whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        if len(text) > 10000:
+            text = text[:10000] + "\n\n[Content truncated due to length]"
             
-            browser.close()
-            
-            # Truncate text to avoid blowing up the context window
-            text = text.strip()
-            if len(text) > 10000:
-                text = text[:10000] + "\n\n[Content truncated due to length]"
-                
-            return text if text else "Could not extract text from this page."
-            
-        except Exception as e:
-            return f"Error reading webpage: {str(e)}"
+        return text if text else "Could not extract text from this page."
+    except Exception as e:
+        return f"Error reading webpage: {str(e)}"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -20,7 +20,7 @@ jobs:
           # Extract the version number (e.g. v2.0.0) from the README.md
           VERSION=$(grep -oP '(?<=<b>)[vV0-9.]+(?=</b>)' .github/README.md | head -n 1)
           if [ -z "$VERSION" ]; then
-            VERSION="v2.0.2" # fallback
+            VERSION="v2.1.0" # fallback
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 

@@ -6,23 +6,17 @@ export PATH="$HOME/.local/bin:$PATH"
 
 set -uo pipefail
 
-CYAN="\033[0;36m"
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-YELLOW="\033[38;5;220m"
-RST="\033[0m"
-
-die()  { echo -e "${RED}[FATAL] $*${RST}" >&2; exit 1; }
-info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
-ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
-warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
+die()  { echo "[FATAL] $*" >&2; exit 1; }
+info() { echo "[INFO]  $*"; }
+ok()   { echo "[OK]    $*"; }
+warn() { echo "[WARN]  $*"; }
 
 section() {
     local title="$1"
     echo
-    echo -e "${CYAN}-------------------------------------------------------------${RST}"
-    echo -e "${CYAN}  $title${RST}"
-    echo -e "${CYAN}-------------------------------------------------------------${RST}"
+    echo "-------------------------------------------------------------"
+    echo "  $title"
+    echo "-------------------------------------------------------------"
 }
 
 export BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -135,11 +129,11 @@ section "Update Completed Successfully"
 echo
 info "The core shell and bridge scripts have been updated without touching your personal KDE settings."
 echo
-echo -e "${YELLOW}Restarting bridge and shell to apply changes...${RST}"
+echo "Restarting bridge and shell to apply changes..."
 systemctl --user restart qs-kwin-bridge.service 2>/dev/null || true
 caelestia shell -k 2>/dev/null || true
 sleep 2
 caelestia shell -d >/dev/null 2>&1 &
-echo -e "${GREEN}Shell restarted successfully!${RST}"
+echo "Shell restarted successfully!"
 echo
-echo -e "${YELLOW}If the shell doesn't start, please restart it manually by running: ${GREEN}caelestia shell -d${RST}"
+echo "If the shell doesn't start, please restart it manually by running: caelestia shell -d"

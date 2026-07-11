@@ -3,16 +3,10 @@ export PATH="$HOME/.local/bin:$PATH"
 
 set -uo pipefail
 
-CYAN="\033[0;36m"
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-YELLOW="\033[38;5;220m"
-RST="\033[0m"
-
-die()  { echo -e "${RED}[FATAL] $*${RST}" >&2; exit 1; }
-info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
-ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
-warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
+die()  { echo "[FATAL] $*" >&2; exit 1; }
+info() { echo "[INFO]  $*"; }
+ok()   { echo "[OK]    $*"; }
+warn() { echo "[WARN]  $*"; }
 
 BRANCH="${1:-main}"
 LIVE_BRANCHES=$(git ls-remote --heads https://github.com/ladybug-me/caelestia-dots-kde.git | awk '{print $2}' | sed 's|^refs/heads/||')
@@ -22,9 +16,36 @@ if ! echo "$LIVE_BRANCHES" | grep -q "^$BRANCH$"; then
 fi
 UPD_DIR="$HOME/.config/caelestia-update"
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Caelestia Update (Branch: $BRANCH)${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo "---------------------------------------------"
+echo "  Caelestia Update (Branch: $BRANCH)"
+echo "---------------------------------------------"
+
+# --- Pre-flight Dependency Checks ---
+for cmd in git cmake make; do
+    if ! command -v "$cmd" &> /dev/null; then
+        die "Required command '$cmd' is missing. Please install it first."
+    fi
+done
+
+# --- Robust Privilege Escalation Wrapper ---
+mkdir -p "$UPD_DIR/bin"
+cat << 'EOF' > "$UPD_DIR/bin/sudo"
+#!/usr/bin/env bash
+if [ "$EUID" -eq 0 ]; then
+    "$@"
+elif [ -t 1 ]; then
+    /usr/bin/sudo "$@"
+elif command -v ksshaskpass &> /dev/null; then
+    SUDO_ASKPASS=$(command -v ksshaskpass) /usr/bin/sudo -A "$@"
+elif command -v pkexec &> /dev/null; then
+    pkexec "$@"
+else
+    echo "Cannot elevate privileges. Please install ksshaskpass, pkexec, or run from a terminal." >&2
+    exit 1
+fi
+EOF
+chmod +x "$UPD_DIR/bin/sudo"
+export PATH="$UPD_DIR/bin:$PATH"
 
 # --- Pre-flight Dependency Checks ---
 for cmd in git cmake make; do
@@ -96,9 +117,9 @@ fi
 # 2. System update via Polkit
 echo "PROGRESS: 2/5: Running system update..."
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 1 — System Updates${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo "---------------------------------------------"
+echo "  Step 1 - System Updates"
+echo "---------------------------------------------"
 if command -v pacman >/dev/null; then
     info "Running system update via pacman..."
     sudo pacman -Syu --noconfirm || warn "System update was canceled or failed. Continuing with non-sudo parts..."
@@ -115,9 +136,9 @@ export BUNDLE_DIR="$UPD_DIR/repo"
 # 4. Deploy Configs
 echo "PROGRESS: 3/5: Deploying configuration files..."
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 2 — Deploy Configs${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo "---------------------------------------------"
+echo "  Step 2 - Deploy Configs"
+echo "---------------------------------------------"
 if [[ "${CAELESTIA_SKIP_DEPLOY:-0}" == "1" ]]; then
     info "Skipping deploy-configs per user settings."
 else
@@ -127,9 +148,9 @@ fi
 # 5. Build Shell
 echo "PROGRESS: 4/5: Building Caelestia Shell UI..."
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${CYAN}  Step 3 — Build Caelestia Shell UI${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo "---------------------------------------------"
+echo "  Step 3 - Build Caelestia Shell UI"
+echo "---------------------------------------------"
 if [[ "${CAELESTIA_SKIP_BUILD:-0}" == "1" ]]; then
     info "Skipping build-shell per user settings."
 else
@@ -146,6 +167,6 @@ fi
 
 echo "PROGRESS: done: Update completed successfully"
 echo
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${GREEN}  Update Completed Successfully!${RST}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
+echo "---------------------------------------------"
+echo "  Update Completed Successfully!"
+echo "---------------------------------------------"

@@ -61,9 +61,16 @@ Item {
         }
     }
     
+    property real savedContentY: -1
+
     onVisibleChanged: {
         if (visible) {
             fetchOllamaModels();
+            if (savedContentY >= 0) {
+                Qt.callLater(function() { listView.contentY = savedContentY; });
+            }
+        } else {
+            savedContentY = listView.contentY;
         }
     }
 
@@ -279,6 +286,8 @@ Item {
             }
         }
         if (!found) createNewChat();
+        savedContentY = -1;
+        Qt.callLater(function() { listView.positionViewAtEnd(); });
         isHistoryTab = false;
     }
 
@@ -629,8 +638,8 @@ Item {
                                     var toolName = toolCall.name;
                                     var args = toolCall.args || {};
 
-                                    // Count async tools (set_timer is synchronous, skip count for it)
-                                    if (toolName === "take_screenshot" || toolName === "web_search" || toolName === "read_webpage" || toolName === "open_app" || toolName === "get_weather" || toolName === "caelestia_command") {
+                                    // Count async tools (set_timer and get_weather are synchronous, skip count for them)
+                                    if (toolName === "take_screenshot" || toolName === "web_search" || toolName === "read_webpage" || toolName === "open_app" || toolName === "caelestia_command") {
                                         runningToolsCount++;
                                     }
 
@@ -643,18 +652,18 @@ Item {
                                         currentActionText = "Searching the web...";
                                         var query = String(args.query || "");
                                         var page = args.page || 1;
-                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.env("HOME") + "/.config/quickshell/caelestia/scripts/orion_search.py", "--mode", "search", "--query", query, "--page", String(page)], "exec_" + toolName);
+                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.shellDir + "/scripts/orion_search.py", "--mode", "search", "--query", query, "--page", String(page)], "exec_" + toolName);
 
                                     } else if (toolName === "read_webpage") {
                                         currentActionText = "Reading webpage...";
                                         var url = String(args.url || "");
-                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.env("HOME") + "/.config/quickshell/caelestia/scripts/orion_search.py", "--mode", "read", "--url", url], "exec_" + toolName);
+                                        runAgentCommand(["env", "PYTHONIOENCODING=utf8", "python3", Quickshell.shellDir + "/scripts/orion_search.py", "--mode", "read", "--url", url], "exec_" + toolName);
 
                                     } else if (toolName === "open_app") {
                                         currentActionText = "Opening app...";
                                         var app = String(args.app_name || "");
                                         var safeApp = shellQuote("Name=.*" + app);
-                                        runAgentCommand(['grep -i -m 1 "^Exec=" $(find /usr/share/applications ~/.local/share/applications -name "*.desktop" -exec grep -il "$1" {} +) | cut -d "=" -f 2- | sed "s/ %[a-zA-Z]//g" | xargs -I {} sh -c "setsid {} >/dev/null 2>&1 &"', "--", safeApp], "exec_" + toolName);
+                                        runAgentCommand(["sh", "-c", 'grep -i -m 1 "^Exec=" $(find /usr/share/applications ~/.local/share/applications -name "*.desktop" -exec grep -il "$1" {} + 2>/dev/null) | cut -d "=" -f 2- | sed "s/ %[a-zA-Z]//g" | xargs -I {} sh -c "setsid {} >/dev/null 2>&1 &"', "--", safeApp], "exec_" + toolName);
 
                                     } else if (toolName === "set_timer") {
                                         currentActionText = "Setting timer...";
@@ -666,8 +675,8 @@ Item {
 
                                     } else if (toolName === "get_weather") {
                                         currentActionText = "Checking weather...";
-                                        var loc = String(args.location || "");
-                                        runAgentCommand(["curl", "-s", "wttr.in/" + loc + "?format=3"], "exec_" + toolName);
+                                        var weatherStr = Weather.city + ": " + Weather.temp + " (" + Weather.description + "). Humidity: " + Weather.humidity + "%, Wind: " + Weather.windSpeed + " km/h";
+                                        accumulatedToolResults += "Tool: get_weather\nResult: Local weather from system dashboard: " + weatherStr + "\n\n";
 
                                     } else if (toolName === "caelestia_command") {
                                         currentActionText = "Running caelestia...";
@@ -728,7 +737,7 @@ Item {
         var enableTools = GlobalConfig.ai.enableCelestialMode;
         var sysPrompt = "You are a helpful AI assistant integrated into the user's desktop OS shell (Caelestia, running on KDE Plasma/Wayland).";
         if (enableTools) {
-            sysPrompt += "\n\nYou have access to the following tools. To call a tool, output a <tool_call> block containing ONLY valid JSON. Do not output any text inside the block other than the JSON object.\n\nFORMAT:\n<tool_call>\n{\"name\": \"TOOL_NAME\", \"args\": {ARGUMENTS}}\n</tool_call>\n\nAVAILABLE TOOLS:\n- take_screenshot: Captures the user's screen for visual analysis. Args: none.\n  Example: <tool_call>\n{\"name\": \"take_screenshot\", \"args\": {}}\n</tool_call>\n\n- web_search: Searches the web. Args: query (string, required), page (number, optional).\n  Example: <tool_call>\n{\"name\": \"web_search\", \"args\": {\"query\": \"latest news\"}}\n</tool_call>\n\n- read_webpage: Fetches and reads the text of a URL. Args: url (string, required).\n  Example: <tool_call>\n{\"name\": \"read_webpage\", \"args\": {\"url\": \"https://example.com\"}}\n</tool_call>\n\n- open_app: Launches an installed desktop application. Args: app_name (string, required).\n  Example: <tool_call>\n{\"name\": \"open_app\", \"args\": {\"app_name\": \"dolphin\"}}\n</tool_call>\n\n- set_timer: Sets a countdown timer that fires a desktop notification. Args: seconds (number, required), message (string, required).\n  Example: <tool_call>\n{\"name\": \"set_timer\", \"args\": {\"seconds\": 300, \"message\": \"Break time!\"}}\n</tool_call>\n\n- get_weather: Gets current weather for a city. Args: location (string, required).\n  Example: <tool_call>\n{\"name\": \"get_weather\", \"args\": {\"location\": \"London\"}}\n</tool_call>\n\n- caelestia_command: Runs a caelestia CLI command. Valid subcommands: shell, toggle, scheme, search, screenshot, record, clipboard, emoji, wallpaper, resizer, install, update. Args: subcommand (string, required), args (string, optional extra flags).\n  Example: <tool_call>\n{\"name\": \"caelestia_command\", \"args\": {\"subcommand\": \"wallpaper\", \"args\": \"--random\"}}\n</tool_call>\n\nCRITICAL RULES:\n1. ALWAYS use a <tool_call> block to call a tool. NEVER pretend to perform actions in plain text.\n2. You may output a brief acknowledgment before the <tool_call> block (e.g. 'Opening Dolphin for you!') but you MUST include the block.\n3. You can include multiple <tool_call> blocks in one response.\n4. After receiving tool results, respond naturally to the user based on what the tool returned.";
+            sysPrompt += "\n\nYou have access to the following tools. To call a tool, output a <tool_call> block containing ONLY valid JSON. Do not output any text inside the block other than the JSON object.\n\nFORMAT:\n<tool_call>\n{\"name\": \"TOOL_NAME\", \"args\": {ARGUMENTS}}\n</tool_call>\n\nAVAILABLE TOOLS:\n- take_screenshot: Captures the user's screen for visual analysis. Args: none.\n  Example: <tool_call>\n{\"name\": \"take_screenshot\", \"args\": {}}\n</tool_call>\n\n- web_search: Searches the web. Args: query (string, required), page (number, optional).\n  Example: <tool_call>\n{\"name\": \"web_search\", \"args\": {\"query\": \"latest news\"}}\n</tool_call>\n\n- read_webpage: Fetches and reads the text of a URL. Args: url (string, required).\n  Example: <tool_call>\n{\"name\": \"read_webpage\", \"args\": {\"url\": \"https://example.com\"}}\n</tool_call>\n\n- open_app: Launches an installed desktop application. Args: app_name (string, required).\n  Example: <tool_call>\n{\"name\": \"open_app\", \"args\": {\"app_name\": \"dolphin\"}}\n</tool_call>\n\n- set_timer: Sets a countdown timer that fires a desktop notification. Args: seconds (number, required), message (string, required).\n  Example: <tool_call>\n{\"name\": \"set_timer\", \"args\": {\"seconds\": 300, \"message\": \"Break time!\"}}\n</tool_call>\n\n- get_weather: Gets the current local weather from the system dashboard. Args: none.\n  Example: <tool_call>\n{\"name\": \"get_weather\", \"args\": {}}\n</tool_call>\n\n- caelestia_command: Runs a caelestia CLI command. Valid subcommands: shell, toggle, scheme, search, screenshot, record, clipboard, emoji, wallpaper, resizer, install, update. Args: subcommand (string, required), args (string, optional extra flags).\n  Example: <tool_call>\n{\"name\": \"caelestia_command\", \"args\": {\"subcommand\": \"wallpaper\", \"args\": \"--random\"}}\n</tool_call>\n\nCRITICAL RULES:\n1. ALWAYS use a <tool_call> block to call a tool. NEVER pretend to perform actions in plain text.\n2. You may output a brief acknowledgment before the <tool_call> block (e.g. 'Opening Dolphin for you!') but you MUST include the block.\n3. You can include multiple <tool_call> blocks in one response.\n4. After receiving tool results, respond naturally to the user based on what the tool returned.";
         }
         
         messages.push({
@@ -1336,6 +1345,50 @@ Item {
                                  }
                              }
                          }
+                     }
+                 }
+
+                 // Scroll to bottom button
+                 Item {
+                     id: scrollBtnWrapper
+                     anchors.bottom: inputBoxRow.top
+                     anchors.bottomMargin: Tokens.spacing.large
+                     anchors.right: parent.right
+                     anchors.rightMargin: Tokens.padding.large
+                     width: 36
+                     height: 36
+                     z: 20
+                     opacity: (!listView.atYEnd && chatHistory.count > 0) ? 1.0 : 0.0
+                     visible: opacity > 0
+                     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
+
+                     StyledRect {
+                         id: scrollBtnBg
+                         anchors.fill: parent
+                         radius: 18
+                         color: Colours.tPalette.m3surfaceContainerHigh
+                     }
+
+                     MultiEffect {
+                         anchors.fill: scrollBtnBg
+                         source: scrollBtnBg
+                         shadowEnabled: true
+                         shadowOpacity: 0.3
+                         shadowBlur: 0.5
+                         shadowVerticalOffset: 2
+                     }
+
+                     MaterialIcon {
+                         anchors.centerIn: parent
+                         text: "arrow_downward"
+                         font: Tokens.font.icon.small
+                         color: Colours.palette.m3onSurface
+                     }
+
+                     MouseArea {
+                         anchors.fill: parent
+                         cursorShape: Qt.PointingHandCursor
+                         onClicked: listView.positionViewAtEnd()
                      }
                  }
 

@@ -2,7 +2,7 @@
 
 # C A E L E S T I A <img src="assets/caelestia.svg" width="35" align="top">
 
-<p align="center"> <b>v2.0.2</b> </p>
+<p align="center"> <b>v2.1.0</b> </p>
 
 ### A KDE adaptation of the celestial aesthetic
 
@@ -113,6 +113,11 @@
 <div align="center">
     <h2>✦ Visuals ✦</h2>
 </div>
+
+
+
+https://github.com/user-attachments/assets/9ad2e5f5-f80e-48c0-b65b-a4084bb363c6
+
 
 | Caelestia on KDE Plasma Shell | Theming in Action |
 |:---:|:---:|
@@ -357,7 +362,7 @@ Then rebuild the shell by running setup.sh again.
 
 - **[Caelestia](https://github.com/caelestia)** for the incredible, otherworldly design language and the original dotfiles.
 - **[ladybug-me](https://github.com/ladybug-me)** for meticulously adapting the dotfiles to KDE Plasma.
-- **[0xSolanaceae](https://github.com/0xSolanaceae)** for contributing the uninstallation feature.
+- **[0xSolanaceae](https://github.com/0xSolanaceae)** for showing direction the project needed.
 - **[Content-Swordfish751](https://www.reddit.com/user/Content-Swordfish751/)** for many important contributions.
 - **[Peace-W](https://github.com/Peace-W)** for Nobara fix.
 - **[dim-ghub](https://github.com/dim-ghub/caelestia-shell)** for the added features in v2.0.0 from his fork.
@@ -366,6 +371,13 @@ Then rebuild the shell by running setup.sh again.
 - **[KDE Plasma](https://kde.org/plasma/)** — The powerhouse desktop environment.
 
 ---
+
+<div align="center">
+    <h2>✦ Maintainers ✦</h2>
+</div>
+
+- **[ladybug-me](https://github.com/ladybug-me)** — Project owner and KDE port lead; oversees the project while actively maintaining it, resolving issues, and developing new features.
+- **[0xSolanaceae](https://github.com/0xSolanaceae)** — Co-maintainer; actively maintains the project, works on issues, improves tooling and QA, and develops new features.
 
 <div align="center">
     <h2>✦ Support & License ✦</h2>

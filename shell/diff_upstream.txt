@@ -134,7 +134,7 @@ index 64126fa7..ed53485a 100644
 -and likely to be unstable/have bugs. Regular users are recommended to use the stable package
 -(`caelestia-shell`).
 +> [!TIP]
-+> By default, the script will use the latest version tag from [upstream](https://github.com/caelestia-dots/shell) to set the version number for the build. It does not download anything from upstream - it builds your local fork. You can also specify a version manually: `./scripts/install.sh 2.0.2`
++> By default, the script will use the latest version tag from [upstream](https://github.com/caelestia-dots/shell) to set the version number for the build. It does not download anything from upstream - it builds your local fork. You can also specify a version manually: `./scripts/install.sh 2.1.0`
  
  ### Nix
  
@@ -22269,7 +22269,7 @@ index 00000000..49e1fe69
 +# It also cleans up legacy dynamic library conflicts from old installations.
 +#
 +# Usage: install.sh [version]
-+#   version    Optional version string (e.g., "2.0.2"). Defaults to the latest
++#   version    Optional version string (e.g., "2.1.0"). Defaults to the latest
 +#              tag from https://github.com/caelestia-dots/shell if not provided.
 +#              Note: this only sets the version number for the build; it does
 +#              not download anything from the upstream repo.

@@ -9,7 +9,7 @@ if(NOT DEFINED VERSION)
     )
 
     if("${VERSION}" STREQUAL "" OR "${VERSION}" STREQUAL "rolling")
-        set(VERSION "v2.0.2")
+        set(VERSION "v2.1.0")
     endif()
 endif()
 
@@ -62,7 +62,7 @@ if("plugin" IN_LIST ENABLE_MODULES)
 endif()
 
 if("shell" IN_LIST ENABLE_MODULES)
-    foreach(dir assets components modules services utils)
+    foreach(dir assets components modules scripts services utils)
         install(DIRECTORY ${dir} DESTINATION "${INSTALL_QSCONFDIR}")
     endforeach()
 
