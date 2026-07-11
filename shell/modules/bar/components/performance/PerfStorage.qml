@@ -9,4 +9,8 @@ PerfStat {
     accent: Colours.palette.m3secondary
     value: storagePerc
     valueText: isNaN(storagePerc) ? "..." : Math.round(storagePerc * 100) + "%"
+
+    ServiceRef {
+        service: Storage
+    }
 }

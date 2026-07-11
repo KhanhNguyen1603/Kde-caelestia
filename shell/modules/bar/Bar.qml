@@ -362,21 +362,21 @@ Item {
             DelegateChoice {
                 roleValue: "perfCpu"
                 delegate: WrappedLoader {
-                    visible: !root.fullscreen
+                    visible: !root.fullscreen && Cpu.name.length > 0
                     sourceComponent: PerfCpu {}
                 }
             }
             DelegateChoice {
                 roleValue: "perfMemory"
                 delegate: WrappedLoader {
-                    visible: !root.fullscreen
+                    visible: !root.fullscreen && Memory.total > 1
                     sourceComponent: PerfMemory {}
                 }
             }
             DelegateChoice {
                 roleValue: "perfStorage"
                 delegate: WrappedLoader {
-                    visible: !root.fullscreen
+                    visible: !root.fullscreen && Storage.disks.length > 0
                     sourceComponent: PerfStorage {}
                 }
             }

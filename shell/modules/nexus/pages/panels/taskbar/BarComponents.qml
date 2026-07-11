@@ -4,33 +4,41 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.effects
 import qs.components.controls
 import qs.services
 import qs.modules.nexus.common
+import qs.modules.bar.components as BarComponents
+import Quickshell.Services.UPower
 
 PageBase {
     id: root
 
     title: qsTr("Toggle & rearrange")
     isSubPage: true
-    scrollable: false
+    scrollable: true
 
     readonly property var componentMeta: {
         "logo": { icon: "rocket_launch", name: qsTr("Logo") },
         "workspaces": { icon: "workspaces", name: qsTr("Workspaces") },
-        "github": { icon: "commit", name: qsTr("Github") },
+        "github": {
+            icon: "commit",
+            name: qsTr("Github"),
+            available: BarComponents.GithubStore.available,
+            unavailableText: qsTr("GitHub token not detected")
+        },
         "activeWindow": { icon: "dock_to_right", name: qsTr("Active window") },
         "tray": { icon: "expand_more", name: qsTr("System tray") },
         "clock": { icon: "schedule", name: qsTr("Clock") },
         "statusIcons": { icon: "wifi", name: qsTr("Status icons") },
-        "perfCpu": { icon: "memory", name: qsTr("CPU") },
-        "perfMemory": { icon: "memory_alt", name: qsTr("Memory") },
-        "perfStorage": { icon: "hard_disk", name: qsTr("Storage") },
+        "perfCpu": { icon: "memory", name: qsTr("CPU"), available: Cpu.name.length > 0, unavailableText: qsTr("CPU sensor not detected") },
+        "perfMemory": { icon: "memory_alt", name: qsTr("Memory"), available: Memory.total > 1, unavailableText: qsTr("Memory sensor not detected") },
+        "perfStorage": { icon: "hard_disk", name: qsTr("Storage"), available: Storage.disks.length > 0, unavailableText: qsTr("Storage disks not detected") },
         "perfNetwork": { icon: "swap_vert", name: qsTr("Network") },
-        "perfGpu": { icon: "desktop_windows", name: qsTr("GPU") },
-        "perfBattery": { icon: "battery_full", name: qsTr("Battery") },
+        "perfGpu": { icon: "desktop_windows", name: qsTr("GPU"), available: Gpu.type !== Gpu.None, unavailableText: qsTr("GPU not detected") },
+        "perfBattery": { icon: "battery_full", name: qsTr("Battery"), available: UPower.displayDevice.isLaptopBattery, unavailableText: qsTr("Battery not detected") },
         "dock": { icon: "apps", name: qsTr("Dock") },
         "power": { icon: "power_settings_new", name: qsTr("Power menu") }
     }
@@ -102,8 +110,28 @@ PageBase {
     }
 
     function resetToDefaults() {
-        GlobalConfig.bar.entries = defaultEntries();
-        Qt.callLater(load);
+        const entries = defaultEntries();
+        GlobalConfig.bar.entries = entries;
+
+        leftModel.clear();
+        middleModel.clear();
+        rightModel.clear();
+        libraryModel.clear();
+
+        for (const entry of entries) {
+            if (!entry.enabled) {
+                libraryModel.append({ compId: entry.id, isPlaceholder: false });
+                continue;
+            }
+
+            const zone = entry.zone || "left";
+            if (zone === "left")
+                leftModel.append({ compId: entry.id, isPlaceholder: false });
+            else if (zone === "middle")
+                middleModel.append({ compId: entry.id, isPlaceholder: false });
+            else
+                rightModel.append({ compId: entry.id, isPlaceholder: false });
+        }
     }
 
     function save() {
@@ -420,6 +448,7 @@ PageBase {
             required property int index
             required property string compId
             required property bool isPlaceholder
+            readonly property bool isAvailable: (componentMeta[compId]?.available ?? true)
             
             property string sourceList: {
                 if (ListView.view === leftList) return "left";
@@ -473,17 +502,17 @@ PageBase {
                 radius: Tokens.rounding.medium
                 border.color: isDraggingThis ? Colours.palette.m3outline : (sourceList === "library" ? Colours.palette.m3outlineVariant : "transparent")
                 border.width: isDraggingThis ? 2 : (sourceList === "library" ? 1 : 0)
-                opacity: isPlaceholder ? 0.2 : 1.0
+                opacity: isPlaceholder ? 0.2 : (delegateWrapper.isAvailable ? 1.0 : 0.55)
 
                 MouseArea {
                     id: activeDragArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    drag.target: isPlaceholder ? null : activeDelegate
+                    drag.target: isPlaceholder || !delegateWrapper.isAvailable ? null : activeDelegate
                     drag.axis: Drag.XAndYAxis
                     
                     onPressed: {
-                        if (isPlaceholder) return;
+                        if (isPlaceholder || !delegateWrapper.isAvailable) return;
                         root.isGlobalDragging = true;
                         root.globalDragSourceList = sourceList;
                         root.globalDragSourceIndex = index;
@@ -491,7 +520,7 @@ PageBase {
                     }
                     
                     onReleased: {
-                        if (isPlaceholder) return;
+                        if (isPlaceholder || !delegateWrapper.isAvailable) return;
                         
                         let finalHovered = root.globalDragHoveredList;
                         root.isGlobalDragging = false;
@@ -555,7 +584,13 @@ PageBase {
                     
                     Text {
                         Layout.fillWidth: true
-                        text: componentMeta[compId]?.name ?? compId
+                        text: {
+                            const base = componentMeta[compId]?.name ?? compId;
+                            if (delegateWrapper.isAvailable)
+                                return base;
+                            const reason = componentMeta[compId]?.unavailableText ?? qsTr("Not detected");
+                            return `${base} (${reason})`;
+                        }
                         font: Tokens.font.body.small
                         color: sourceList !== "library" ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
                     }

@@ -7,4 +7,8 @@ PerfStat {
     accent: Colours.palette.m3tertiary
     value: Memory.percentage
     valueText: isNaN(Memory.percentage) ? "..." : Math.round(Memory.percentage * 100) + "%"
+
+    ServiceRef {
+        service: Memory
+    }
 }

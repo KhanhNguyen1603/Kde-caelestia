@@ -9,5 +9,5 @@ PerfStat {
     icon: UPower.displayDevice.isLaptopBattery ? Icons.getBatteryIcon(UPower.displayDevice.percentage, charging) : "battery_unknown"
     accent: !UPower.onBattery || UPower.displayDevice.percentage > 0.2 ? Colours.palette.m3primary : Colours.palette.m3error
     value: UPower.displayDevice.percentage
-    valueText: Math.round(UPower.displayDevice.percentage * 100) + "%"
+    valueText: UPower.displayDevice.isLaptopBattery ? Math.round(UPower.displayDevice.percentage * 100) + "%" : qsTr("N/A")
 }
