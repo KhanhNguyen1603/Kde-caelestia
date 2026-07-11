@@ -34,6 +34,8 @@ PageBase {
                 for (let i = 0; i < newEntries.length; i++) {
                     if (newEntries[i].id === "dock") {
                         newEntries[i].enabled = checked;
+                        if (!newEntries[i].zone)
+                            newEntries[i].zone = "middle";
                         found = true;
                         break;
                     }
