@@ -256,6 +256,133 @@ ColumnLayout {
         }
     }
 
+    // VPN section
+    StyledText {
+        visible: root.view === "wireless"
+
+        Layout.topMargin: visible ? Tokens.spacing.small * root.scaleOffset : 0
+        Layout.rightMargin: Tokens.padding.extraSmall * root.scaleOffset
+        text: qsTr("VPN")
+        font.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
+    }
+
+    StyledText {
+        visible: root.view === "wireless"
+
+        Layout.topMargin: visible ? Tokens.spacing.extraSmall * root.scaleOffset : 0
+        Layout.rightMargin: Tokens.padding.extraSmall * root.scaleOffset
+        text: qsTr("%1 profiles available").arg(Nmcli.vpnConnections.length)
+        color: Colours.palette.m3onSurfaceVariant
+        font.pointSize: Tokens.font.body.small.pointSize * root.fontScale
+    }
+
+    Repeater {
+        visible: root.view === "wireless"
+        model: ScriptModel {
+            values: [...Nmcli.vpnConnections].slice(0, 8)
+        }
+
+        RowLayout {
+            id: vpnItem
+
+            required property var modelData
+            readonly property bool loading: Nmcli.vpnPendingConnection === modelData.name
+
+            visible: root.view === "wireless"
+
+            Layout.fillWidth: true
+            Layout.rightMargin: Tokens.padding.extraSmall * root.scaleOffset
+            spacing: Tokens.spacing.small * root.scaleOffset
+
+            opacity: 0
+            scale: 0.7
+
+            Component.onCompleted: {
+                opacity = 1;
+                scale = 1;
+            }
+
+            Behavior on opacity {
+                Anim {
+                    type: Anim.DefaultEffects
+                }
+            }
+
+            Behavior on scale {
+                Anim {}
+            }
+
+            MaterialIcon {
+                text: "vpn_key"
+                color: vpnItem.modelData.connected ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                fontStyle.pointSize: Tokens.font.icon.medium.pointSize * root.fontScale
+            }
+
+            StyledText {
+                Layout.leftMargin: Tokens.spacing.extraSmall * root.scaleOffset
+                Layout.rightMargin: Tokens.spacing.extraSmall * root.scaleOffset
+                Layout.fillWidth: true
+                text: vpnItem.modelData.name
+                elide: Text.ElideRight
+                font.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
+                color: vpnItem.modelData.connected ? Colours.palette.m3primary : Colours.palette.m3onSurface
+            }
+
+            StyledRect {
+                implicitWidth: implicitHeight
+                implicitHeight: vpnConnectIcon.implicitHeight + Tokens.padding.extraSmall * root.scaleOffset
+
+                radius: Tokens.rounding.full * root.scaleOffset
+                color: Qt.alpha(Colours.palette.m3primary, vpnItem.modelData.connected ? 1 : 0)
+
+                CircularIndicator {
+                    anchors.fill: parent
+                    running: vpnItem.loading
+                }
+
+                StateLayer {
+                    color: vpnItem.modelData.connected ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+                    disabled: vpnItem.loading
+
+                    onClicked: {
+                        if (vpnItem.modelData.connected) {
+                            Nmcli.disconnectVpn(vpnItem.modelData.name, () => {});
+                        } else {
+                            Nmcli.connectVpn(vpnItem.modelData.name, () => {});
+                        }
+                    }
+                }
+
+                MaterialIcon {
+                    id: vpnConnectIcon
+
+                    anchors.centerIn: parent
+                    animate: true
+                    text: vpnItem.modelData.connected ? "link_off" : "link"
+                    color: vpnItem.modelData.connected ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+                    fontStyle.pointSize: Tokens.font.icon.medium.pointSize * root.fontScale
+
+                    opacity: vpnItem.loading ? 0 : 1
+
+                    Behavior on opacity {
+                        Anim {
+                            type: Anim.DefaultEffects
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    StyledText {
+        visible: root.view === "wireless" && Nmcli.vpnConnections.length === 0
+
+        Layout.rightMargin: Tokens.padding.extraSmall * root.scaleOffset
+        text: qsTr("No VPN profiles found")
+        color: Colours.palette.m3onSurfaceVariant
+        font.pointSize: Tokens.font.body.small.pointSize * root.fontScale
+    }
+
     // Ethernet section
     StyledText {
         visible: root.view === "ethernet"

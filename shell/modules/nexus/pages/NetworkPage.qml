@@ -200,6 +200,131 @@ PageBase {
             }
         }
 
+        ItemList {
+            id: vpnList
+
+            showList: true
+            placeholderIcon: "vpn_key_off"
+            placeholderText: qsTr("No VPN profiles found")
+
+            model: ScriptModel {
+                values: [...Nmcli.vpnConnections]
+            }
+
+            delegate: StyledRect {
+                id: vpn
+
+                required property var modelData
+                readonly property bool loading: Nmcli.vpnPendingConnection === modelData.name
+                readonly property bool connected: modelData.connected === true
+                property real textOpacity: loading ? 0.5 : 1
+
+                anchors.left: vpnList.list.contentItem.left
+                anchors.right: vpnList.list.contentItem.right
+                implicitHeight: vpnLayout.implicitHeight + vpnLayout.anchors.margins * 2
+                radius: Tokens.rounding.extraSmall
+                color: "transparent"
+
+                Behavior on textOpacity {
+                    Anim {
+                        type: Anim.DefaultEffects
+                    }
+                }
+
+                StateLayer {
+                    disabled: vpn.loading
+                    onClicked: {
+                        if (vpn.loading)
+                            return;
+
+                        if (vpn.connected) {
+                            Nmcli.disconnectVpn(vpn.modelData.name, () => {});
+                        } else {
+                            Nmcli.connectVpn(vpn.modelData.name, () => {});
+                        }
+                    }
+                }
+
+                RowLayout {
+                    id: vpnLayout
+
+                    anchors.fill: parent
+                    anchors.margins: Tokens.padding.medium
+                    anchors.leftMargin: Tokens.padding.largeIncreased
+                    anchors.rightMargin: Tokens.padding.largeIncreased
+                    spacing: Tokens.spacing.medium
+
+                    StyledRect {
+                        implicitWidth: implicitHeight
+                        implicitHeight: vpnIcon.implicitHeight + Tokens.padding.small * 2
+                        radius: Tokens.rounding.full
+                        color: vpn.connected ? Colours.palette.m3primary : Colours.palette.m3secondaryContainer
+
+                        MaterialIcon {
+                            id: vpnIcon
+
+                            anchors.centerIn: parent
+                            text: "vpn_key"
+                            color: vpn.connected ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer
+                            fontStyle: Tokens.font.icon.medium
+                            opacity: vpn.textOpacity
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+                        opacity: vpn.textOpacity
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: vpn.modelData.name
+                            font: Tokens.font.body.small
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: vpn.connected ? qsTr("Connected") : qsTr("Available")
+                            color: Colours.palette.m3outline
+                            font: Tokens.font.label.small
+                            elide: Text.ElideRight
+                            animate: true
+                        }
+                    }
+
+                    Item {
+                        Layout.fillHeight: true
+                        implicitWidth: height
+
+                        AnimLoader {
+                            anchors.centerIn: parent
+                            sourceComp: vpn.loading ? vpnLoadingComp : vpnActionComp
+
+                            Component {
+                                id: vpnActionComp
+
+                                MaterialIcon {
+                                    text: vpn.connected ? "link_off" : "link"
+                                    color: vpn.connected ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                                    fontStyle: Tokens.font.icon.medium
+                                    opacity: vpn.textOpacity
+                                }
+                            }
+
+                            Component {
+                                id: vpnLoadingComp
+
+                                LoadingIndicator {
+                                    implicitSize: Math.round(Tokens.font.icon.medium.pointSize * 1.3)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         ConnectedRect {
             Layout.fillWidth: true
             implicitHeight: addNetworkLayout.implicitHeight + addNetworkLayout.anchors.margins * 2

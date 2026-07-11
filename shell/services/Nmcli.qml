@@ -29,6 +29,9 @@ Singleton {
     property var ethernetDeviceDetails: null
     property list<var> ethernetDevices: []
     readonly property var activeEthernet: ethernetDevices.find(d => d.connected) ?? null
+    property list<var> vpnConnections: []
+    readonly property var activeVpn: vpnConnections.find(v => v.connected) ?? null
+    property string vpnPendingConnection: ""
     property list<var> activeProcesses: []
 
     readonly property alias connectionCheckTimer: connectionCheckTimer
@@ -38,6 +41,8 @@ Singleton {
     readonly property string deviceTypeWifi: "wifi"
     readonly property string deviceTypeEthernet: "ethernet"
     readonly property string connectionTypeWireless: "802-11-wireless"
+    readonly property string connectionTypeVpn: "vpn"
+    readonly property string connectionTypeWireGuard: "wireguard"
     readonly property string nmcliCommandDevice: "device"
     readonly property string nmcliCommandConnection: "connection"
     readonly property string nmcliCommandWifi: "wifi"
@@ -518,6 +523,146 @@ Singleton {
             if (callback)
                 callback(root.savedConnectionSsids);
         }
+    }
+
+    function parseNameTypeOutput(output: string): list<var> {
+        if (!output || output.length === 0) {
+            return [];
+        }
+
+        const PLACEHOLDER = "STRINGWHICHHOPEFULLYWONTBEUSED";
+        const rep = new RegExp("\\\\:", "g");
+        const rep2 = new RegExp(PLACEHOLDER, "g");
+
+        return output.trim().split("\n").filter(line => line && line.length > 0).map(line => {
+            const parts = line.replace(rep, PLACEHOLDER).split(":");
+            return {
+                name: (parts[0] ?? "").replace(rep2, ":").trim(),
+                type: (parts[1] ?? "").replace(rep2, ":").trim()
+            };
+        }).filter(entry => entry.name && entry.name.length > 0);
+    }
+
+    function isVpnConnectionType(type: string): bool {
+        const normalized = (type || "").toLowerCase().trim();
+        return normalized === root.connectionTypeVpn || normalized === root.connectionTypeWireGuard;
+    }
+
+    function loadVpnConnections(callback: var): void {
+        executeCommand(["-t", "-f", root.connectionListFields, root.nmcliCommandConnection, "show"], result => {
+            if (!result.success) {
+                root.vpnConnections = [];
+                if (callback)
+                    callback([]);
+                return;
+            }
+
+            const allConnections = parseNameTypeOutput(result.output);
+            const vpnBase = allConnections.filter(conn => isVpnConnectionType(conn.type));
+
+            executeCommand(["-t", "-f", root.connectionListFields, root.nmcliCommandConnection, "show", "--active"], activeResult => {
+                const activeNames = new Set();
+
+                if (activeResult.success) {
+                    const activeConnections = parseNameTypeOutput(activeResult.output);
+                    for (const conn of activeConnections) {
+                        if (isVpnConnectionType(conn.type)) {
+                            activeNames.add(conn.name.toLowerCase().trim());
+                        }
+                    }
+                }
+
+                const deduped = new Map();
+
+                for (const conn of vpnBase) {
+                    const key = conn.name.toLowerCase().trim();
+                    const connected = activeNames.has(key);
+
+                    if (!deduped.has(key)) {
+                        deduped.set(key, {
+                            name: conn.name,
+                            type: conn.type,
+                            connected: connected
+                        });
+                    } else if (connected) {
+                        deduped.get(key).connected = true;
+                    }
+                }
+
+                const vpnList = Array.from(deduped.values()).sort((a, b) => {
+                    if (a.connected !== b.connected)
+                        return b.connected - a.connected;
+                    return (a.name || "").localeCompare(b.name || "");
+                });
+
+                root.vpnConnections = vpnList;
+
+                if (callback)
+                    callback(vpnList);
+            });
+        });
+    }
+
+    function connectVpn(connectionName: string, callback: var): void {
+        if (!connectionName || connectionName.length === 0) {
+            if (callback)
+                callback({
+                    success: false,
+                    output: "",
+                    error: "No VPN connection name specified",
+                    exitCode: -1
+                });
+            return;
+        }
+
+        root.vpnPendingConnection = connectionName;
+
+        executeCommand([root.nmcliCommandConnection, "up", connectionName], result => {
+            if (result.success) {
+                Qt.callLater(() => {
+                    loadVpnConnections(() => {});
+                });
+            } else {
+                loadVpnConnections(() => {});
+            }
+
+            if (root.vpnPendingConnection === connectionName)
+                root.vpnPendingConnection = "";
+
+            if (callback)
+                callback(result);
+        });
+    }
+
+    function disconnectVpn(connectionName: string, callback: var): void {
+        if (!connectionName || connectionName.length === 0) {
+            if (callback)
+                callback({
+                    success: false,
+                    output: "",
+                    error: "No VPN connection name specified",
+                    exitCode: -1
+                });
+            return;
+        }
+
+        root.vpnPendingConnection = connectionName;
+
+        executeCommand([root.nmcliCommandConnection, "down", connectionName], result => {
+            if (result.success) {
+                Qt.callLater(() => {
+                    loadVpnConnections(() => {});
+                });
+            } else {
+                loadVpnConnections(() => {});
+            }
+
+            if (root.vpnPendingConnection === connectionName)
+                root.vpnPendingConnection = "";
+
+            if (callback)
+                callback(result);
+        });
     }
 
     function queryNextSsid(callback: var): void {
@@ -1081,6 +1226,7 @@ Singleton {
                     }, 500);
                 }
             });
+            loadVpnConnections(() => {});
         });
     }
 
@@ -1089,6 +1235,7 @@ Singleton {
         getNetworks(() => {});
         loadSavedConnections(() => {});
         getEthernetInterfaces(() => {});
+        loadVpnConnections(() => {});
 
         Qt.callLater(() => {
             if (root.wirelessInterfaces.length > 0) {
