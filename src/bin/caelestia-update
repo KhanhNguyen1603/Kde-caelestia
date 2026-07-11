@@ -47,6 +47,33 @@ EOF
 chmod +x "$UPD_DIR/bin/sudo"
 export PATH="$UPD_DIR/bin:$PATH"
 
+# --- Pre-flight Dependency Checks ---
+for cmd in git cmake make; do
+    if ! command -v "$cmd" &> /dev/null; then
+        die "Required command '$cmd' is missing. Please install it first."
+    fi
+done
+
+# --- Robust Privilege Escalation Wrapper ---
+mkdir -p "$UPD_DIR/bin"
+cat << 'EOF' > "$UPD_DIR/bin/sudo"
+#!/usr/bin/env bash
+if [ "$EUID" -eq 0 ]; then
+    "$@"
+elif [ -t 1 ]; then
+    /usr/bin/sudo "$@"
+elif command -v ksshaskpass &> /dev/null; then
+    SUDO_ASKPASS=$(command -v ksshaskpass) /usr/bin/sudo -A "$@"
+elif command -v pkexec &> /dev/null; then
+    pkexec "$@"
+else
+    echo "Cannot elevate privileges. Please install ksshaskpass, pkexec, or run from a terminal." >&2
+    exit 1
+fi
+EOF
+chmod +x "$UPD_DIR/bin/sudo"
+export PATH="$UPD_DIR/bin:$PATH"
+
 # 1. Fetch from GitHub
 echo "PROGRESS: 1/5: Fetching updates from GitHub..."
 info "Checking for local repository cache..."
