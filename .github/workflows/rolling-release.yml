@@ -47,14 +47,14 @@ jobs:
           set -euo pipefail
 
           CMAKE_VERSION=$(sed -nE 's/^[[:space:]]*set\(VERSION "([^"]+)"\).*/\1/p' shell/CMakeLists.txt | head -n 1)
-          ABOUT_VERSION=$(grep -oE 'text: "v[0-9]+\.[0-9]+\.[0-9]+"' shell/modules/nexus/pages/AboutPage.qml | head -n 1 | sed -E 's/text: "([^"]+)"/\1/')
+          ABOUT_BINDING=$(grep -F 'text: CUtils.version ? `v${CUtils.version}` : "…"' shell/modules/nexus/pages/AboutPage.qml | head -n 1 || true)
 
           echo "Config VERSION: $VERSION"
           echo "CMake VERSION:  ${CMAKE_VERSION:-<missing>}"
-          echo "About VERSION:  ${ABOUT_VERSION:-<missing>}"
+          echo "About binding:  ${ABOUT_BINDING:-<missing>}"
 
-          if [[ "${CMAKE_VERSION:-}" != "$VERSION" || "${ABOUT_VERSION:-}" != "$VERSION" ]]; then
-            echo "Version drift detected. Update files to match .github/version.env before release."
+          if [[ "${CMAKE_VERSION:-}" != "$VERSION" || -z "${ABOUT_BINDING:-}" ]]; then
+            echo "Version drift detected. Update shell/CMakeLists.txt and ensure AboutPage reads CUtils.version before release."
             exit 1
           fi
 

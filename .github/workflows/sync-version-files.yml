@@ -36,13 +36,12 @@ jobs:
           set -euo pipefail
 
           sed -i -E '0,/set\(VERSION "v[0-9]+\.[0-9]+\.[0-9]+"\)/s//set(VERSION "'"$VERSION"'")/' shell/CMakeLists.txt
-          sed -i -E 's/text: "v[0-9]+\.[0-9]+\.[0-9]+"/text: "'"$VERSION"'"/' shell/modules/nexus/pages/AboutPage.qml
 
       - name: Commit Synced Files
         run: |
           set -euo pipefail
 
-          if git diff --quiet -- shell/CMakeLists.txt shell/modules/nexus/pages/AboutPage.qml; then
+          if git diff --quiet -- shell/CMakeLists.txt; then
             echo "No version changes detected."
             exit 0
           fi
@@ -50,6 +49,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add shell/CMakeLists.txt shell/modules/nexus/pages/AboutPage.qml
+          git add shell/CMakeLists.txt
           git commit -m "chore: sync version files to $VERSION"
           git push origin HEAD:${GITHUB_REF_NAME}
