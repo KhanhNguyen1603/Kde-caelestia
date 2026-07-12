@@ -294,6 +294,10 @@ Singleton {
         interval: 500
         repeat: true
         onTriggered: {
+            if (root.schemeLoaded) {
+                stop();
+                return;
+            }
             if (root.startupSchemePollCount >= root.maxStartupSchemePolls) {
                 stop();
                 return;
