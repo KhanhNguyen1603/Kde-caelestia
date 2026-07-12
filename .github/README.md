@@ -183,26 +183,28 @@ https://github.com/user-attachments/assets/9ad2e5f5-f80e-48c0-b65b-a4084bb363c6
 </div>
 
 <details>
-  <summary><b>Wallpaper</b></summary></br>
+  <summary><b>Wallpaper & Slideshow</b></summary></br>
 
-  Press `Super + Space` to open the App launcher. Then type `>` to open Caelestia Tweaks and select Wallpaper.
+  - Press `Super + Space` to open the App launcher. Then type `>` to open Caelestia Tweaks and select Wallpaper.
+  - For Slideshow, Open `Caelestia Settings -> Wallpaper & style -> Wallpaper slideshow`.
 </details>
 <details>
   <summary><b>Theme Colors</b></summary></br>
  
- Type `>` in app launcher and select `Scheme`. **NOTE:** When switching between dark and light theme, you need to go to `Kde Settings -> Colors & Themes -> Colors` and select Material You Dark or Light based on your preference.
+  - Type `>` in app launcher and select `Scheme`.
+  - *Note: When switching between dark and light theme, you need to go to `Kde Settings -> Colors & Themes -> Colors` and select Material You Dark or Light based on your preference.*
 </details>
 <details>
   <summary><b>Keyboard Shortcuts</b></summary></br>
 
-  Modify [`src/keyboardshortcuts/shortcuts.md`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/shortcuts.md) and execute [`src/keyboardshortcuts/register.sh`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/register.sh) to apply them.
+  - Modify [`src/keyboardshortcuts/shortcuts.md`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/shortcuts.md) and execute [`src/keyboardshortcuts/register.sh`](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/src/keyboardshortcuts/register.sh) to apply them.
   
-  *Note:* You may need to update `~/.local/bin/hyprctl` for `Super + /` keybindings display.
+  - *Note: You may need to update `~/.local/bin/hyprctl` for `Super + /` keybindings display.*
 </details>
 <details>
   <summary><b>The Greeter</b></summary></br>
 
-The gifs that play on popout of `Good Morning, User` can be customized by going to [`shell/assets/`](https://github.com/ladybug-me/caelestia-dots-kde/tree/main/shell/assets/) and replacing the [morning.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/morning.gif), [evening.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/evening.gif), [afternoon.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/afternoon.gif) and [night.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/night.gif) files.
+   - The gifs that play on popout of `Good Morning, User` can be customized by going to [`shell/assets/`](https://github.com/ladybug-me/caelestia-dots-kde/tree/main/shell/assets/) and replacing the [morning.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/morning.gif), [evening.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/evening.gif), [afternoon.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/afternoon.gif) and [night.gif](https://github.com/ladybug-me/caelestia-dots-kde/blob/main/shell/assets/night.gif) files.
 Then rebuild the shell by running setup.sh again.
 </details>
 
