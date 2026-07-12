@@ -14,6 +14,7 @@ ConnectedRect {
     property string subject: ""
     property string author: ""
     property string date: ""
+    property string details: ""
 
     Layout.fillWidth: true
     implicitHeight: rowLayout.implicitHeight + rowLayout.anchors.margins * 2
@@ -45,9 +46,20 @@ ConnectedRect {
 
             StyledText {
                 Layout.fillWidth: true
-                text: qsTr("%1 • %2").arg(root.author).arg(root.date)
+                text: root.date !== "" ? qsTr("%1 • %2").arg(root.author).arg(root.date) : root.author
                 color: Colours.palette.m3outline
                 font: Tokens.font.label.small
+                elide: Text.ElideRight
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: root.details !== ""
+                text: root.details
+                color: Colours.palette.m3onSurfaceVariant
+                font: Tokens.font.body.small
+                wrapMode: Text.Wrap
+                maximumLineCount: 8
                 elide: Text.ElideRight
             }
         }

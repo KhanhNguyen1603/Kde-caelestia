@@ -19,6 +19,7 @@ PageBase {
     title: qsTr("Updates")
 
     property list<MenuItem> branchItems
+    property list<MenuItem> versionItems
 
     function updateBranchItems() {
         let items = [];
@@ -28,23 +29,50 @@ PageBase {
         root.branchItems = items;
     }
 
+    function updateVersionItems() {
+        let items = [];
+        for (let i = 0; i < UpdateChecker.availableVersions.length; i++) {
+            items.push(Qt.createQmlObject('import qs.components.controls; MenuItem { text: "' + UpdateChecker.availableVersions[i] + '"; icon: "history" }', root));
+        }
+        root.versionItems = items;
+    }
+
     Item {
         visible: false
         Connections {
             target: UpdateChecker
             function onAvailableBranchesChanged() { root.updateBranchItems(); }
+            function onAvailableVersionsChanged() { root.updateVersionItems(); }
+            function onCommitsChanged() { root.showAllVersionChanges = false; }
+            function onVersionSummaryModeChanged() { root.showAllVersionChanges = false; }
         }
     }
     
-    Component.onCompleted: root.updateBranchItems();
+    Component.onCompleted: {
+        root.updateBranchItems();
+        root.updateVersionItems();
+    }
 
     readonly property var activeBranchItem: branchItems.find(i => i.text === UpdateChecker.currentBranch) || branchItems[0]
+    readonly property var activeVersionItem: versionItems.find(i => i.text === UpdateChecker.targetVersion) || versionItems[0]
+    readonly property bool versionTargetDiffers: UpdateChecker.versionSummaryMode && UpdateChecker.targetVersion !== "" && UpdateChecker.targetVersion !== UpdateChecker.currentVersion
+    readonly property bool canApplySelectedVersion: UpdateChecker.versionSummaryMode && UpdateChecker.targetVersion !== ""
+    readonly property int compactVersionLimit: 3
+    readonly property bool hasHiddenVersionChanges: UpdateChecker.versionSummaryMode && UpdateChecker.commits.length > compactVersionLimit
+    readonly property int hiddenVersionCount: Math.max(0, UpdateChecker.commits.length - compactVersionLimit)
+    readonly property var visibleCommits: {
+        if (!UpdateChecker.versionSummaryMode || root.showAllVersionChanges) {
+            return UpdateChecker.commits;
+        }
+        return UpdateChecker.commits.slice(0, compactVersionLimit);
+    }
 
     property string updateLogs: ""
     property bool updateRunning: false
     property real updateProgress: 0.0
     property string updateStatus: ""
     property bool logsExpanded: false
+    property bool showAllVersionChanges: false
 
     Item {
         Settings {
@@ -82,7 +110,9 @@ PageBase {
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     text: UpdateChecker.hasUpdate 
-                        ? qsTr("%1 new commits on %2").arg(UpdateChecker.pendingCount).arg(UpdateChecker.currentBranch)
+                        ? (UpdateChecker.versionSummaryMode
+                            ? qsTr("Version update available on %1").arg(UpdateChecker.currentBranch)
+                            : qsTr("%1 new commits on %2").arg(UpdateChecker.pendingCount).arg(UpdateChecker.currentBranch))
                         : qsTr("You're all caught up!")
                     color: UpdateChecker.hasUpdate ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
                     font: Tokens.font.title.medium
@@ -105,7 +135,7 @@ PageBase {
 
         SelectRow {
             first: true
-            last: true
+            last: !UpdateChecker.versionSummaryMode
             label: qsTr("Update branch")
             subtext: qsTr("Currently tracking branch: %1").arg(UpdateChecker.currentBranch)
             menuItems: root.branchItems
@@ -115,24 +145,49 @@ PageBase {
             }
         }
 
+        SelectRow {
+            first: !UpdateChecker.versionSummaryMode
+            last: true
+            visible: UpdateChecker.versionSummaryMode
+            label: qsTr("Target version")
+            subtext: qsTr("Current: %1  |  Previous: %2").arg(UpdateChecker.currentVersion).arg(UpdateChecker.previousVersion)
+            menuItems: root.versionItems
+            active: root.activeVersionItem
+            onSelected: item => {
+                UpdateChecker.targetVersion = item.text;
+            }
+        }
+
         SectionHeader {
-            text: qsTr("Latest Changes")
+            text: UpdateChecker.versionSummaryMode ? qsTr("Version Changes") : qsTr("Latest Changes")
             visible: UpdateChecker.commits.length > 0
         }
 
         Repeater {
-            model: UpdateChecker.commits
+            model: root.visibleCommits
             delegate: CommitRow {
                 required property int index
                 required property var modelData
 
                 first: index === 0
-                last: index === UpdateChecker.commits.length - 1
+                last: index === root.visibleCommits.length - 1
                 hash: modelData.hash
                 subject: modelData.subject
                 author: modelData.author
                 date: modelData.date
+                details: modelData.details || ""
             }
+        }
+
+        IconTextButton {
+            Layout.alignment: Qt.AlignHCenter
+            visible: root.hasHiddenVersionChanges || root.showAllVersionChanges
+            text: root.showAllVersionChanges
+                ? qsTr("Show latest 3")
+                : qsTr("Show %1 older versions").arg(root.hiddenVersionCount)
+            type: TextButton.Tonal
+            icon: root.showAllVersionChanges ? "expand_less" : "expand_more"
+            onClicked: root.showAllVersionChanges = !root.showAllVersionChanges
         }
 
         SectionHeader {
@@ -166,14 +221,14 @@ PageBase {
 
         SectionHeader {
             text: qsTr("Install Update")
-            visible: UpdateChecker.hasUpdate || root.updateRunning || root.updateLogs !== ""
+            visible: UpdateChecker.hasUpdate || root.canApplySelectedVersion || root.updateRunning || root.updateLogs !== ""
         }
 
         ConnectedRect {
             first: true
             last: true
             Layout.fillWidth: true
-            visible: UpdateChecker.hasUpdate || root.updateRunning || root.updateLogs !== ""
+            visible: UpdateChecker.hasUpdate || root.canApplySelectedVersion || root.updateRunning || root.updateLogs !== ""
             implicitHeight: logsContainer.implicitHeight + Tokens.padding.largeIncreased * 2
 
             ColumnLayout {
@@ -186,10 +241,10 @@ PageBase {
 
                 IconTextButton {
                     Layout.fillWidth: true
-                    text: root.updateRunning ? qsTr("Updating...") : (root.updateProgress === 1.0 ? qsTr("Log Out") : qsTr("Install Update"))
+                    text: root.updateRunning ? qsTr("Updating...") : (root.updateProgress === 1.0 ? qsTr("Log Out") : (root.canApplySelectedVersion ? (root.versionTargetDiffers ? qsTr("Apply Version") : qsTr("Reinstall Current Version")) : qsTr("Install Update")))
                     type: TextButton.Primary
                     icon: root.updateRunning ? "hourglass_empty" : (root.updateProgress === 1.0 ? "logout" : "system_update_alt")
-                    enabled: (!root.updateRunning && UpdateChecker.hasUpdate) || root.updateProgress === 1.0
+                    enabled: (!root.updateRunning && (UpdateChecker.hasUpdate || root.canApplySelectedVersion)) || root.updateProgress === 1.0
                     onClicked: {
                         if (root.updateProgress === 1.0) {
                             logoutProcess.running = true;
@@ -264,7 +319,7 @@ PageBase {
         }
         Process {
             id: updateProcess
-            command: ["bash", "-c", `CAELESTIA_SKIP_DEPLOY=${updaterSettings.deployConfigs ? 0 : 1} CAELESTIA_SKIP_BUILD=${updaterSettings.buildShell ? 0 : 1} ${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}`]
+            command: ["bash", "-c", `CAELESTIA_SKIP_DEPLOY=${updaterSettings.deployConfigs ? 0 : 1} CAELESTIA_SKIP_BUILD=${updaterSettings.buildShell ? 0 : 1} ${Paths.absolutePath("~/.local/bin/caelestia-update")} ${UpdateChecker.currentBranch}${UpdateChecker.versionSummaryMode && UpdateChecker.targetVersion !== "" ? (" " + UpdateChecker.targetVersion) : ""}`]
             
             stdout: SplitParser {
                 onRead: text => {

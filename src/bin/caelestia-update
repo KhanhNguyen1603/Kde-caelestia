@@ -9,15 +9,30 @@ ok()   { echo "[OK]    $*"; }
 warn() { echo "[WARN]  $*"; }
 
 BRANCH="${1:-main}"
-LIVE_BRANCHES=$(git ls-remote --heads https://github.com/ladybug-me/caelestia-dots-kde.git | awk '{print $2}' | sed 's|^refs/heads/||')
-if ! echo "$LIVE_BRANCHES" | grep -q "^$BRANCH$"; then
+TARGET_REF="${2:-}"
+if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "dev" ]; then
+    echo "Warning: Branch '$BRANCH' is not allowed. Falling back to 'main'."
+    BRANCH="main"
+fi
+if ! git ls-remote --exit-code --heads https://github.com/ladybug-me/caelestia-dots-kde.git "$BRANCH" >/dev/null 2>&1; then
     echo "Warning: Branch '$BRANCH' does not exist on remote. Falling back to 'main'."
     BRANCH="main"
+fi
+
+if [ -n "$TARGET_REF" ]; then
+    if ! git ls-remote --exit-code --tags https://github.com/ladybug-me/caelestia-dots-kde.git "$TARGET_REF" >/dev/null 2>&1; then
+        echo "Warning: Version tag '$TARGET_REF' not found on remote. Ignoring target and using branch head."
+        TARGET_REF=""
+    fi
 fi
 UPD_DIR="$HOME/.config/caelestia-update"
 
 echo "---------------------------------------------"
-echo "  Caelestia Update (Branch: $BRANCH)"
+if [ -n "$TARGET_REF" ]; then
+    echo "  Caelestia Update (Branch: $BRANCH, Target: $TARGET_REF)"
+else
+    echo "  Caelestia Update (Branch: $BRANCH)"
+fi
 echo "---------------------------------------------"
 
 # --- Pre-flight Dependency Checks ---
@@ -72,11 +87,17 @@ git config core.sparseCheckout true
 echo "shell/" > .git/info/sparse-checkout
 echo "src/" >> .git/info/sparse-checkout
 echo "scripts/" >> .git/info/sparse-checkout
+echo ".github/version.env" >> .git/info/sparse-checkout
 echo ".gitmodules" >> .git/info/sparse-checkout
 
 # Safer fetch and reset instead of pull
-git fetch -q --depth 1 origin "$BRANCH" || die "Failed to fetch repository"
-git reset --hard -q origin/"$BRANCH" || die "Failed to apply updates"
+if [ -n "$TARGET_REF" ]; then
+    git fetch -q --depth 1 origin "refs/tags/$TARGET_REF:refs/tags/$TARGET_REF" || die "Failed to fetch version tag"
+    git reset --hard -q "$TARGET_REF" || die "Failed to apply version $TARGET_REF"
+else
+    git fetch -q --depth 1 origin "$BRANCH" || die "Failed to fetch repository"
+    git reset --hard -q origin/"$BRANCH" || die "Failed to apply updates"
+fi
 
 
 if [[ -f "$UPD_DIR/repo/.gitmodules" ]]; then
@@ -135,6 +156,10 @@ if [ -d "$UPD_DIR/repo/.git" ]; then
     COMMIT_HASH=$(git rev-parse HEAD)
     mkdir -p ~/.config/quickshell/caelestia
     echo "$COMMIT_HASH" > ~/.config/quickshell/caelestia/.current_commit
+
+    # Persist installed version from the checked-out commit, even when sparse checkout omits files.
+    git show HEAD:.github/version.env > ~/.config/quickshell/caelestia/.current_version 2>/dev/null || true
+
     info "Saved commit hash: $COMMIT_HASH"
 fi
 

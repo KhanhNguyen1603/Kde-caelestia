@@ -46,10 +46,14 @@ if [ -d "$BUNDLE_DIR/.git" ]; then
 
     if [ -n "${1:-}" ]; then
         BRANCH="$1"
+        if [[ "$BRANCH" != "main" && "$BRANCH" != "dev" ]]; then
+            warn "Branch '$BRANCH' is not allowed. Falling back to main."
+            BRANCH="main"
+        fi
         info "Using provided branch: $BRANCH"
     else
         if [ -t 1 ]; then
-            BRANCHES=$(git -C "$BUNDLE_DIR" branch -r | grep -v '\->' | sed 's/.*origin\///')
+            BRANCHES="main dev"
             echo
             info "Available remote branches (default: main):"
             select BRANCH in $BRANCHES; do
@@ -71,6 +75,11 @@ if [ -d "$BUNDLE_DIR/.git" ]; then
             fi
             info "Auto-detected branch: $BRANCH (GUI Mode)"
         fi
+    fi
+
+    if ! git -C "$BUNDLE_DIR" ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+        warn "Remote branch '$BRANCH' not found. Falling back to main."
+        BRANCH="main"
     fi
 
     info "Checking out $BRANCH..."
