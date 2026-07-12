@@ -37,8 +37,10 @@ PageBase {
         }
         let items = [];
         for (let i = 0; i < UpdateChecker.availableVersions.length; i++) {
-            const item = Qt.createQmlObject('import qs.components.controls; MenuItem { icon: "history" }', root);
-            item.text = UpdateChecker.availableVersions[i];
+            const item = Qt.createQmlObject(
+                'import qs.components.controls; MenuItem { text: "' + UpdateChecker.availableVersions[i] + '"; icon: "history" }',
+                root
+            );
             items.push(item);
         }
         root.versionItems = items;
