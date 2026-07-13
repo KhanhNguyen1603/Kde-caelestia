@@ -182,6 +182,9 @@ QtObject {
                 Component {
                     BarPreviewScales {}
                 }
+                Component {
+                    TaskbarElements {}
+                }
             }
         },
         Component {
