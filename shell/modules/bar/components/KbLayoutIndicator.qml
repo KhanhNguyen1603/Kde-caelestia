@@ -20,10 +20,17 @@ StyledRect {
     StyledText {
         id: layoutLabel
 
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.leftMargin: Tokens.padding.medium
+        anchors.rightMargin: Tokens.padding.medium
+
+        horizontalAlignment: Text.AlignHCenter
         text: (Hypr.kbLayout || "??").toUpperCase()
         color: Colours.palette.m3secondary
         font: Tokens.font.mono.medium
         elide: Text.ElideRight
+        maximumLineCount: 1
     }
 }
