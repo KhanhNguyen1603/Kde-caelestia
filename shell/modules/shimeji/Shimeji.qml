@@ -77,6 +77,7 @@ StyledWindow {
     }
 
     Item {
+        id: spriteContainer
         anchors.fill: parent
 
         Repeater {
@@ -90,6 +91,24 @@ StyledWindow {
                 floorOffset: root.floorOffset
                 imgPath: root.getImgPath()
             }
+        }
+    }
+
+    Instantiator {
+        id: spriteRegions
+        model: spriteRepeater.count
+        Region {
+            item: spriteRepeater.itemAt(index)
+        }
+    }
+
+    mask: Region {
+        regions: {
+            var arr = [];
+            for (var i = 0; i < spriteRegions.count; i++) {
+                if (spriteRegions.objectAt(i)) arr.push(spriteRegions.objectAt(i));
+            }
+            return arr;
         }
     }
 }

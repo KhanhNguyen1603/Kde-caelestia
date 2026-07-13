@@ -28,14 +28,14 @@ ShellRoot {
     GSFLoader {}
 
     Background {}
-    BadAppleOverlay {}
+    // BadAppleOverlay {}
 
     Drawers {}
-    AreaPicker {}
-    Lock {
-        id: lock
-    }
-    PolkitModule {}
+    // AreaPicker {}
+    // Lock {
+    //     id: lock
+    // }
+    // PolkitModule {}
     property var regionSelector: RegionSelector {}
 
     IpcHandler {
@@ -60,7 +60,6 @@ ShellRoot {
 
     Variants {
         model: Quickshell.screens.filter(s => (GlobalConfig.shimeji?.enabled ?? false) && (GlobalConfig.shimeji?.path?.length ?? 0) > 0 && !Strings.testRegexList(GlobalConfig.shimeji?.excludedScreens ?? [], s.name))
-
         Shimeji {
             shimejiCount: GlobalConfig.shimeji?.count ?? 1
         }

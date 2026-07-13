@@ -197,7 +197,7 @@ PageBase {
                 first: true
                 icon: "settings_suggest"
                 label: qsTr("Wallpaper Settings")
-                status: qsTr("Display and Recolour")
+                status: qsTr("Display, Recolour, Desktop Icons")
                 onClicked: root.nState.openSubPage(5)
             }
 
@@ -216,11 +216,25 @@ PageBase {
             }
 
             NavRow {
+                icon: "extension"
+                label: qsTr("Desktop Addons")
+                status: qsTr("Clock, Lyrics, Visualiser, Shimeji")
+                onClicked: root.nState.openSubPage(8)
+            }
+
+            NavRow {
+                icon: "menu_open"
+                label: qsTr("Right Click Menu")
+                status: qsTr("Configure desktop right click menu")
+                onClicked: root.nState.openSubPage(9)
+            }
+
+            NavRow {
                 last: true
                 icon: "style"
                 label: qsTr("Appearance")
                 status: qsTr("Islands, Pitch Black, Transparency, Dark Theme")
-                onClicked: root.nState.openSubPage(8)
+                onClicked: root.nState.openSubPage(10)
             }
         }
     }
