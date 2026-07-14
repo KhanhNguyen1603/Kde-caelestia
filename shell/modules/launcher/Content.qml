@@ -22,7 +22,17 @@ Item {
 
     function clearClipboardHistory(): void {
         Clipboard.clearHistory();
-        Toaster.toast(qsTr("Clipboard history cleared"), "", "delete");
+    }
+
+    Connections {
+        target: Clipboard
+
+        function onClearHistoryFinished(success: bool): void {
+            if (success)
+                Toaster.toast(qsTr("Clipboard history cleared"), "", "delete");
+            else
+                Toaster.toast(qsTr("Failed to clear clipboard history"), "", "error");
+        }
     }
 
     implicitWidth: listWrapper.width + padding * 2
@@ -80,7 +90,7 @@ Item {
             id: search
 
             anchors.left: searchIcon.right
-            anchors.right: clearIcon.left
+            anchors.right: clearClipboardIcon.left
             anchors.leftMargin: Tokens.spacing.small
             anchors.rightMargin: Tokens.spacing.small
 

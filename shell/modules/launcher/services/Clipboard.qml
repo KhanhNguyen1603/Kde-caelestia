@@ -13,6 +13,7 @@ QtObject {
 
     /// Forwarded from C++ so QML items can connect to a single source of truth.
     signal imageReady(int id, string path)
+    signal clearHistoryFinished(bool success)
 
     readonly property string imageCacheDir: ClipboardManager.imageCacheDir
 
@@ -49,6 +50,9 @@ QtObject {
         target: ClipboardManager
         function onImageReady(id: int, path: string): void {
             root.imageReady(id, path);
+        }
+        function onClearHistoryFinished(success: bool): void {
+            root.clearHistoryFinished(success);
         }
     }
 }

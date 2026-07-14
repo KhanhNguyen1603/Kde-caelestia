@@ -40,10 +40,13 @@ signals:
     void itemsChanged();
     /// Emitted after the image file for `id` has been fully written to `path`.
     void imageReady(int id, const QString& path);
+    /// Emitted when clearHistory() completes.
+    void clearHistoryFinished(bool success);
 
 private:
     QVariantList m_items;
     QProcess* m_listProc = nullptr;
+    QProcess* m_wipeProc = nullptr;
     QString m_imageCacheDir;
 };
 
