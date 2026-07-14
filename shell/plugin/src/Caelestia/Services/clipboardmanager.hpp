@@ -34,6 +34,7 @@ public:
 
     Q_INVOKABLE void reload();
     Q_INVOKABLE void decodeImage(int id, const QString& outPath);
+    Q_INVOKABLE void clearHistory();
 
 signals:
     void itemsChanged();

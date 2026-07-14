@@ -20,6 +20,10 @@ QtObject {
         ClipboardManager.reload();
     }
 
+    function clearHistory(): void {
+        ClipboardManager.clearHistory();
+    }
+
     function getSortedItems(): var {
         if (!items.length)
             return [];

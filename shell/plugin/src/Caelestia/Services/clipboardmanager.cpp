@@ -156,4 +156,37 @@ void ClipboardManager::decodeImage(int id, const QString& outPath) {
     proc->start();
 }
 
+void ClipboardManager::clearHistory() {
+    // Stop any in-flight list process before wiping history.
+    if (m_listProc && m_listProc->state() != QProcess::NotRunning) {
+        m_listProc->kill();
+        m_listProc->waitForFinished(200);
+        m_listProc->deleteLater();
+        m_listProc = nullptr;
+    }
+
+    QProcess wipeProc;
+    wipeProc.setProgram("cliphist");
+    wipeProc.setArguments({"wipe"});
+    wipeProc.start();
+
+    if (!wipeProc.waitForFinished(3000)
+        || wipeProc.exitStatus() != QProcess::NormalExit
+        || wipeProc.exitCode() != 0) {
+        qCWarning(lcClipboard) << "cliphist wipe failed with exit code" << wipeProc.exitCode();
+        // Reload to keep UI and backend state in sync when wipe fails.
+        reload();
+        return;
+    }
+
+    m_items.clear();
+    emit itemsChanged();
+
+    QDir cacheDir(m_imageCacheDir);
+    if (cacheDir.exists() && !cacheDir.removeRecursively()) {
+        qCWarning(lcClipboard) << "Failed to clear clipboard image cache:" << m_imageCacheDir;
+    }
+    QDir().mkpath(m_imageCacheDir);
+}
+
 } // namespace caelestia::services
