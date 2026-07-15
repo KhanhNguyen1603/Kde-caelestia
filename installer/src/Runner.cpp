@@ -14,8 +14,39 @@
 #include <pty.h>
 #include <termios.h>
 #include <algorithm>
+#include <cctype>
 
 using namespace std;
+
+namespace {
+    bool is_valid_env_name(const string& name) {
+        if (name.empty()) return false;
+        unsigned char first = static_cast<unsigned char>(name[0]);
+        if (!(std::isalpha(first) || name[0] == '_')) return false;
+        for (char c : name) {
+            unsigned char uc = static_cast<unsigned char>(c);
+            if (!(std::isalnum(uc) || c == '_')) return false;
+        }
+        return true;
+    }
+
+    string shell_single_quote(string s) {
+        // Prevent multiline values from breaking command boundaries in eval.
+        std::replace(s.begin(), s.end(), '\n', ' ');
+        std::replace(s.begin(), s.end(), '\r', ' ');
+
+        string out = "'";
+        for (char c : s) {
+            if (c == '\'') {
+                out += "'\"'\"'";
+            } else {
+                out += c;
+            }
+        }
+        out += "'";
+        return out;
+    }
+}
 
 namespace Runner {
     vector<Step> steps = {
@@ -260,16 +291,19 @@ retry_step:
                         return val ? string(val) : "";
                     };
                     string exports = "export PATH=\"/tmp/caelestia_bin:$PATH\" SUDO_ASKPASS=\"/tmp/caelestia_askpass.sh\"";
-                    exports += " CACHE_DIR=\"" + safe_env("CACHE_DIR") + "\"";
-                    exports += " BUILDDIR=\"" + safe_env("BUILDDIR") + "\"";
-                    exports += " PKGDEST=\"" + safe_env("PKGDEST") + "\"";
-                    exports += " SRCDEST=\"" + safe_env("SRCDEST") + "\"";
-                    exports += " SRCPKGDEST=\"" + safe_env("SRCPKGDEST") + "\"";
-                    exports += " BASE_DISTRO=\"" + safe_env("BASE_DISTRO") + "\"";
-                    exports += " BUNDLE_DIR=\"" + safe_env("BUNDLE_DIR") + "\"";
+                    exports += " CACHE_DIR=" + shell_single_quote(safe_env("CACHE_DIR"));
+                    exports += " BUILDDIR=" + shell_single_quote(safe_env("BUILDDIR"));
+                    exports += " PKGDEST=" + shell_single_quote(safe_env("PKGDEST"));
+                    exports += " SRCDEST=" + shell_single_quote(safe_env("SRCDEST"));
+                    exports += " SRCPKGDEST=" + shell_single_quote(safe_env("SRCPKGDEST"));
+                    exports += " BASE_DISTRO=" + shell_single_quote(safe_env("BASE_DISTRO"));
+                    exports += " BUNDLE_DIR=" + shell_single_quote(safe_env("BUNDLE_DIR"));
                     // Export ALL variables from g_answers dynamically!
                     for (const auto& pair : g_answers) {
-                        exports += " " + pair.first + "=\"" + safe_env(pair.first.c_str()) + "\"";
+                        if (!is_valid_env_name(pair.first)) {
+                            continue;
+                        }
+                        exports += " " + pair.first + "=" + shell_single_quote(safe_env(pair.first.c_str()));
                     }
                     
                     

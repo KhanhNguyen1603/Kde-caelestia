@@ -91,6 +91,11 @@ done
 
 echo "  Deploying extra configs..."
 for config in fish fastfetch; do
+    if [[ "$config" == "fish" && "${INSTALL_FISH:-true}" != "true" ]]; then
+        echo "    [SKIP] fish config deployment disabled by user choice"
+        continue
+    fi
+
     if [[ -d "$FISH_DIR/$config" ]]; then
         # Remove
         rm -rf "$HOME/.config/$config"
