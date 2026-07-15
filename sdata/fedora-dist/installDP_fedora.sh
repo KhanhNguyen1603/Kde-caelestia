@@ -8,6 +8,10 @@ err()  { echo -e "\033[0;31m[ERR]\033[0m  $*"; }
 
 log "Installing Fedora packages..."
 
+INSTALL_FISH="${INSTALL_FISH:-true}"
+INSTALL_PAPIRUS="${INSTALL_PAPIRUS:-true}"
+INSTALL_DARKLY="${INSTALL_DARKLY:-true}"
+
 # Core dependencies (minus hyprland-specific ones)
 PACKAGES=(
     # build dependencies
@@ -17,15 +21,27 @@ PACKAGES=(
     # lib files
     pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel
     # Shells & terminal
-    foot fish eza fastfetch starship btop bash
+    foot eza fastfetch starship btop bash
     # Themes & Fonts
-    adw-gtk3-theme papirus-icon-theme google-rubik-fonts
+    adw-gtk3-theme google-rubik-fonts
     # Utilities
     fuzzel swappy brightnessctl ddcutil NetworkManager ImageMagick tesseract tesseract-langpack-eng spectacle gpu-screen-recorder slurp grim xdg-utils sassc
     # playerctl
     # Known to require manual build/copr on Fedora
     app2unit libcava quickshell-git
 )
+
+if [[ "$INSTALL_FISH" == "true" ]]; then
+    PACKAGES+=(fish)
+else
+    log "Skipping Fish installation by user choice."
+fi
+
+if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
+    PACKAGES+=(papirus-icon-theme)
+else
+    log "Skipping Papirus icon theme installation by user choice."
+fi
 
 log "Enabling RPM Fusion for H264 hardware codecs..."
 sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
@@ -165,8 +181,12 @@ curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBr
 fc-cache -f
 
 log "Building and Installing Darkly KDE Theme..."
-if ! command -v darkly >/dev/null 2>&1; then
-    sudo dnf copr enable -y deltacopy/darkly && sudo dnf install -y darkly || true
+if [[ "$INSTALL_DARKLY" == "true" ]]; then
+    if ! command -v darkly >/dev/null 2>&1; then
+        sudo dnf copr enable -y deltacopy/darkly && sudo dnf install -y darkly || true
+    fi
+else
+    log "Skipping Darkly package installation by user choice."
 fi
 
 log "Installing Caelestia CLI wrapper..."

@@ -39,8 +39,12 @@ install_if_missing() {
 }
 
 #  Kvantum 
-install_if_missing kvantum
-install_if_missing kvantum-qt5 || true   # optional qt5 support
+if [[ "${INSTALL_KVANTUM:-true}" == "true" ]]; then
+    install_if_missing kvantum
+    install_if_missing kvantum-qt5 || true   # optional qt5 support
+else
+    echo "  [SKIP] Skipping Kvantum installation by user choice."
+fi
 
 #  uv (required for kde-material-you-colors on fedora) 
 if ! command -v uv >/dev/null 2>&1; then

@@ -30,6 +30,12 @@
       "title": "Shell settings",
       "items": [
         {
+          "id": "INSTALL_FISH",
+          "type": "boolean",
+          "title": "Install Fish shell and Fish config",
+          "default": true
+        },
+        {
           "id": "DEFAULT_SHELL",
           "type": "select",
           "title": "Default shell",
@@ -52,6 +58,24 @@
       "type": "submenu",
       "title": "KDE Plasma Customizations",
       "items": [
+        {
+          "id": "INSTALL_PAPIRUS",
+          "type": "boolean",
+          "title": "Install Papirus icon theme package",
+          "default": true
+        },
+        {
+          "id": "INSTALL_DARKLY",
+          "type": "boolean",
+          "title": "Install Darkly theme package",
+          "default": true
+        },
+        {
+          "id": "INSTALL_KVANTUM",
+          "type": "boolean",
+          "title": "Install Kvantum packages",
+          "default": true
+        },
         {
           "id": "APPLY_DARKLY",
           "type": "boolean",

@@ -8,6 +8,10 @@ err()  { echo -e "\033[0;31m[ERR]\033[0m  $*"; }
 
 log "Installing Arch packages..."
 
+INSTALL_FISH="${INSTALL_FISH:-true}"
+INSTALL_PAPIRUS="${INSTALL_PAPIRUS:-true}"
+INSTALL_DARKLY="${INSTALL_DARKLY:-true}"
+
 # Ensure yay
 if ! command -v yay >/dev/null 2>&1; then
     log "yay not found - installing..."
@@ -32,13 +36,31 @@ PACKAGES=(
     # Shell wrapper
     caelestia-cli quickshell-git
     # Shells & terminal
-    foot fish eza fastfetch starship btop bash
+    foot eza fastfetch starship btop bash
     # Themes & Fonts
-    adw-gtk-theme papirus-icon-theme ttf-jetbrains-mono-nerd ttf-material-symbols-variable ttf-rubik-vf ttf-cascadia-code-nerd darkly
+    adw-gtk-theme ttf-jetbrains-mono-nerd ttf-material-symbols-variable ttf-rubik-vf ttf-cascadia-code-nerd
     # Utilities
     swappy brightnessctl ddcutil networkmanager imagemagick tesseract tesseract-data-eng satty spectacle xdg-utils sassc
     #playerctl
 )
+
+if [[ "$INSTALL_FISH" == "true" ]]; then
+    PACKAGES+=(fish)
+else
+    log "Skipping Fish installation by user choice."
+fi
+
+if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
+    PACKAGES+=(papirus-icon-theme)
+else
+    log "Skipping Papirus icon theme installation by user choice."
+fi
+
+if [[ "$INSTALL_DARKLY" == "true" ]]; then
+    PACKAGES+=(darkly)
+else
+    log "Skipping Darkly package installation by user choice."
+fi
 
 log "Syncing package databases and installing packages..."
 FAILED_PKGS=()
