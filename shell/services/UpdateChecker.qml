@@ -551,6 +551,9 @@ fi
         property bool buildShell: true
     }
 
+    property alias deployConfigs: updaterSettings.deployConfigs
+    property alias buildShell: updaterSettings.buildShell
+
     Timer {
         interval: 30000
         repeat: true

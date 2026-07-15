@@ -300,7 +300,35 @@ PageBase {
             }
         }
 
-        // 3 ── VERSION TIMELINE ────────────────────────────────────────────
+        // 3 ── INSTALLATION SETTINGS ──────────────────────────────────────
+        SectionHeader { text: qsTr("Customize Installation") }
+
+        NavRow {
+            first: true
+            icon: "folder"
+            label: qsTr("Open Backup Folder")
+            status: qsTr("View your previously backed-up configuration files")
+            onClicked: {
+                backupFolderProcess.running = true;
+            }
+        }
+
+        ToggleRow {
+            text: qsTr("Deploy Configurations")
+            subtext: qsTr("Update your custom dotfiles in ~/.config")
+            checked: UpdateChecker.deployConfigs
+            onToggled: UpdateChecker.deployConfigs = checked
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Build Shell UI")
+            subtext: qsTr("Compile and install Quickshell UI updates")
+            checked: UpdateChecker.buildShell
+            onToggled: UpdateChecker.buildShell = checked
+        }
+
+        // 4 ── VERSION TIMELINE ────────────────────────────────────────────
         SectionHeader { text: qsTr("Version History") }
 
         ConnectedRect {
@@ -348,7 +376,7 @@ PageBase {
             }
         }
 
-        // 4 ── UPDATE LOG (appears after update runs) ──────────────────────
+        // 5 ── UPDATE LOG (appears after update runs) ──────────────────────
         SectionHeader {
             visible: root.updateRunning || root.updateLogs !== ""
             text: qsTr("Update Log")
@@ -391,13 +419,6 @@ PageBase {
                     }
                 }
 
-                StyledProgressBar {
-                    Layout.fillWidth: true
-                    value: root.updateProgress
-                    indeterminate: root.updateProgress === 0.0 && root.updateRunning
-                    visible: root.updateRunning || root.updateProgress > 0.0
-                }
-
                 StyledRect {
                     Layout.fillWidth: true
                     implicitHeight: 240
@@ -437,6 +458,11 @@ PageBase {
         Process {
             id: logoutProcess
             command: ["qdbus6", "org.kde.Shutdown", "/Shutdown", "org.kde.Shutdown.logout"]
+        }
+
+        Process {
+            id: backupFolderProcess
+            command: GlobalConfig.general.apps.explorer.concat([Paths.absolutePath("~/.config/caelestia-update/backups")])
         }
     }
 }
