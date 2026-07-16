@@ -14,6 +14,7 @@ StyledRect {
     property color textColor: Colours.palette.m3onSurface
     property color iconColor: accent
     property real widthFactor: 2.35
+    property string maxText: "100%"
 
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
     readonly property int barThickness: Math.round(Tokens.sizes.bar.innerWidth * Math.max(0.6, !isNaN(Config.bar.scale) ? Config.bar.scale : 1.0))
@@ -27,8 +28,51 @@ StyledRect {
     radius: Tokens.rounding.full
     clip: true
 
-    implicitWidth: isHorizontal ? Math.round(barThickness * widthFactor) : barThickness
-    implicitHeight: isHorizontal ? barThickness : Math.max(contentCol.implicitHeight + vPadding * 2 + trackThickness + Tokens.spacing.extraSmall, barThickness)
+    StyledText {
+        id: dummyText
+        text: root.maxText
+        font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
+        visible: false
+    }
+
+    implicitWidth: isHorizontal ? Math.max(contentRow.implicitWidth + hPadding * 2, Math.round(barThickness * widthFactor)) : barThickness
+    implicitHeight: isHorizontal ? barThickness : Math.max(contentCol.implicitHeight + vPadding * 2, barThickness)
+    Item {
+        id: progressTrack
+
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.top: root.isHorizontal ? parent.top : undefined
+        anchors.right: root.isHorizontal ? undefined : parent.right
+
+        width: root.isHorizontal ? parent.width * root.progress : parent.width
+        height: root.isHorizontal ? parent.height : parent.height * root.progress
+        clip: true
+
+        Behavior on width {
+            Anim {
+                type: Anim.FastSpatial
+            }
+        }
+
+        Behavior on height {
+            Anim {
+                type: Anim.FastSpatial
+            }
+        }
+
+        StyledRect {
+            id: progressFill
+
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+
+            width: root.width
+            height: root.height
+            color: Qt.alpha(root.accent, 0.25)
+            radius: root.radius
+        }
+    }
 
     RowLayout {
         id: contentRow
@@ -40,7 +84,7 @@ StyledRect {
         anchors.leftMargin: root.hPadding
         anchors.rightMargin: root.hPadding
         anchors.topMargin: root.vPadding
-        anchors.bottomMargin: root.vPadding + root.trackThickness + Tokens.spacing.extraSmall
+        anchors.bottomMargin: root.vPadding
         visible: root.isHorizontal
         spacing: Tokens.spacing.small
 
@@ -56,12 +100,13 @@ StyledRect {
         }
 
         StyledText {
+            Layout.preferredWidth: dummyText.implicitWidth
+            horizontalAlignment: Text.AlignHCenter
             text: root.valueText
             color: root.textColor
             font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
             elide: Text.ElideRight
             maximumLineCount: 1
-            animate: true
         }
 
         Item {
@@ -80,7 +125,7 @@ StyledRect {
         anchors.leftMargin: root.vPadding
         anchors.rightMargin: root.vPadding
         anchors.topMargin: root.vPadding
-        anchors.bottomMargin: root.vPadding + root.trackThickness + Tokens.spacing.extraSmall
+        anchors.bottomMargin: root.vPadding
         visible: !root.isHorizontal
         spacing: Tokens.spacing.extraSmall
 
@@ -96,38 +141,6 @@ StyledRect {
             text: root.valueText
             color: root.textColor
             font: Tokens.font.body.builders.small.weight(Font.DemiBold).build()
-            animate: true
-        }
-    }
-
-    StyledRect {
-        id: progressTrack
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: root.trackInset
-
-        implicitHeight: root.trackThickness
-        color: Qt.alpha(Colours.palette.m3outlineVariant, 0.55)
-        radius: Tokens.rounding.full
-
-        StyledRect {
-            id: progressFill
-
-            anchors.left: parent.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-
-            width: Math.max(root.progress > 0 ? root.trackThickness : 0, parent.width * root.progress)
-            color: root.accent
-            radius: parent.radius
-
-            Behavior on width {
-                Anim {
-                    type: Anim.FastSpatial
-                }
-            }
         }
     }
 }
