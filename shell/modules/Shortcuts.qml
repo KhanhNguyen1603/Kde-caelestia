@@ -103,7 +103,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "launcher"
-        key: "Meta+Space"
+        key: "Meta+Tab"
         description: "Toggle launcher"
         onPressed: root.launcherInterrupted = false
         onReleased: {

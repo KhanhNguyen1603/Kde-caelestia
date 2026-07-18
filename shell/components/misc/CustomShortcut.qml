@@ -31,6 +31,7 @@ Loader {
     Component {
         id: kdeShortcut
         Caelestia.GlobalShortcut {
+            name: root.name
             key: root.key
             description: root.description
             onActivated: {

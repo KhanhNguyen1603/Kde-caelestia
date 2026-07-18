@@ -2,23 +2,33 @@
 
 #include <KGlobalAccel>
 #include <QKeySequence>
-#include <QUuid>
 #include <QDebug>
+#include <cstdlib>
 
 GlobalShortcut::GlobalShortcut(QObject *parent)
     : QObject(parent), m_action(new QAction(this))
 {
-    // Ensure we have a unique object name for KGlobalAccel so multiple shortcuts don't collide.
-    m_action->setObjectName("caelestia-shortcut-" + QUuid::createUuid().toString(QUuid::WithoutBraces));
-    
-    // Connect QAction trigger to our activated signal
     connect(m_action, &QAction::triggered, this, &GlobalShortcut::activated);
 }
 
 GlobalShortcut::~GlobalShortcut()
 {
-    // Cleanup if needed (QAction is a child, so it's deleted automatically).
-    // KGlobalAccel will unregister automatically when the action is destroyed.
+}
+
+QString GlobalShortcut::name() const
+{
+    return m_name;
+}
+
+void GlobalShortcut::setName(const QString &name)
+{
+    if (m_name == name)
+        return;
+
+    m_name = name;
+    m_action->setObjectName("caelestia-shortcut-" + m_name);
+    emit nameChanged();
+    updateShortcut();
 }
 
 QString GlobalShortcut::key() const
@@ -53,13 +63,34 @@ void GlobalShortcut::setDescription(const QString &description)
 
 void GlobalShortcut::updateShortcut()
 {
+    if (m_name.isEmpty()) {
+        return;
+    }
+
     if (m_key.isEmpty()) {
-        KGlobalAccel::self()->removeAllShortcuts(m_action);
+        KGlobalAccel::self()->setShortcut(m_action, QList<QKeySequence>(), KGlobalAccel::NoAutoloading);
         return;
     }
 
     m_action->setText(m_description.isEmpty() ? "Caelestia Action" : m_description);
 
     QKeySequence seq(m_key);
-    KGlobalAccel::self()->setGlobalShortcut(m_action, seq);
+
+    // 1. Find system-wide collisions
+    QList<KGlobalShortcutInfo> conflicts = KGlobalAccel::globalShortcutsByKey(seq);
+    for (const auto &info : conflicts) {
+        if (info.componentUniqueName() != "caelestia") {
+            // 2. Unbind foreign shortcuts natively via gdbus
+            QString cmd = QString("gdbus call --session --dest org.kde.kglobalaccel "
+                                  "--object-path /kglobalaccel "
+                                  "--method org.kde.KGlobalAccel.setShortcutKeys "
+                                  "\"['%1', '%2', '', '']\" \"[([0, 0, 0, 0],)]\" 4")
+                                  .arg(info.componentUniqueName())
+                                  .arg(info.uniqueName());
+            system(cmd.toUtf8().constData());
+        }
+    }
+
+    // 3. Bind the new shortcut forcefully (NoAutoloading ignores cached ghost shortcuts)
+    KGlobalAccel::self()->setShortcut(m_action, QList<QKeySequence>() << seq, KGlobalAccel::NoAutoloading);
 }
