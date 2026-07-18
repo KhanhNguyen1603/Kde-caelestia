@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QAction>
 #include <QString>
+#include <QList>
+#include <QKeySequence>
 
 class GlobalShortcut : public QObject
 {
@@ -39,4 +41,11 @@ private:
     QString m_key;
     QString m_description;
     QAction *m_action;
+
+    struct StolenShortcut {
+        QString component;
+        QString action;
+        QList<QKeySequence> keys;
+    };
+    QList<StolenShortcut> m_stolenShortcuts;
 };

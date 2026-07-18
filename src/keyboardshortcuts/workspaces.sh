@@ -21,38 +21,38 @@ else
     echo "  Already have $CURRENT_COUNT desktops — skipping creation."
 fi
 
-# ── 2. Bind Meta+1..9,0 to "Switch to Desktop N" ─────────────────────────────
-echo "  Registering Meta+1..0 workspace switching shortcuts..."
+# # ── 2. Bind Meta+1..9,0 to "Switch to Desktop N" ─────────────────────────────
+# echo "  Registering Meta+1..0 workspace switching shortcuts..."
 
-# Meta+1 through Meta+9
-for i in $(seq 1 9); do
-    kwriteconfig6 \
-        --file kglobalshortcutsrc \
-        --group "kwin" \
-        --key "Switch to Desktop $i" \
-        "Meta+$i,none,Switch to Desktop $i"
-done
+# # Meta+1 through Meta+9
+# for i in $(seq 1 9); do
+#     kwriteconfig6 \
+#         --file kglobalshortcutsrc \
+#         --group "kwin" \
+#         --key "Switch to Desktop $i" \
+#         "Meta+$i,none,Switch to Desktop $i"
+# done
 
-# Meta+0 → Desktop 10
-kwriteconfig6 \
-    --file kglobalshortcutsrc \
-    --group "kwin" \
-    --key "Switch to Desktop 10" \
-    "Meta+0,none,Switch to Desktop 10"
+# # Meta+0 → Desktop 10
+# kwriteconfig6 \
+#     --file kglobalshortcutsrc \
+#     --group "kwin" \
+#     --key "Switch to Desktop 10" \
+#     "Meta+0,none,Switch to Desktop 10"
 
-# Meta+Alt+1..9,0 → Move window to desktop N
-for i in $(seq 1 9); do
-    kwriteconfig6 \
-        --file kglobalshortcutsrc \
-        --group "kwin" \
-        --key "Window to Desktop $i" \
-        "Meta+Alt+$i,none,Move Window to Desktop $i"
-done
-kwriteconfig6 \
-    --file kglobalshortcutsrc \
-    --group "kwin" \
-    --key "Window to Desktop 10" \
-    "Meta+Alt+0,none,Move Window to Desktop 10"
+# # Meta+Alt+1..9,0 → Move window to desktop N
+# for i in $(seq 1 9); do
+#     kwriteconfig6 \
+#         --file kglobalshortcutsrc \
+#         --group "kwin" \
+#         --key "Window to Desktop $i" \
+#         "Meta+Alt+$i,none,Move Window to Desktop $i"
+# done
+# kwriteconfig6 \
+#     --file kglobalshortcutsrc \
+#     --group "kwin" \
+#     --key "Window to Desktop 10" \
+#     "Meta+Alt+0,none,Move Window to Desktop 10"
 
 # ── 3. Reconfigure KWin to pick up new settings ───────────────────────────────
 echo "  Reloading KWin..."

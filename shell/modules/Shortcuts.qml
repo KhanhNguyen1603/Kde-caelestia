@@ -51,7 +51,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "screenshot"
-        key: "Meta+Shift+S, Print"
+        key: "Meta+Shift+S; Print"
         description: "Toggle screenshot overlay"
         onPressed: {
             if (root.hasFullscreen)
@@ -103,7 +103,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "launcher"
-        key: "Meta+Tab"
+        key: "Meta+Space"
         description: "Toggle launcher"
         onPressed: root.launcherInterrupted = false
         onReleased: {
