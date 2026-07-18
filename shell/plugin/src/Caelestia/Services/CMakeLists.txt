@@ -1,3 +1,4 @@
+find_package(KF6GlobalAccel REQUIRED)
 qml_module(caelestia-services
     URI Caelestia.Services
     SOURCES
@@ -41,10 +42,13 @@ qml_module(caelestia-services
         kwinworkspacestate.hpp
         kwinactivewindowbridge.cpp
         kwinactivewindowbridge.hpp
+        globalshortcut.cpp
+        globalshortcut.hpp
     LIBRARIES
         Qt::DBus
         Qt::Gui
         Qt::WaylandClient
+        KF6::GlobalAccel
         PkgConfig::Pipewire
         PkgConfig::Aubio
         PkgConfig::Cava

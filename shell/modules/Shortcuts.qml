@@ -51,6 +51,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "screenshot"
+        key: "Meta+Shift+S, Print"
         description: "Toggle screenshot overlay"
         onPressed: {
             if (root.hasFullscreen)
@@ -75,6 +76,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "screenRecording"
+        key: "Meta+Ctrl+S"
         description: "Toggle screen recording"
         onPressed: {
             if (root.hasFullscreen)
@@ -87,6 +89,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "session"
+        key: "Ctrl+Alt+Delete"
         description: "Toggle session menu"
         onPressed: {
             if (root.hasFullscreen)
@@ -100,6 +103,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "launcher"
+        key: "Meta+Space"
         description: "Toggle launcher"
         onPressed: root.launcherInterrupted = false
         onReleased: {
@@ -123,6 +127,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "sidebar"
+        key: "Meta+B"
         description: "Toggle sidebar"
         onPressed: {
             if (root.hasFullscreen)
@@ -164,6 +169,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "emoji"
+        key: "Meta+Shift+V"
         description: "Open emoji picker"
         onPressed: {
             if (root.hasFullscreen)
@@ -178,6 +184,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "clipboard"
+        key: "Meta+V"
         description: "Open clipboard history"
         onPressed: {
             if (root.hasFullscreen)
@@ -206,6 +213,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "wallpaper"
+        key: "Meta+Ctrl+T"
         description: "Open wallpaper picker"
         onPressed: {
             if (root.hasFullscreen)
@@ -220,6 +228,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "keybinds"
+        key: "Meta+/"
         description: "Open keybinds list"
         onPressed: {
             if (root.hasFullscreen)
@@ -228,6 +237,49 @@ Scope {
             const visibilities = Visibilities.getForActive();
             visibilities.launcher = true;
         }
+    }
+
+
+    CustomShortcut {
+        name: "foot"
+        description: "Launch Terminal"
+        key: "Meta+Return"
+        onPressed: Quickshell.execDetached(["kstart", "--", "foot"])
+    }
+
+    CustomShortcut {
+        name: "firefox"
+        description: "Launch Browser"
+        key: "Meta+W"
+        onPressed: Quickshell.execDetached(["kstart", "--", "firefox"])
+    }
+
+    CustomShortcut {
+        name: "code"
+        description: "Launch Editor"
+        key: "Meta+C"
+        onPressed: Quickshell.execDetached(["kstart", "--", "code"])
+    }
+
+    CustomShortcut {
+        name: "github-desktop"
+        description: "Launch GitHub Desktop"
+        key: "Meta+G"
+        onPressed: Quickshell.execDetached(["kstart", "--", "github-desktop"])
+    }
+
+    CustomShortcut {
+        name: "nemo"
+        description: "Launch File Manager"
+        key: "Meta+Alt+E"
+        onPressed: Quickshell.execDetached(["kstart", "--", "nemo"])
+    }
+    
+    CustomShortcut {
+        name: "kcolorpicker"
+        description: "Color Picker"
+        key: "Meta+Shift+C"
+        onPressed: Quickshell.execDetached(["/bin/bash", "-c", "~/.local/bin/kcolorpicker -a"])
     }
 
     IpcHandler {

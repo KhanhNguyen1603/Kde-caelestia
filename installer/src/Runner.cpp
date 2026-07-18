@@ -77,7 +77,7 @@ namespace Runner {
         {"Update submodules", "scripts/02a-submodules.sh", "PENDING"},
         {"Deploy configs", "scripts/03-deploy-configs.sh", "PENDING"},
         {"Deploy KDE tweaks", "scripts/04-deploy-kde.sh", "PENDING"},
-        {"Keyboard shortcuts", "src/keyboardshortcuts/register.sh", "PENDING"},
+        {"Keyboard shortcuts", "src/keyboardshortcuts/workspaces.sh", "PENDING"},
         {"Enable services", "scripts/06-services.sh", "PENDING"},
         {"Configure KDE apps", "scripts/07-kde-apps.sh", "PENDING"},
         {"Build shell", "scripts/08-build-shell.sh", "PENDING"},
