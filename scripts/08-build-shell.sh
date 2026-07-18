@@ -75,16 +75,7 @@ if [ -f "$HOME/.config/fish/config.fish" ]; then
     fi
 fi
 
-info "Deploying KDE Bridge Scripts..."
-
-mkdir -p ~/.local/bin ~/.local/share/kwin/scripts ~/.config/systemd/user
-
-# Install utilities
-if [ -d "$BUNDLE_DIR/scripts" ]; then
-    # Copy the wl-screenrec wrapper
-    cp --remove-destination "$BUNDLE_DIR/scripts/record.sh" ~/.local/bin/caelestia-record
-    chmod +x ~/.local/bin/caelestia-record
-fi
+mkdir -p ~/.local/bin ~/.config/systemd/user
 
 info "Patching caelestia-cli record/screenshot (requires root)..."
 
@@ -101,7 +92,8 @@ else
     fi
 fi
 
-bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
+info "Fixing opencv build failure and patching caelestia-cli (requires root)..."
+sudo bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
 USER_HOME="$1"
 USER_CACHE="$2"
 
