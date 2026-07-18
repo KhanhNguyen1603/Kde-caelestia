@@ -52,11 +52,14 @@ PanelWindow {
     property bool contentRegionOpacity: false
 
     // Vars for indicators
-    readonly property var windows: KWinActiveWindowBridge.windowList.sort((a, b) => {
-        // Sort floating=true windows before others
-        if (a.floating === b.floating) return 0;
-        return a.floating ? -1 : 1;
-    })
+    readonly property var windows: {
+        let arr = Array.from(KWinActiveWindowBridge.windowList || []);
+        return arr.sort((a, b) => {
+            // Sort floating=true windows before others
+            if (a.floating === b.floating) return 0;
+            return a.floating ? -1 : 1;
+        });
+    }
     readonly property var layers: ({})
     readonly property real falsePositivePreventionRatio: 0.5
 
@@ -330,6 +333,7 @@ PanelWindow {
 
         // Controls
         onPressed: (mouse) => {
+            mouse.accepted = true;
             root.dragStartX = mouse.x;
             root.dragStartY = mouse.y;
             root.draggingX = mouse.x;
