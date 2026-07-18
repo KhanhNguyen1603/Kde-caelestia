@@ -3,7 +3,7 @@ name: Rolling Release
 on:
   push:
     branches:
-      - main
+      - dev
 
 jobs:
   rolling-release:
