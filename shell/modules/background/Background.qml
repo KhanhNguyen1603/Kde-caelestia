@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.containers
 import qs.services
