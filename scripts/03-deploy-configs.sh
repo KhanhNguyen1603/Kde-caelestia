@@ -135,21 +135,7 @@ if [[ -d "$SRC_DIR/bin" ]]; then
         fi
     done
     
-    chmod +x "$HOME/.local/bin/kcolorpicker" \
-              "$HOME/.local/bin/qs-kwin-bridge.py" 2>/dev/null || true
-fi
-
-# systemd user service
-if [[ -f "$SRC_DIR/systemd/qs-kwin-bridge.service" ]] && \
-   [[ -s "$SRC_DIR/systemd/qs-kwin-bridge.service" ]]; then
-    cp "$SRC_DIR/systemd/qs-kwin-bridge.service" \
-       "$HOME/.config/systemd/user/"
-fi
-
-# KWin script
-if [[ -d "$SRC_DIR/kwin/quickshell-kde-bridge" ]]; then
-    cp -r "$SRC_DIR/kwin/quickshell-kde-bridge" \
-          "$HOME/.local/share/kwin/scripts/"
+    chmod +x "$HOME/.local/bin/kcolorpicker" 2>/dev/null || true
 fi
 
 # Update desktop database

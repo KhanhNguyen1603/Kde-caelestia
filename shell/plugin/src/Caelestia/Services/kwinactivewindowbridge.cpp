@@ -111,7 +111,58 @@ void KWinActiveWindowBridge::updateActiveWindow(const QString &uuid, const QStri
     emit activeWindowChanged();
 }
 
+QVariantList KWinActiveWindowBridge::windowList() const {
+    return m_windowList;
+}
+
+void KWinActiveWindowBridge::focusWindow(const QString &address) {
+    QTemporaryFile *tempFile = new QTemporaryFile(QDir::tempPath() + "/caelestia-kwin-focus-XXXXXX.js", this);
+    if (!tempFile->open()) {
+        delete tempFile;
+        return;
+    }
+    
+    QString scriptSource = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                workspace.activeWindow = wins[i];
+                break;
+            }
+        }
+    )").arg(address);
+    
+    tempFile->write(scriptSource.toUtf8());
+    QString fileName = tempFile->fileName();
+    tempFile->close();
+
+    QString scriptName = "caelestia-focus-" + QString::number(QCoreApplication::applicationPid()) + "-" + QString::number(QDateTime::currentMSecsSinceEpoch());
+    
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+    loadMsg << fileName << scriptName;
+    
+    QDBusReply<int> reply = bus.call(loadMsg);
+    if (reply.isValid()) {
+        int scriptId = reply.value();
+        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
+        bus.call(runMsg);
+        
+        QDBusMessage unloadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+        unloadMsg << scriptName;
+        bus.asyncCall(unloadMsg); // Clean up immediately after starting
+    }
+    
+    tempFile->deleteLater();
+}
+
 void KWinActiveWindowBridge::updateWindowList(const QString &windowsJson) {
+    QJsonDocument doc = QJsonDocument::fromJson(windowsJson.toUtf8());
+    if (doc.isArray()) {
+        m_windowList = doc.array().toVariantList();
+        emit windowListChanged();
+    }
+
     // Optionally update a file for backwards compatibility with hyprlandstate.cpp
     QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
     QFile f(runtimeDir + "/qs_kwin_windows.json");
@@ -122,24 +173,25 @@ void KWinActiveWindowBridge::updateWindowList(const QString &windowsJson) {
 }
 
 void KWinActiveWindowBridge::injectKWinScript() {
-    QTemporaryFile tempFile(QDir::tempPath() + "/caelestia-kwin-XXXXXX.js");
-    tempFile.setAutoRemove(false);
-    if (!tempFile.open()) return;
-    tempFile.write(kScriptSource.toUtf8());
-    QString fileName = tempFile.fileName();
-    tempFile.close();
-    
     m_scriptName = "caelestia-active-window-" + QString::number(QCoreApplication::applicationPid()) + "-" + QString::number(QDateTime::currentMSecsSinceEpoch());
     
+    QString scriptPath = QDir::tempPath() + "/caelestia-kwin-bridge.js";
+    QFile f(scriptPath);
+    if (f.open(QIODevice::WriteOnly)) {
+        f.write(kScriptSource.toUtf8());
+        f.close();
+    }
+    
     QDBusConnection bus = QDBusConnection::sessionBus();
+    
     QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
-    loadMsg << fileName << m_scriptName;
+    loadMsg << scriptPath << m_scriptName;
     
     QDBusReply<int> reply = bus.call(loadMsg);
     if (reply.isValid()) {
-        QDBusMessage startMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "start");
-        startMsg << m_scriptName;
-        bus.call(startMsg);
+        int scriptId = reply.value();
+        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
+        bus.call(runMsg);
     } else {
         qWarning() << "Failed to inject KWin active window script:" << reply.error().message();
     }

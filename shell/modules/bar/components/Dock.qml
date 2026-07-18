@@ -9,6 +9,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import Caelestia
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.effects
 import qs.components.controls
@@ -307,7 +308,11 @@ Item {
                                 }
                                 
                                 if (modelData.toplevels.length > 0) {
-                                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.toplevels[0].address}" })` : `focuswindow address:0x${modelData.toplevels[0].address}`);
+                                    if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                                        KWinActiveWindowBridge.focusWindow(modelData.toplevels[0].address);
+                                    } else {
+                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.toplevels[0].address}" })` : `focuswindow address:0x${modelData.toplevels[0].address}`);
+                                    }
                                 } else if (modelData.entry) {
                                     // Mark as launching
                                     let newLaunching = Object.assign({}, root.launchingApps);
@@ -367,7 +372,7 @@ Item {
                         const dummy = root.modelUpdateTrigger;
                         if (!modelData) return false;
                         for (const top of modelData.toplevels) {
-                            if (top.focused) return true;
+                            if (top.focused || (root.activeTop && root.activeTop.address === top.address)) return true;
                         }
                         return false;
                     }
@@ -536,7 +541,7 @@ Item {
             }
         }
         
-        for (const toplevel of HyprlandData.windowList) {
+        for (const toplevel of root._toplevels) {
             const ipc = toplevel;
             if (!ipc) continue;
             const appClass = ipc.class || ipc.initialClass;
@@ -671,7 +676,12 @@ Item {
         root.modelUpdateTrigger += 1;
     }
 
-    property var _toplevels: HyprlandData.windowList
+    property var _toplevels: {
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList && KWinActiveWindowBridge.windowList.length > 0) {
+            return KWinActiveWindowBridge.windowList;
+        }
+        return HyprlandData.windowList;
+    }
 
     on_ToplevelsChanged: {
         root.rebuildModel()
@@ -686,7 +696,12 @@ Item {
         onTriggered: root.rebuildModel()
     }
 
-    property var activeTop: Hyprland.activeToplevel || HyprlandData.activeWindow
+    property var activeTop: {
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeWindow && KWinActiveWindowBridge.activeWindow.address) {
+            return KWinActiveWindowBridge.activeWindow;
+        }
+        return Hyprland.activeToplevel || HyprlandData.activeWindow;
+    }
 
     onActiveTopChanged: {
         root.rebuildModel()

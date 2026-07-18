@@ -6,15 +6,10 @@ echo ""
 echo "  Step 6/11  Services & KWin"
 echo ""
 
-#  qs-kwin-bridge systemd service 
-if [[ -f "$HOME/.config/systemd/user/qs-kwin-bridge.service" ]] && \
-   [[ -s "$HOME/.config/systemd/user/qs-kwin-bridge.service" ]]; then
-    echo "  Enabling qs-kwin-bridge service..."
-    systemctl --user daemon-reload
-    systemctl --user enable --now qs-kwin-bridge.service 2>/dev/null || true
-    echo "  [OK]  qs-kwin-bridge enabled."
-else
-    echo "  [SKIP] qs-kwin-bridge.service is empty/missing  skipping."
+if systemctl --user is-enabled --quiet qs-kwin-bridge.service 2>/dev/null || \
+   systemctl --user is-active --quiet qs-kwin-bridge.service 2>/dev/null; then
+    echo "  Disabling legacy qs-kwin-bridge service..."
+    systemctl --user disable --now qs-kwin-bridge.service 2>/dev/null || true
 fi
 
 #  ydotoold (on-screen keyboard key injection) 
