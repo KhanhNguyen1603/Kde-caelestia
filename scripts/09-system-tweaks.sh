@@ -90,29 +90,29 @@ tweak_five_desktops() {
 # 
 # TWEAK: Register workspace switching shortcuts (Meta+1..5)
 # 
-tweak_workspace_shortcuts() {
-    info "Registering Meta+1..5 workspace switching shortcuts..."
+# tweak_workspace_shortcuts() {
+#     info "Registering Meta+1..5 workspace switching shortcuts..."
 
-    # Meta+1..5  Switch to Desktop N
-    for i in $(seq 1 5); do
-        kwriteconfig6 \
-            --file kglobalshortcutsrc \
-            --group "kwin" \
-            --key "Switch to Desktop $i" \
-            "Meta+$i,none,Switch to Desktop $i"
-    done
+#     # Meta+1..5  Switch to Desktop N
+#     for i in $(seq 1 5); do
+#         kwriteconfig6 \
+#             --file kglobalshortcutsrc \
+#             --group "kwin" \
+#             --key "Switch to Desktop $i" \
+#             "Meta+$i,none,Switch to Desktop $i"
+#     done
 
-    # Meta+Shift+1..5  Move window to desktop N
-    for i in $(seq 1 5); do
-        kwriteconfig6 \
-            --file kglobalshortcutsrc \
-            --group "kwin" \
-            --key "Window to Desktop $i" \
-            "Meta+Shift+$i,none,Move Window to Desktop $i"
-    done
+#     # Meta+Shift+1..5  Move window to desktop N
+#     for i in $(seq 1 5); do
+#         kwriteconfig6 \
+#             --file kglobalshortcutsrc \
+#             --group "kwin" \
+#             --key "Window to Desktop $i" \
+#             "Meta+Shift+$i,none,Move Window to Desktop $i"
+#     done
 
-    ok "Workspace shortcuts registered."
-}
+#     ok "Workspace shortcuts registered."
+# }
 
 # 
 # TWEAK: Reload KWin and KGlobalAccel to pick up config changes
@@ -241,8 +241,8 @@ if [[ "${1:-}" == "--list" ]]; then
 fi
 
 tweak_disable_kde_osd
-tweak_five_desktops
-tweak_workspace_shortcuts
+# tweak_five_desktops
+# tweak_workspace_shortcuts
 tweak_default_shell
 tweak_patch_caelestia_cli
 tweak_reload_kde

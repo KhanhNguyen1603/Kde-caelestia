@@ -8,6 +8,7 @@
 # ==============================================================
 
 set -uo pipefail
+export CAELESTIA_SETUP_RUNNING=1
 
 # Hide cursor immediately for cleaner output
 tput civis 2>/dev/null || true

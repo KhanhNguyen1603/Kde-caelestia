@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 07-services.sh  Enable systemd user services and reload KWin.
+# 06-services.sh  Enable systemd user services and reload KWin.
 
 echo
 echo ""
@@ -11,6 +11,28 @@ if systemctl --user is-enabled --quiet qs-kwin-bridge.service 2>/dev/null || \
     echo "  Disabling legacy qs-kwin-bridge service..."
     systemctl --user disable --now qs-kwin-bridge.service 2>/dev/null || true
 fi
+
+if systemctl is-enabled --quiet keyd.service 2>/dev/null || \
+   systemctl is-active --quiet keyd.service 2>/dev/null; then
+    echo "  Disabling legacy keyd service..."
+    sudo systemctl disable --now keyd.service 2>/dev/null || true
+fi
+
+echo "  Clearing legacy KWin workspace shortcuts to avoid QML conflicts..."
+for i in $(seq 1 10); do
+    kwriteconfig6 --file kglobalshortcutsrc --group "kwin" --key "Switch to Desktop $i" "none,none,Switch to Desktop $i"
+    kwriteconfig6 --file kglobalshortcutsrc --group "kwin" --key "Window to Desktop $i" "none,none,Move Window to Desktop $i"
+done
+
+echo "  Disabling legacy quickshell-kde-bridge KWin script..."
+kwriteconfig6 --file kwinrc --group "Plugins" --key "quickshell-kde-bridgeEnabled" "false"
+
+echo "  Ensuring KWin has 10 virtual desktops..."
+kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "10"
+kwriteconfig6 --file kwinrc --group "Desktops" --key "Rows" "1"
+for i in $(seq 1 10); do
+    kwriteconfig6 --file kwinrc --group "Desktops" --key "Name_$i" "Desktop $i"
+done
 
 #  ydotoold (on-screen keyboard key injection) 
 # ydotoold needs access to /dev/uinput. Add a udev rule to allow the 'input'

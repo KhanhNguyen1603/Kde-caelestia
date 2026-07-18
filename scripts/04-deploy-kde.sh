@@ -53,24 +53,24 @@ kwriteconfig6 --file kwinrc --group "Plugins" \
 
 
 
-echo "==> Configuring KDE virtual desktops..."
+# echo "==> Configuring KDE virtual desktops..."
 
-# ── 1. Set desktop count to 10 via kwriteconfig6 ─────────────────────────────
-# KWin reads NumberOfDesktops from kwinrc on startup / reconfigure.
-CURRENT_COUNT=$(kreadconfig6 --file kwinrc --group "Desktops" --key "Number" 2>/dev/null || echo "1")
-echo "  Current desktop count: $CURRENT_COUNT"
+# # ── 1. Set desktop count to 10 via kwriteconfig6 ─────────────────────────────
+# # KWin reads NumberOfDesktops from kwinrc on startup / reconfigure.
+# CURRENT_COUNT=$(kreadconfig6 --file kwinrc --group "Desktops" --key "Number" 2>/dev/null || echo "1")
+# echo "  Current desktop count: $CURRENT_COUNT"
 
-if (( CURRENT_COUNT < 10 )); then
-    echo "  Setting desktop count to 10..."
-    kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "10"
-    kwriteconfig6 --file kwinrc --group "Desktops" --key "Rows" "1"
-    # Also name the desktops
-    for i in $(seq 1 10); do
-        kwriteconfig6 --file kwinrc --group "Desktops" --key "Name_$i" "Desktop $i"
-    done
-else
-    echo "  Already have $CURRENT_COUNT desktops — skipping creation."
-fi
+# if (( CURRENT_COUNT < 10 )); then
+#     echo "  Setting desktop count to 10..."
+#     kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "10"
+#     kwriteconfig6 --file kwinrc --group "Desktops" --key "Rows" "1"
+#     # Also name the desktops
+#     for i in $(seq 1 10); do
+#         kwriteconfig6 --file kwinrc --group "Desktops" --key "Name_$i" "Desktop $i"
+#     done
+# else
+#     echo "  Already have $CURRENT_COUNT desktops — skipping creation."
+# fi
 
 # Being handled by Shortcuts.qml
 # # ── 2. Bind Meta+1..9,0 to "Switch to Desktop N" ─────────────────────────────

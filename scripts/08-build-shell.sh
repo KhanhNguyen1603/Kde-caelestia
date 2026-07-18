@@ -16,6 +16,15 @@ err()  { echo -e "${RED}[ERR]   $*${RST}"; }
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"
 
+# If the installer is not running, we are likely running an update via caelestia-update
+# Make sure we configure services as well so we don't miss service deployment logic
+if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
+    info "Running standalone update mode... deploying services first."
+    if [[ -f "$BUNDLE_DIR/scripts/06-services.sh" ]]; then
+        bash "$BUNDLE_DIR/scripts/06-services.sh" || warn "06-services.sh failed"
+    fi
+fi
+
 info "Patching Recorder.qml to wait for portal selection..."
 sed -i 's/command: \["pidof", "gpu-screen-recorder"\]/command: \["sh", "-c", "pidof gpu-screen-recorder >\\\/dev\\\/null \&\& test -f $HOME\\\/.local\\\/state\\\/caelestia\\\/record\\\/recording.mp4"\]/g' "$HOME/.local/share/caelestia-shell/services/Recorder.qml" 2>/dev/null || true
 sed -i 's/command: \["pidof", "gpu-screen-recorder"\]/command: \["sh", "-c", "pidof gpu-screen-recorder >\\\/dev\\\/null \&\& test -f $HOME\\\/.local\\\/state\\\/caelestia\\\/record\\\/recording.mp4"\]/g' "shell/services/Recorder.qml" 2>/dev/null || true
