@@ -87,21 +87,6 @@ fi
 mkdir -p ~/.local/bin ~/.config/systemd/user
 
 info "Patching caelestia-cli record/screenshot (requires root)..."
-
-SUDO_LOOP_PID=""
-if [ "${CAELESTIA_SUDO_KEEPALIVE_ACTIVE:-0}" = "1" ] && sudo -n true 2>/dev/null; then
-    :
-else
-    if sudo -v 2>/dev/null; then
-        (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
-        SUDO_LOOP_PID=$!
-        trap 'kill "$SUDO_LOOP_PID" 2>/dev/null || true' EXIT
-    else
-        warn "Sudo keepalive failed, IGNORE if running GUI update process"
-    fi
-fi
-
-info "Fixing opencv build failure and patching caelestia-cli (requires root)..."
 sudo bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
 USER_HOME="$1"
 USER_CACHE="$2"
