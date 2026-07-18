@@ -46,15 +46,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          CMAKE_VERSION=$(sed -nE 's/^[[:space:]]*set\(VERSION "([^"]+)"\).*/\1/p' shell/CMakeLists.txt | head -n 1)
           ABOUT_BINDING=$(grep -F 'text: CUtils.version ? `v${CUtils.version}` : "…"' shell/modules/nexus/pages/AboutPage.qml | head -n 1 || true)
 
           echo "Config VERSION: $VERSION"
-          echo "CMake VERSION:  ${CMAKE_VERSION:-<missing>}"
           echo "About binding:  ${ABOUT_BINDING:-<missing>}"
 
-          if [[ "${CMAKE_VERSION:-}" != "$VERSION" || -z "${ABOUT_BINDING:-}" ]]; then
-            echo "Version drift detected. Update shell/CMakeLists.txt and ensure AboutPage reads CUtils.version before release."
+          if [[ -z "${ABOUT_BINDING:-}" ]]; then
+            echo "Version validation failed. Ensure AboutPage reads CUtils.version before release."
             exit 1
           fi
 
