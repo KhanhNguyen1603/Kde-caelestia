@@ -37,9 +37,14 @@ qml_module(caelestia-services
         palettemanager.hpp
         dinogame.cpp
         dinogame.hpp
+        kwinworkspacestate.cpp
+        kwinworkspacestate.hpp
+        kwinactivewindowbridge.cpp
+        kwinactivewindowbridge.hpp
     LIBRARIES
         Qt::DBus
         Qt::Gui
+        Qt::WaylandClient
         PkgConfig::Pipewire
         PkgConfig::Aubio
         PkgConfig::Cava
@@ -49,3 +54,10 @@ qml_module(caelestia-services
         caelestia-internal
 )
 
+qt6_generate_wayland_protocol_client_sources(caelestia-services FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../protocols/org-kde-plasma-virtual-desktop.xml
+)
+set_source_files_properties(
+    ${CMAKE_CURRENT_BINARY_DIR}/wayland-org-kde-plasma-virtual-desktop-protocol.c
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+)
