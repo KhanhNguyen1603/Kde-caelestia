@@ -56,10 +56,22 @@ function notifyWindowList() {
     for (let i = 0; i < wins.length; ++i) {
         let w = wins[i];
         if (w.normalWindow) {
+            let deskId = "";
+            if (w.desktops && w.desktops.length > 0) {
+                let d = w.desktops[0];
+                deskId = String(d.id || d.name || d);
+            }
             arr.push({
                 address: w.internalId ? String(w.internalId) : "",
                 title: w.caption || "",
-                class: w.resourceClass || ""
+                class: w.resourceClass || "",
+                x: w.frameGeometry ? w.frameGeometry.x : w.x,
+                y: w.frameGeometry ? w.frameGeometry.y : w.y,
+                width: w.frameGeometry ? w.frameGeometry.width : w.width,
+                height: w.frameGeometry ? w.frameGeometry.height : w.height,
+                fullscreen: w.fullScreen ? true : false,
+                floating: !w.tile,
+                workspace: { id: deskId }
             });
         }
     }

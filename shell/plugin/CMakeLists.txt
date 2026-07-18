@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 3.16)
+project(Caelestia)
+
 find_package(Qt6 REQUIRED COMPONENTS ShaderTools Core Qml Gui Quick QuickControls2 Concurrent Sql Network DBus WaylandClient)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(Qalculate IMPORTED_TARGET libqalculate REQUIRED)

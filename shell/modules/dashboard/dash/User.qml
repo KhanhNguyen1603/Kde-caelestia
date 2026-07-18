@@ -29,7 +29,7 @@ Item {
 
     Process {
         running: Config.dashboard.showHyprlandSplash
-        command: ["hyprctl", "splash"]
+        command: ["sh", "-c", "echo \"Welcome back, $USER\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 hyprlandSplashText = text.trim();

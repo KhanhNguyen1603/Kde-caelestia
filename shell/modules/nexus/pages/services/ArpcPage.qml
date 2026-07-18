@@ -9,9 +9,9 @@ import qs.utils
 import qs.services
 import qs.modules.nexus.common
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Widgets
 import Quickshell.Io
+import Caelestia.Services
 import Caelestia
 
 PageBase {
@@ -501,20 +501,20 @@ PageBase {
                         Layout.fillHeight: true
 
                         Connections {
-                            target: Hyprland.toplevels
-                            function onValuesChanged() {
+                            target: KWinActiveWindowBridge
+                            function onWindowListChanged() {
                                 list.updateModel();
                             }
                         }
 
                         function updateModel() {
                             let toplevels = [];
-                            for (const toplevel of Hyprland.toplevels.values) {
-                                if (toplevel.lastIpcObject) {
+                            for (const toplevel of KWinActiveWindowBridge.windowList) {
+                                if (toplevel.title || toplevel.class) {
                                     toplevels.push(toplevel);
                                 }
                             }
-                            list.model = toplevels.sort((a, b) => (a.lastIpcObject?.title ?? "").localeCompare(b.lastIpcObject?.title ?? ""));
+                            list.model = toplevels.sort((a, b) => (a.title ?? "").localeCompare(b.title ?? ""));
                         }
 
                         Component.onCompleted: updateModel()
@@ -533,7 +533,7 @@ PageBase {
 
                             onClicked: {
                                 row.popup.open = false;
-                                row.selected(modelData.lastIpcObject?.class ?? "");
+                                row.selected(modelData.class ?? "");
                             }
 
                             RowLayout {
@@ -546,7 +546,7 @@ PageBase {
                                 IconImage {
                                     asynchronous: true
                                     implicitSize: Math.round(Tokens.font.icon.large.pointSize * 1.8)
-                                    source: Quickshell.iconPath(windowItem.modelData.lastIpcObject?.class ?? "", "image-missing")
+                                    source: Quickshell.iconPath(windowItem.modelData.class ?? "", "image-missing")
                                 }
 
                                 ColumnLayout {
@@ -555,7 +555,7 @@ PageBase {
 
                                     StyledText {
                                         Layout.fillWidth: true
-                                        text: windowItem.modelData.lastIpcObject?.title ?? "Unknown"
+                                        text: windowItem.modelData.title ?? "Unknown"
                                         font: Tokens.font.body.small
                                         elide: Text.ElideRight
                                     }
@@ -563,7 +563,7 @@ PageBase {
                                     StyledText {
                                         Layout.fillWidth: true
                                         visible: text !== ""
-                                        text: windowItem.modelData.lastIpcObject?.class ?? ""
+                                        text: windowItem.modelData.class ?? ""
                                         color: Colours.palette.m3outline
                                         font: Tokens.font.label.small
                                         elide: Text.ElideRight

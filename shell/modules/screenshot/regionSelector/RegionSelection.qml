@@ -8,7 +8,7 @@ import Qt.labs.synchronizer
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
+import Caelestia.Services
 
 PanelWindow {
     id: root
@@ -52,7 +52,7 @@ PanelWindow {
     property bool contentRegionOpacity: false
 
     // Vars for indicators
-    readonly property var windows: Hypr.toplevels.values.sort((a, b) => {
+    readonly property var windows: KWinActiveWindowBridge.windowList.sort((a, b) => {
         // Sort floating=true windows before others
         if (a.floating === b.floating) return 0;
         return a.floating ? -1 : 1;
@@ -61,11 +61,10 @@ PanelWindow {
     readonly property real falsePositivePreventionRatio: 0.5
 
     // Screen & interaction vars
-    readonly property HyprlandMonitor hyprlandMonitor: Hyprland.monitorFor(screen)
-    readonly property real monitorScale: (hyprlandMonitor && hyprlandMonitor.scale > 0) ? hyprlandMonitor.scale : (screen.devicePixelRatio || 1.0)
-    readonly property real monitorOffsetX: hyprlandMonitor ? (hyprlandMonitor.x || 0) : 0
-    readonly property real monitorOffsetY: hyprlandMonitor ? (hyprlandMonitor.y || 0) : 0
-    property int activeWorkspaceId: hyprlandMonitor && hyprlandMonitor.activeWorkspace ? hyprlandMonitor.activeWorkspace.id : 0
+    readonly property real monitorScale: screen.devicePixelRatio || 1.0
+    readonly property real monitorOffsetX: screen.x || 0
+    readonly property real monitorOffsetY: screen.y || 0
+    property string activeWorkspaceId: ""
     property string screenshotPath: `${root.screenshotDir}/image-${screen.name}.png`
     property real dragStartX: 0
     property real dragStartY: 0
@@ -79,19 +78,19 @@ PanelWindow {
     property var mouseButton: null
     property var imageRegions: []
     readonly property var windowRegions: RegionFunctions.filterWindowRegionsByLayers(
-        root.windows.filter(w => w.workspace.id === root.activeWorkspaceId || root.activeWorkspaceId === 0),
+        root.windows,
         root.layerRegions
     ).map(window => {
         return {
-            at: [window.at[0] - root.monitorOffsetX, window.at[1] - root.monitorOffsetY],
-            size: [window.size[0], window.size[1]],
+            at: [window.x - root.monitorOffsetX, window.y - root.monitorOffsetY],
+            size: [window.width, window.height],
             class: window.class,
             title: window.title,
         }
     })
     readonly property var layerRegions: {
-        const layersOfThisMonitor = root.layers[root.hyprlandMonitor.name]
-        const topLayers = layersOfThisMonitor ? layersOfThisMonitor.levels["2"] : undefined
+        const layersOfThisMonitor = undefined
+        const topLayers = undefined
         if (!topLayers) return [];
         const nonBarTopLayers = topLayers
             .filter(layer => !(layer.namespace.includes(":bar") || layer.namespace.includes(":verticalBar") || layer.namespace.includes(":dock")))
@@ -227,7 +226,6 @@ PanelWindow {
     Process {
         id: imageDetectionProcess
         command: ["bash", "-c", `${"~/.config/caelestia/scripts"}/images/find-regions-venv.sh ` 
-            + `--hyprctl ` 
             + `--image '${StringUtils.shellSingleQuoteEscape(root.screenshotPath)}' ` 
             + `--max-width ${Math.round(root.screen.width * root.falsePositivePreventionRatio)} ` 
             + `--max-height ${Math.round(root.screen.height * root.falsePositivePreventionRatio)} `]

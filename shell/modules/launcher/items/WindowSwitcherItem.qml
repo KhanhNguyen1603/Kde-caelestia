@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
+import Caelestia.Services
 import Caelestia
 import Caelestia.Config
 import Caelestia.Models
@@ -17,7 +17,7 @@ Item {
     required property var list
 
     function clicked(): void {
-        Hyprland.dispatch(Hyprland.usingLua ? `hl.dsp.focus({ window = "address:0x${root.modelData.address}" })` : `focuswindow address:0x${root.modelData.address}`);
+        KWinActiveWindowBridge.focusWindow(root.modelData.address);
         root.list.visibilities.launcher = false;
     }
 

@@ -101,7 +101,7 @@ else
     fi
 fi
 
-sudo bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
+bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
 USER_HOME="$1"
 USER_CACHE="$2"
 
