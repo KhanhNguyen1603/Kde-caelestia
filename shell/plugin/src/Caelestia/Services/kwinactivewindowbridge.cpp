@@ -114,6 +114,13 @@ QString KWinActiveWindowBridge::activeOutputName() const {
     return m_activeOutputName;
 }
 
+void KWinActiveWindowBridge::setActiveOutputName(const QString &outputName) {
+    if (m_activeOutputName != outputName) {
+        m_activeOutputName = outputName;
+        emit activeWindowChanged();
+    }
+}
+
 void KWinActiveWindowBridge::updateActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName) {
     m_activeWindow = QVariantMap{
         {"address", uuid},

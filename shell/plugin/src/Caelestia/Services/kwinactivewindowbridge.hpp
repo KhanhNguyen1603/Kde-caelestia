@@ -38,6 +38,7 @@ public:
     QVariantList windowList() const;
 
     Q_INVOKABLE void focusWindow(const QString &address);
+    Q_INVOKABLE void setActiveOutputName(const QString &outputName);
 
     void updateActiveWindow(const QString &uuid, const QString &title, const QString &appClass, const QString &activeOutputName);
     void updateWindowList(const QString &windowsJson);
