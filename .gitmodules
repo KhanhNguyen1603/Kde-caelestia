@@ -6,5 +6,5 @@
 	path = shell/assets/icons/yet-another-monochrome-icon-set
 	url = https://bitbucket.org/dirn-typo/yet-another-monochrome-icon-set.git
 [submodule "plasma-wallpaper-application"]
-	path = plasma-wallpaper-application
+	path = src/plasma-wallpaper-application
 	url = https://invent.kde.org/dos/plasma-wallpaper-application
