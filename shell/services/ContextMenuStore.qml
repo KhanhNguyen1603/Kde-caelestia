@@ -104,19 +104,15 @@ Singleton {
         onRunningChanged: {
             if (running) {
                 writeProc.jsonContent = JSON.stringify(root.pendingEntries);
-            }
-        }
-
-        stdout: StdioCollector {}
-        stderr: StdioCollector {}
-
-        onRunningChanged: {
-            if (!running && root.saveStartedAt > 0) {
+            } else if (root.saveStartedAt > 0) {
                 const saveMs = Date.now() - root.saveStartedAt;
                 console.log("[perf][ContextMenuStore] save disk ms=" + saveMs + " entries=" + root.pendingEntries.length);
                 root.saveStartedAt = 0;
             }
         }
+
+        stdout: StdioCollector {}
+        stderr: StdioCollector {}
     }
 
     FileView {
