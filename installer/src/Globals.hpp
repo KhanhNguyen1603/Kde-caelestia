@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "json.hpp"
 
@@ -8,6 +9,7 @@ using json = nlohmann::json;
 
 extern json g_theme;
 extern json g_menu;
+extern std::unordered_map<std::string, std::string> g_theme_colors;
 
 extern std::atomic<bool> g_resized;
 extern std::atomic<bool> g_quit;
