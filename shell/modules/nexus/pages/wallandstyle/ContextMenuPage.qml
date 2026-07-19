@@ -23,6 +23,11 @@ PageBase {
     property string globalDragSourceList: ""
     property int globalDragSourceIndex: -1
     property string globalDragHoveredList: ""
+    property var cachedEntries: []
+    property bool cacheValid: false
+    property var pendingSaveEntries: []
+    property real perfLoadStartedAt: 0
+    property real perfSaveStartedAt: 0
     readonly property real zonePadding: Tokens.padding.medium
     readonly property real emptyZoneHeight: Math.max(root.height - 120, 72)
 
@@ -41,8 +46,22 @@ PageBase {
         return null;
     }
 
-    function save() {
-        if (!root.visible) return;
+    function defaultEntries() {
+        return [
+            { id: "toggle_desktop_icons", label: qsTr("Desktop Icons"), icon: "desktop_windows", action: "ToggleDesktopIcons", enabled: true, type: "default" },
+            { id: "next_wallpaper", label: qsTr("Next Wallpaper"), icon: "skip_next", action: "Wallpapers.next()", enabled: true, type: "default" },
+            { id: "wallpaper_style", label: qsTr("Wallpaper & style"), icon: "wallpaper", action: "WindowFactory.create()", enabled: true, type: "default" },
+            { id: "system_settings", label: qsTr("System Settings"), icon: "settings", command: "systemsettings", enabled: true, type: "default" },
+            { id: "open_terminal", label: qsTr("Open Terminal"), icon: "terminal", command: "terminal", enabled: true, type: "default" },
+            { id: "add_shortcut", label: qsTr("Add Shortcut..."), icon: "add", action: "OpenRightClickMenu", enabled: true, type: "default" }
+        ];
+    }
+
+    function cloneEntries(entries) {
+        return JSON.parse(JSON.stringify(entries));
+    }
+
+    function collectEntries() {
         let newEntries = [];
         for (let i = 0; i < activeModel.count; i++) {
             if (!activeModel.get(i).isPlaceholder) {
@@ -58,16 +77,73 @@ PageBase {
                 newEntries.push(r);
             }
         }
-        let str = JSON.stringify(newEntries).replace(/"/g, '\\"');
-        Quickshell.execDetached(["sh", "-c", "echo \"" + str + "\" > ~/.config/quickshell/caelestia/context_menu.json"]);
-        root.componentMeta = root.componentMeta; // force update
+        return newEntries;
     }
 
-    function load() {
+    function applyEntries(entries) {
+        let json = (!entries || entries.length === 0) ? defaultEntries() : cloneEntries(entries);
+
+        activeModel.clear();
+        libraryModel.clear();
+
+        for (let i = 0; i < json.length; i++) {
+            let entry = json[i];
+            if (entry.type === "custom") {
+                root.componentMeta[entry.id] = { icon: entry.icon || "application-x-executable", name: entry.label };
+            }
+            if (entry.enabled) {
+                activeModel.append({ "compId": entry.id, "isPlaceholder": false, "raw": entry });
+            } else {
+                libraryModel.append({ "compId": entry.id, "isPlaceholder": false, "raw": entry });
+            }
+        }
+
+        root.cachedEntries = cloneEntries(json);
+        root.cacheValid = true;
+    }
+
+    function flushSave() {
+        if (!root.visible) return;
+        const saveStartedAt = root.perfSaveStartedAt > 0 ? root.perfSaveStartedAt : Date.now();
+        const payload = root.pendingSaveEntries.length > 0 ? root.pendingSaveEntries : collectEntries();
+        let str = JSON.stringify(payload).replace(/"/g, '\\"');
+        Quickshell.execDetached(["sh", "-c", "echo \"" + str + "\" > ~/.config/quickshell/caelestia/context_menu.json"]);
+
+        root.cachedEntries = cloneEntries(payload);
+        root.cacheValid = true;
+        root.componentMeta = root.componentMeta; // force update
+
+        const saveMs = Date.now() - saveStartedAt;
+        console.log("[perf][ContextMenuPage] save queued ms=" + saveMs + " entries=" + payload.length);
+        root.perfSaveStartedAt = 0;
+    }
+
+    function save() {
+        if (!root.visible) return;
+        root.pendingSaveEntries = collectEntries();
+        root.perfSaveStartedAt = Date.now();
+        saveDebounce.restart();
+    }
+
+    function load(forceDisk) {
+        if (forceDisk !== true && root.cacheValid) {
+            root.applyEntries(root.cachedEntries);
+            console.log("[perf][ContextMenuPage] load source=cache entries=" + root.cachedEntries.length);
+            return;
+        }
+
+        root.perfLoadStartedAt = Date.now();
         fileReader.running = true;
     }
 
-    Component.onCompleted: load()
+    Timer {
+        id: saveDebounce
+        interval: 180
+        repeat: false
+        onTriggered: root.flushSave()
+    }
+
+    Component.onCompleted: load(true)
 
     RowLayout {
         id: mainLayout
@@ -87,35 +163,10 @@ PageBase {
                             json = JSON.parse(text);
                         }
                     } catch(e) {}
-                    
-                    if (!json || json.length === 0) {
-                        json = [
-                            { id: "toggle_desktop_icons", label: qsTr("Desktop Icons"), icon: "desktop_windows", action: "ToggleDesktopIcons", enabled: true, type: "default" },
-                            { id: "next_wallpaper", label: qsTr("Next Wallpaper"), icon: "skip_next", action: "Wallpapers.next()", enabled: true, type: "default" },
-                            { id: "wallpaper_style", label: qsTr("Wallpaper & style"), icon: "wallpaper", action: "WindowFactory.create()", enabled: true, type: "default" },
-                            { id: "system_settings", label: qsTr("System Settings"), icon: "settings", command: "systemsettings", enabled: true, type: "default" },
-                            { id: "open_terminal", label: qsTr("Open Terminal"), icon: "terminal", command: "terminal", enabled: true, type: "default" },
-                            { id: "add_shortcut", label: qsTr("Add Shortcut..."), icon: "add", action: "OpenRightClickMenu", enabled: true, type: "default" }
-                        ];
-                    }
-                    
-                    activeModel.clear();
-                    libraryModel.clear();
-                    
-                    let loadedIds = {};
-                    
-                    for (let i = 0; i < json.length; i++) {
-                        let entry = json[i];
-                        loadedIds[entry.id] = true;
-                        if (entry.type === "custom") {
-                            root.componentMeta[entry.id] = { icon: entry.icon || "application-x-executable", name: entry.label };
-                        }
-                        if (entry.enabled) {
-                            activeModel.append({ "compId": entry.id, "isPlaceholder": false, "raw": entry });
-                        } else {
-                            libraryModel.append({ "compId": entry.id, "isPlaceholder": false, "raw": entry });
-                        }
-                    }
+
+                    root.applyEntries(json);
+                    const loadMs = root.perfLoadStartedAt > 0 ? (Date.now() - root.perfLoadStartedAt) : 0;
+                    console.log("[perf][ContextMenuPage] load source=disk ms=" + loadMs + " entries=" + (root.cachedEntries?.length ?? 0));
                 }
             }
         }
