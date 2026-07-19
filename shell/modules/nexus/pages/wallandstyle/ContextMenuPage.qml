@@ -116,26 +116,6 @@ PageBase {
         }
     }
 
-    Connections {
-        target: ContextMenuStore
-
-        function onEntriesChanged() {
-            root.applyEntries(ContextMenuStore.entries);
-            if (root.perfLoadStartedAt > 0) {
-                const loadMs = Date.now() - root.perfLoadStartedAt;
-                console.log("[perf][ContextMenuPage] load source=store_update ms=" + loadMs + " entries=" + ContextMenuStore.entries.length);
-                root.perfLoadStartedAt = 0;
-            }
-        }
-    }
-
-    Timer {
-        id: saveDebounce
-        interval: 180
-        repeat: false
-        onTriggered: root.flushSave()
-    }
-
     Component.onCompleted: load(true)
 
     RowLayout {
@@ -143,6 +123,26 @@ PageBase {
         anchors.fill: parent
         anchors.margins: Tokens.padding.large
         spacing: Tokens.spacing.large
+
+        Connections {
+            target: ContextMenuStore
+
+            function onEntriesChanged() {
+                root.applyEntries(ContextMenuStore.entries);
+                if (root.perfLoadStartedAt > 0) {
+                    const loadMs = Date.now() - root.perfLoadStartedAt;
+                    console.log("[perf][ContextMenuPage] load source=store_update ms=" + loadMs + " entries=" + ContextMenuStore.entries.length);
+                    root.perfLoadStartedAt = 0;
+                }
+            }
+        }
+
+        Timer {
+            id: saveDebounce
+            interval: 180
+            repeat: false
+            onTriggered: root.flushSave()
+        }
 
         AddShortcutDialog {
             id: addShortcutDialog
