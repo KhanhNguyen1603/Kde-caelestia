@@ -24,7 +24,7 @@ Additionally, you **do not** need to compile it! It is a pure QML/QtWayland pack
    ```
    *(Note: To upgrade it later, use `-u` instead of `-i`)*
 3. **Apply in KDE Settings:** 
-   - Open KDE System Settings -> Lock Screen -> Screen Locking -> Configure Appearance
+   - Open KDE System Settings -> Screen Locking -> Configure Appearance
    - Select the `Application` wallpaper plugin.
 4. **Configure the Command:** 
    - In the plugin settings, set the application command to:
