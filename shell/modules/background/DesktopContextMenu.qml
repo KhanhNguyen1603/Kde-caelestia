@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import Caelestia.Config
 import qs.components.controls as Controls
 import qs.services
@@ -16,14 +15,9 @@ Controls.Menu {
     thisSideX: Controls.Menu.Left
     thisSideY: Controls.Menu.Top
     property string screenName: ""
-    property var cachedEntries: []
-    property bool cacheValid: false
-    property int cacheTtlMs: 1000
-    property real cacheFilledAt: 0
     property var itemPool: ({})
     property var entryByKey: ({})
     property real perfMenuOpenStartedAt: 0
-    property real perfReadStartedAt: 0
 
     Component {
         id: menuItemComp
@@ -115,45 +109,19 @@ Controls.Menu {
         }
     }
 
-    function invalidateCache() {
-        root.cacheValid = false;
-        root.cacheFilledAt = 0;
-    }
-
-    Process {
-        id: fileReader
-        command: ["cat", Quickshell.env("HOME") + "/.config/quickshell/caelestia/context_menu.json"]
-        running: false
-        stdout: StdioCollector {
-            onStreamFinished: {
-                let json = [];
-                try {
-                    if (text.trim().length > 0) {
-                        json = JSON.parse(text);
-                    }
-                } catch(e) {}
-
-                const readMs = root.perfReadStartedAt > 0 ? (Date.now() - root.perfReadStartedAt) : 0;
-                console.log("[perf][DesktopContextMenu] read+parse ms=" + readMs);
-
-                root.cachedEntries = (!json || json.length === 0) ? defaultEntries() : cloneEntries(json);
-                root.cacheValid = true;
-                root.cacheFilledAt = Date.now();
-                root.applyEntries(root.cachedEntries, "disk");
-            }
-        }
-    }
-
     function reloadMenu(forceDisk) {
-        const cacheExpired = !root.cacheFilledAt || ((Date.now() - root.cacheFilledAt) > root.cacheTtlMs);
-        const shouldReadDisk = forceDisk === true || !root.cacheValid || cacheExpired;
-        if (!shouldReadDisk) {
-            root.applyEntries(root.cachedEntries, "cache");
-            return;
+        ContextMenuStore.ensureLoaded(forceDisk === true);
+        if (ContextMenuStore.loaded) {
+            root.applyEntries(ContextMenuStore.entries, forceDisk === true ? "store_disk" : "store_cache");
         }
+    }
 
-        root.perfReadStartedAt = Date.now();
-        fileReader.running = true;
+    Connections {
+        target: ContextMenuStore
+
+        function onEntriesChanged() {
+            root.applyEntries(ContextMenuStore.entries, "store_update");
+        }
     }
 
     onExpandedChanged: {

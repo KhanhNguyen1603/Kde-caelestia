@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Caelestia.Config
 import qs.components
 import qs.components.effects
@@ -23,8 +22,6 @@ PageBase {
     property string globalDragSourceList: ""
     property int globalDragSourceIndex: -1
     property string globalDragHoveredList: ""
-    property var cachedEntries: []
-    property bool cacheValid: false
     property var pendingSaveEntries: []
     property real perfLoadStartedAt: 0
     property real perfSaveStartedAt: 0
@@ -44,17 +41,6 @@ PageBase {
         if (name === "active") return activeModel;
         if (name === "library") return libraryModel;
         return null;
-    }
-
-    function defaultEntries() {
-        return [
-            { id: "toggle_desktop_icons", label: qsTr("Desktop Icons"), icon: "desktop_windows", action: "ToggleDesktopIcons", enabled: true, type: "default" },
-            { id: "next_wallpaper", label: qsTr("Next Wallpaper"), icon: "skip_next", action: "Wallpapers.next()", enabled: true, type: "default" },
-            { id: "wallpaper_style", label: qsTr("Wallpaper & style"), icon: "wallpaper", action: "WindowFactory.create()", enabled: true, type: "default" },
-            { id: "system_settings", label: qsTr("System Settings"), icon: "settings", command: "systemsettings", enabled: true, type: "default" },
-            { id: "open_terminal", label: qsTr("Open Terminal"), icon: "terminal", command: "terminal", enabled: true, type: "default" },
-            { id: "add_shortcut", label: qsTr("Add Shortcut..."), icon: "add", action: "OpenRightClickMenu", enabled: true, type: "default" }
-        ];
     }
 
     function cloneEntries(entries) {
@@ -81,7 +67,7 @@ PageBase {
     }
 
     function applyEntries(entries) {
-        let json = (!entries || entries.length === 0) ? defaultEntries() : cloneEntries(entries);
+        let json = (!entries || entries.length === 0) ? cloneEntries(ContextMenuStore.defaultEntries()) : cloneEntries(entries);
 
         activeModel.clear();
         libraryModel.clear();
@@ -98,19 +84,13 @@ PageBase {
             }
         }
 
-        root.cachedEntries = cloneEntries(json);
-        root.cacheValid = true;
     }
 
     function flushSave() {
         if (!root.visible) return;
         const saveStartedAt = root.perfSaveStartedAt > 0 ? root.perfSaveStartedAt : Date.now();
         const payload = root.pendingSaveEntries.length > 0 ? root.pendingSaveEntries : collectEntries();
-        let str = JSON.stringify(payload).replace(/"/g, '\\"');
-        Quickshell.execDetached(["sh", "-c", "echo \"" + str + "\" > ~/.config/quickshell/caelestia/context_menu.json"]);
-
-        root.cachedEntries = cloneEntries(payload);
-        root.cacheValid = true;
+        ContextMenuStore.save(payload);
         root.componentMeta = root.componentMeta; // force update
 
         const saveMs = Date.now() - saveStartedAt;
@@ -126,14 +106,27 @@ PageBase {
     }
 
     function load(forceDisk) {
-        if (forceDisk !== true && root.cacheValid) {
-            root.applyEntries(root.cachedEntries);
-            console.log("[perf][ContextMenuPage] load source=cache entries=" + root.cachedEntries.length);
-            return;
-        }
-
         root.perfLoadStartedAt = Date.now();
-        fileReader.running = true;
+        ContextMenuStore.ensureLoaded(forceDisk === true);
+        if (ContextMenuStore.loaded) {
+            root.applyEntries(ContextMenuStore.entries);
+            const source = forceDisk === true ? "store_disk" : "store_cache";
+            console.log("[perf][ContextMenuPage] load source=" + source + " entries=" + ContextMenuStore.entries.length);
+            root.perfLoadStartedAt = 0;
+        }
+    }
+
+    Connections {
+        target: ContextMenuStore
+
+        function onEntriesChanged() {
+            root.applyEntries(ContextMenuStore.entries);
+            if (root.perfLoadStartedAt > 0) {
+                const loadMs = Date.now() - root.perfLoadStartedAt;
+                console.log("[perf][ContextMenuPage] load source=store_update ms=" + loadMs + " entries=" + ContextMenuStore.entries.length);
+                root.perfLoadStartedAt = 0;
+            }
+        }
     }
 
     Timer {
@@ -150,26 +143,6 @@ PageBase {
         anchors.fill: parent
         anchors.margins: Tokens.padding.large
         spacing: Tokens.spacing.large
-        
-        Process {
-            id: fileReader
-            command: ["cat", Quickshell.env("HOME") + "/.config/quickshell/caelestia/context_menu.json"]
-            running: false
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    let json = [];
-                    try {
-                        if (text.trim().length > 0) {
-                            json = JSON.parse(text);
-                        }
-                    } catch(e) {}
-
-                    root.applyEntries(json);
-                    const loadMs = root.perfLoadStartedAt > 0 ? (Date.now() - root.perfLoadStartedAt) : 0;
-                    console.log("[perf][ContextMenuPage] load source=disk ms=" + loadMs + " entries=" + (root.cachedEntries?.length ?? 0));
-                }
-            }
-        }
 
         AddShortcutDialog {
             id: addShortcutDialog
