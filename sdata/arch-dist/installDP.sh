@@ -32,7 +32,7 @@ PACKAGES=(
     # Core system tools
     wl-clipboard cliphist wl-clip-persist inotify-tools app2unit wireplumber trash-cli jq aubio lm_sensors
     # lib files
-    libpipewire glibc libcava qt6-declarative gcc-libs qt6-base qt6-declarative libqalculate
+    libpipewire glibc libcava qt6-declarative gcc-libs qt6-base qt6-declarative qt6-wayland libqalculate
     # Shell wrapper
     caelestia-cli quickshell-git
     # Shells & terminal

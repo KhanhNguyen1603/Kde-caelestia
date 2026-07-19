@@ -19,7 +19,7 @@ PACKAGES=(
     # Core system tools
     wl-clipboard cliphist wl-clip-persist inotify-tools wireplumber trash-cli jq aubio lm_sensors lm_sensors-devel
     # lib files
-    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel
+    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel
     # Shells & terminal
     foot eza fastfetch starship btop bash
     # Themes & Fonts
