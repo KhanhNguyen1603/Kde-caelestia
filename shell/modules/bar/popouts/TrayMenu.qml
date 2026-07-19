@@ -45,6 +45,8 @@ StackView {
         required property QsMenuHandle handle
         property bool isSubMenu
         property bool shown
+        property int groupRebuildCount: 0
+        property real perfOpenStartedAt: 0
 
     readonly property real masterScale: !isNaN(GlobalConfig.bar.previewScale) ? GlobalConfig.bar.previewScale : 1.0
     readonly property real elementOffset: GlobalConfig.bar.perElementPreviewScale ? (!isNaN(GlobalConfig.bar.previewScales.trayMenu) ? GlobalConfig.bar.previewScales.trayMenu : 0.0) : 0.0
@@ -60,7 +62,11 @@ StackView {
         scale: shown ? 1 : 0.8
 
         Component.onCompleted: shown = true
-        StackView.onActivating: shown = true
+        StackView.onActivating: {
+            shown = true;
+            menu.perfOpenStartedAt = Date.now();
+            menu.groupRebuildCount = 0;
+        }
         StackView.onDeactivating: shown = false
         StackView.onRemoved: destroy()
 
@@ -82,6 +88,7 @@ StackView {
         property var itemGroups: []
 
         function updateGroups() {
+            const rebuildStartedAt = Date.now();
             let groups = [];
             let currentGroup = [];
             for (let i = 0; i < groupInstantiator.count; ++i) {
@@ -99,6 +106,27 @@ StackView {
                 groups.push(currentGroup);
             }
             itemGroups = groups;
+
+            menu.groupRebuildCount += 1;
+            const rebuildMs = Date.now() - rebuildStartedAt;
+            console.log("[perf][TrayMenu] updateGroups ms=" + rebuildMs + " groups=" + groups.length + " rebuildCount=" + menu.groupRebuildCount);
+
+            if (menu.perfOpenStartedAt > 0) {
+                const openMs = Date.now() - menu.perfOpenStartedAt;
+                console.log("[perf][TrayMenu] open/update latency ms=" + openMs + " rebuildCount=" + menu.groupRebuildCount);
+                menu.perfOpenStartedAt = 0;
+            }
+        }
+
+        function queueUpdateGroups() {
+            groupUpdateDebounce.restart();
+        }
+
+        Timer {
+            id: groupUpdateDebounce
+            interval: 0
+            repeat: false
+            onTriggered: menu.updateGroups()
         }
 
         Instantiator {
@@ -111,10 +139,10 @@ StackView {
                 property var entry: modelData
             }
 
-            onObjectAdded: menu.updateGroups()
-            onObjectRemoved: menu.updateGroups()
+            onObjectAdded: menu.queueUpdateGroups()
+            onObjectRemoved: menu.queueUpdateGroups()
             // In case the model itself changes completely
-            onModelChanged: menu.updateGroups()
+            onModelChanged: menu.queueUpdateGroups()
         }
 
         Repeater {
@@ -157,7 +185,7 @@ StackView {
                             Loader {
                                 id: childrenItem
 
-                                asynchronous: true
+                                asynchronous: false
                                 anchors.left: parent.left
                                 anchors.right: parent.right
 
@@ -189,7 +217,7 @@ StackView {
                                     Loader {
                                         id: icon
 
-                                        asynchronous: true
+                                        asynchronous: false
                                         anchors.left: parent.left
 
                                         active: item.modelData.icon !== ""
@@ -227,7 +255,7 @@ StackView {
                                     Loader {
                                         id: expand
 
-                                        asynchronous: true
+                                        asynchronous: false
                                         anchors.verticalCenter: parent.verticalCenter
                                         anchors.right: parent.right
 
