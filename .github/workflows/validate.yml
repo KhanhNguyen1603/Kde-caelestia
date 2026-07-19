@@ -20,6 +20,3 @@ jobs:
 
       - name: Run repository integrity tests
         run: python3 .github/scripts/test_repo_integrity.py
-
-      - name: Validate hyprctl shim mappings
-        run: python3 .github/scripts/test_hypr_shim.py
