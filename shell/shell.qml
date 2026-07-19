@@ -32,9 +32,9 @@ ShellRoot {
 
     Drawers {}
     // AreaPicker {}
-    // Lock {
-    //     id: lock
-    // }
+    Lock {
+        id: lock
+    }
     // PolkitModule {}
     property var regionSelector: RegionSelector {}
 

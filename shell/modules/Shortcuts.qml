@@ -64,6 +64,7 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "googleLens"
+        key: "Meta+Shift+A"
         description: "Toggle Google Lens search"
         onPressed: {
             if (root.hasFullscreen)
@@ -82,6 +83,19 @@ Scope {
             if (root.hasFullscreen)
                 return;
             Quickshell.execDetached(["caelestia", "shell", "region", "record"]);
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "lock"
+        key: "Meta+L"
+        description: "Lock the current session"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            Quickshell.execDetached(["caelestia", "shell", "lock", "lock"]);
         }
     }
 
