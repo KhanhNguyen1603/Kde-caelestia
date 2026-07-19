@@ -47,6 +47,10 @@ PageBase {
             function onCurrentBranchChanged() { root.selectedVersionId = ""; }
             function onCurrentVersionChanged() { root.selectedVersionId = ""; }
             function onInstalledCommitHashChanged() { root.selectedVersionId = ""; }
+            function onCheckingUpdatesChanged() {
+                if (!UpdateChecker.checkingUpdates)
+                    root.pendingBranch = "";
+            }
         }
     }
 
@@ -67,6 +71,9 @@ PageBase {
 
     // ── Timeline selection state ───────────────────────────────────────────
     property string selectedVersionId: ""
+    property string pendingBranch: ""
+
+    readonly property bool branchDataLoading: root.pendingBranch !== "" && UpdateChecker.checkingUpdates
 
     readonly property var selectedEntry: {
         for (let i = 0; i < root.timelineEntries.length; i++) {
@@ -151,6 +158,7 @@ PageBase {
 
         // 1 ── STATUS BANNER ───────────────────────────────────────────────
         ConnectedRect {
+            visible: !root.branchDataLoading
             first: true
             last: true
             Layout.fillWidth: true
@@ -286,6 +294,7 @@ PageBase {
         SelectRow {
             first: true
             last: true
+            enabled: !root.branchDataLoading
             label: qsTr("Update channel")
             subtext: UpdateChecker.currentBranch === "main"
                 ? qsTr("Stable releases")
@@ -296,14 +305,51 @@ PageBase {
             fallbackIcon: "call_split"
             onSelected: function(item) {
                 root.selectedVersionId = "";
+                root.pendingBranch = item.text !== UpdateChecker.currentBranch ? item.text : "";
                 UpdateChecker.checkUpdates(item.text);
             }
         }
 
+        ConnectedRect {
+            visible: root.branchDataLoading
+            first: true
+            last: true
+            Layout.fillWidth: true
+            implicitHeight: loadingCol.implicitHeight + Tokens.padding.largeIncreased * 2
+
+            ColumnLayout {
+                id: loadingCol
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    margins: Tokens.padding.largeIncreased
+                }
+                spacing: Tokens.spacing.small
+
+                LoadingIndicator {
+                    Layout.alignment: Qt.AlignHCenter
+                    implicitSize: Math.round(Tokens.font.icon.extraLarge.pointSize * 1.6)
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    color: Colours.palette.m3onSurfaceVariant
+                    font: Tokens.font.body.medium
+                    text: qsTr("Switching to %1…").arg(root.pendingBranch)
+                }
+            }
+        }
+
         // 3 ── INSTALLATION SETTINGS ──────────────────────────────────────
-        SectionHeader { text: qsTr("Customize Installation") }
+        SectionHeader {
+            visible: !root.branchDataLoading
+            text: qsTr("Customize Installation")
+        }
 
         NavRow {
+            visible: !root.branchDataLoading
             first: true
             icon: "folder"
             label: qsTr("Open Backup Folder")
@@ -314,6 +360,7 @@ PageBase {
         }
 
         ToggleRow {
+            visible: !root.branchDataLoading
             text: qsTr("Deploy Configurations")
             subtext: qsTr("Update your custom dotfiles in ~/.config")
             checked: UpdateChecker.deployConfigs
@@ -321,6 +368,7 @@ PageBase {
         }
 
         ToggleRow {
+            visible: !root.branchDataLoading
             last: true
             text: qsTr("Build Shell UI")
             subtext: qsTr("Compile and install Quickshell UI updates")
@@ -329,10 +377,14 @@ PageBase {
         }
 
         // 4 ── VERSION TIMELINE ────────────────────────────────────────────
-        SectionHeader { text: qsTr("Version History") }
+        SectionHeader {
+            visible: !root.branchDataLoading
+            text: qsTr("Version History")
+        }
 
         ConnectedRect {
             id: timelineCard
+            visible: !root.branchDataLoading
             first: true
             last: true
             Layout.fillWidth: true
@@ -378,7 +430,7 @@ PageBase {
 
         // 5 ── UPDATE LOG (appears after update runs) ──────────────────────
         SectionHeader {
-            visible: root.updateRunning || root.updateLogs !== ""
+            visible: !root.branchDataLoading && (root.updateRunning || root.updateLogs !== "")
             text: qsTr("Update Log")
         }
 
@@ -386,7 +438,7 @@ PageBase {
             first: true
             last: true
             Layout.fillWidth: true
-            visible: root.updateRunning || root.updateLogs !== ""
+            visible: !root.branchDataLoading && (root.updateRunning || root.updateLogs !== "")
             implicitHeight: logContent.implicitHeight + Tokens.padding.medium * 2
 
             ColumnLayout {

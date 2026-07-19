@@ -27,6 +27,7 @@ Singleton {
 
     property string _localCommit: ""
     property bool loaded: false
+    property bool checkingUpdates: false
 
     // ── Update process state ────────────────────────────────────────────
     // Lives on the singleton (rather than UpdatesPage) so it survives the
@@ -51,6 +52,7 @@ Singleton {
         if (!GlobalConfig.general.checkUpdates) return;
         if (branch !== "") currentBranch = clampBranch(branch);
         else currentBranch = clampBranch(currentBranch);
+        checkingUpdates = true;
         
         let bashCmd = `
     CURRENT_BRANCH="$1"
@@ -365,6 +367,9 @@ fi
     Process {
         id: gitProcess
         command: []
+        onExited: _code => { // qmllint disable signal-handler-parameters
+            root.checkingUpdates = false;
+        }
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
