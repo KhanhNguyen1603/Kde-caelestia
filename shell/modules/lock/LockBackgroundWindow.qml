@@ -11,7 +11,7 @@ import qs.services
 Window {
     id: root
 
-    color: "transparent"
+    color: "black"
 
     readonly property real lockHeight: Math.min(root.screen?.width ?? 0, root.screen?.height ?? 0)
     readonly property bool isPortrait: (root.screen?.width ?? 0) < (root.screen?.height ?? 0)
@@ -29,7 +29,7 @@ Window {
         asynchronous: true
         active: true
 
-        sourceComponent: Qt.createComponent("../background/Wallpaper.qml")
+        source: "../background/Wallpaper.qml"
         
         onLoaded: {
             item.screen = root.screen;

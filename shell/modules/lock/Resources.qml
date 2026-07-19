@@ -176,8 +176,8 @@ StyledRect {
             }
         }
 
-        Behavior on fillValue {
-            Anim {}
-        }
+        // Behavior on fillValue {
+        //     Anim {}
+        // }
     }
 }
