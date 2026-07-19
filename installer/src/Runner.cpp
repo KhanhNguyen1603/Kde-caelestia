@@ -81,9 +81,9 @@ namespace Runner {
 vector<Step> steps = {
     {"System update", "scripts/00a-system-update.sh", "PENDING"},
     {"Ensure prerequisites", "scripts/01-ensure-prereqs.sh", "PENDING"},
+    {"Update submodules", "scripts/02a-submodules.sh", "PENDING"},
     {"Install packages", "scripts/02-packages.sh", "PENDING"},
     {"Backup KDE Settings", "scripts/00-backup-themes.sh", "PENDING"},
-    {"Update submodules", "scripts/02a-submodules.sh", "PENDING"},
     {"Deploy configs", "scripts/03-deploy-configs.sh", "PENDING"},
     {"Deploy KDE tweaks", "scripts/04-deploy-kde.sh", "PENDING"},
     {"Enable services", "scripts/06-services.sh", "PENDING"},
