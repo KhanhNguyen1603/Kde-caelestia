@@ -16,6 +16,15 @@ err()  { echo -e "${RED}[ERR]   $*${RST}"; }
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"
 
+# If the installer is not running, we are likely running an update via caelestia-update
+# Make sure we configure services as well so we don't miss service deployment logic
+if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
+    info "Running standalone update mode... deploying services first."
+    if [[ -f "$BUNDLE_DIR/scripts/06-services.sh" ]]; then
+        bash "$BUNDLE_DIR/scripts/06-services.sh" || warn "06-services.sh failed"
+    fi
+fi
+
 info "Patching Recorder.qml to wait for portal selection..."
 sed -i 's/command: \["pidof", "gpu-screen-recorder"\]/command: \["sh", "-c", "pidof gpu-screen-recorder >\\\/dev\\\/null \&\& test -f $HOME\\\/.local\\\/state\\\/caelestia\\\/record\\\/recording.mp4"\]/g' "$HOME/.local/share/caelestia-shell/services/Recorder.qml" 2>/dev/null || true
 sed -i 's/command: \["pidof", "gpu-screen-recorder"\]/command: \["sh", "-c", "pidof gpu-screen-recorder >\\\/dev\\\/null \&\& test -f $HOME\\\/.local\\\/state\\\/caelestia\\\/record\\\/recording.mp4"\]/g' "shell/services/Recorder.qml" 2>/dev/null || true
@@ -75,51 +84,9 @@ if [ -f "$HOME/.config/fish/config.fish" ]; then
     fi
 fi
 
-info "Deploying KDE Bridge Scripts..."
+mkdir -p ~/.local/bin ~/.config/systemd/user
 
-mkdir -p ~/.local/bin ~/.local/share/kwin/scripts ~/.config/systemd/user
-
-# Install python bridge and hyprctl mock
-if [ -d "$BUNDLE_DIR/src/bin" ]; then
-    info "Building C++ hyprctl shim..."
-    mkdir -p "$BUNDLE_DIR/src/bin/build"
-    cd "$BUNDLE_DIR/src/bin/build"
-    cmake ..
-    make -j$(nproc)
-    cp --remove-destination hyprctl ~/.local/bin/
-    chmod +x ~/.local/bin/hyprctl
-    
-    # Also copy the map file and python bridge for the QML shell to use
-    cp --remove-destination "$BUNDLE_DIR/src/bin/hypr_kwin_map.json" ~/.local/bin/
-    cp --remove-destination "$BUNDLE_DIR/src/bin/qs-kwin-bridge.py" ~/.local/bin/ 2>/dev/null || true
-    chmod +x ~/.local/bin/qs-kwin-bridge.py 2>/dev/null || true
-
-    # Copy the wl-screenrec wrapper
-    cp --remove-destination "$BUNDLE_DIR/scripts/record.sh" ~/.local/bin/caelestia-record
-    chmod +x ~/.local/bin/caelestia-record
-    cd "$BUNDLE_DIR"
-    rm -rf "$BUNDLE_DIR/src/bin/build"
-fi
-
-# Patch system-wide caelestia-cli hypr.py to use mock hyprctl
-info "Patching caelestia-cli to use KDE mock hyprctl..."
-
-# Ensure sudo privileges for patching without timing out.
-# If an outer script already maintains sudo keepalive, avoid a second prompt here.
-SUDO_LOOP_PID=""
-if [ "${CAELESTIA_SUDO_KEEPALIVE_ACTIVE:-0}" = "1" ] && sudo -n true 2>/dev/null; then
-    :
-else
-    if sudo -v 2>/dev/null; then
-        (while true; do sudo -n true; sleep 55; done) 2>/dev/null &
-        SUDO_LOOP_PID=$!
-        trap 'kill "$SUDO_LOOP_PID" 2>/dev/null || true' EXIT
-    else
-        warn "Sudo keepalive failed, IGNORE if running GUI update process"
-    fi
-fi
-
-info "Fixing opencv build failure and patching caelestia-cli (requires root)..."
+info "Patching caelestia-cli record/screenshot (requires root)..."
 sudo bash -s -- "$HOME" "${XDG_CACHE_HOME:-$HOME/.cache}" << 'EOF'
 USER_HOME="$1"
 USER_CACHE="$2"
@@ -128,68 +95,7 @@ ln -sf /usr/lib/libopencv_imgproc.so.5.0.0 /usr/lib/libopencv_imgproc.so.413 2>/
 ln -sf /usr/lib/libopencv_core.so.5.0.0 /usr/lib/libopencv_core.so.413 2>/dev/null || echo "[WARN] Failed to link opencv core"
 
 if ! python3 -c '
-import sys, os, glob
-search_paths = sys.path + glob.glob("'"$USER_HOME"'/.local/lib/python*/site-packages")
-file_path = None
-for p in search_paths:
-    candidate = os.path.join(p, "caelestia", "utils", "hypr.py")
-    if os.path.exists(candidate):
-        file_path = candidate
-        break
-if not file_path:
-    print("Could not find caelestia/utils/hypr.py to patch")
-    sys.exit(1)
-try:
-    with open(file_path, "r") as f: code = f.read()
-    new_code = code.replace("""def message(msg: str, is_json: bool = True) -> str | dict[str, Any]:
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.connect(socket_path)
-
-        if is_json:
-            msg = f"j/{msg}"
-        sock.send(msg.encode())
-
-        resp = sock.recv(8192).decode()
-        while True:
-            new_resp = sock.recv(8192)
-            if not new_resp:
-                break
-            resp += new_resp.decode()
-
-        return json.loads(resp) if is_json else resp
-
-
-def dispatch(dispatcher: str, *args: str) -> bool:
-    return message(f"dispatch {dispatcher} {\" \".join(map(str, args))}\".rstrip(), is_json=False) == \"ok\"""",
-    """import subprocess
-def message(msg: str, is_json: bool = True) -> str | dict[str, Any]:
-    hyprctl_path = os.path.expanduser("~/.local/bin/hyprctl")
-    if not os.path.exists(hyprctl_path): hyprctl_path = "hyprctl"
-    args = [hyprctl_path, msg]
-    if is_json: args.append("-j")
-    try: resp = subprocess.check_output(args, text=True)
-    except Exception: resp = "[]" if is_json else ""
-    return __import__("json").loads(resp) if is_json else resp
-
-def dispatch(dispatcher: str, *args: str) -> bool:
-    hyprctl_path = os.path.expanduser("~/.local/bin/hyprctl")
-    if not os.path.exists(hyprctl_path): hyprctl_path = "hyprctl"
-    cmd_args = [hyprctl_path, "dispatch", dispatcher, *args]
-    try:
-        subprocess.check_call(cmd_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return True
-    except subprocess.CalledProcessError:
-        return False""")
-    with open(file_path, "w") as f: f.write(new_code)
-except Exception as e:
-    print(f"Failed to patch hypr.py: {e}")
-    sys.exit(1)
-'; then
-    echo "Caelestia CLI Hyprctl Mock Patch" >> "$USER_CACHE/caelestia-kde/failed_patches.txt"
-fi
-
-if ! python3 -c '
-import sys, os, glob
+import sys, os, glob, re
 search_paths = sys.path + glob.glob("'"$USER_HOME"'/.local/lib/python*/site-packages")
 file_path = None
 for p in search_paths:
@@ -209,16 +115,34 @@ try:
         code = code.replace("recording_path.parent.mkdir(parents=True, exist_ok=True)", """recording_path.parent.mkdir(parents=True, exist_ok=True)
         args += ["-fallback-cpu-encoding", "yes"]""")
     
-    # Force XDG Desktop Portal backend instead of raw KMS so it actually captures app windows on KDE Wayland!
-    code = code.replace("args += [focused_monitor[\"name\"], \"-f\",", "args += [\"portal\", \"-f\",")
-    
-    # Disable slurp region capture entirely, because the KDE Portal natively handles region cropping!
+    # Inject KWin focused monitor refresh rate logic
+    kwin_logic = """        import json, os, subprocess
+        focused_rr = 60
+        try:
+            runtime_dir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+            with open(os.path.join(runtime_dir, "qs_kwin_active_output.txt"), "r") as f:
+                active_output = f.read().strip()
+            kscreen_out = subprocess.check_output(["kscreen-doctor", "-j"], text=True)
+            kscreen_data = json.loads(kscreen_out)
+            for output in kscreen_data.get("outputs", []):
+                if output.get("name") == active_output and output.get("connected"):
+                    for mode in output.get("modes", []):
+                        if mode.get("id") == output.get("currentModeId"):
+                            focused_rr = round(mode.get("refreshRate", 60))
+                            break
+        except Exception:
+            pass
+"""
+    code = code.replace("        monitors = hypr.message(\"monitors\")", kwin_logic)
+
+    # Use portal and the focused_rr
+    code = re.sub(r"focused_monitor = next\(monitor for monitor in monitors if monitor\[\"focused\"\]\)\n\s*if focused_monitor:\n\s*args \+= \[focused_monitor\[\"name\"\]?, \"-f\", str\(round\(focused_monitor\[\"refreshRate\"\]\)\)\]", "args += [\"portal\", \"-f\", str(focused_rr)]", code, flags=re.MULTILINE|re.DOTALL)
+    code = re.sub(r"focused_monitor = next\(monitor for monitor in monitors if monitor\[\"focused\"\]\)\n\s*if focused_monitor:\n\s*args \+= \[\"portal\", \"-f\", str\(round\(focused_monitor\[\"refreshRate\"\]\)\)\]", "args += [\"portal\", \"-f\", str(focused_rr)]", code, flags=re.MULTILINE|re.DOTALL)
+
     code = code.replace("if self.args.region:", "if False:")
-    
     code = code.replace("text=True)", "text=True).strip()")
     code = code.replace("args += [\"region\", \"-region\", region]", "args += [region]")
     
-    # Wait for portal selection (i.e., when gpu-screen-recorder actually creates the file) before notifying
     launch_orig = """        proc = subprocess.Popen([RECORDER, *args, "-o", str(recording_path)], start_new_session=True)
 
         notif = notify("-p", "Recording started", "Recording...")"""
@@ -231,7 +155,6 @@ try:
         notif = notify("-p", "Recording started", "Recording...")"""
     code = code.replace(launch_orig, launch_new)
     
-    # Use xdg-open instead of hardcoded apps
     code = code.replace("[\"app2unit\", \"-O\", new_path]", "[\"xdg-open\", str(new_path)]")
     
     old_dbus = """            p = subprocess.run(
@@ -250,25 +173,10 @@ try:
                 subprocess.Popen(["app2unit", "-O", new_path.parent], start_new_session=True)"""
     new_xdg = "            subprocess.Popen([\"xdg-open\", str(new_path.parent)], start_new_session=True)"
     code = code.replace(old_dbus, new_xdg)
-    
-    # Also fix if it was already patched with dolphin
     code = code.replace("[\"dolphin\", \"--select\", str(new_path)]", "[\"xdg-open\", str(new_path.parent)]")
     
     with open(file_path, "w") as f: f.write(code)
-    
-    # Also patch hypr.py for hyprctl absolute path and correct arguments
-    hypr_path = None
-    for p in search_paths:
-        candidate = os.path.join(p, "caelestia", "utils", "hypr.py")
-        if os.path.exists(candidate):
-            hypr_path = candidate
-            break
-    if hypr_path:
-        with open(hypr_path, "r") as f: hcode = f.read()
-        hcode = hcode.replace("def message(msg: str, is_json: bool = True) -> str | dict[str, Any]:\n    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:\n        sock.connect(socket_path)\n\n        if is_json:\n            msg = f\"j/{msg}\"\n        sock.send(msg.encode())\n\n        resp = sock.recv(8192).decode()\n        while True:\n            new_resp = sock.recv(8192)\n            if not new_resp:\n                break\n            resp += new_resp.decode()\n\n        return json.loads(resp) if is_json else resp", "import subprocess\ndef message(msg: str, is_json: bool = True) -> str | dict[str, Any]:\n    try:\n        cmd = [os.path.expanduser(\"~/.local/bin/hyprctl\"), *msg.split(), \"-j\" if is_json else \"\"]\n        cmd = [x for x in cmd if x]\n        res = subprocess.run(cmd, capture_output=True, text=True)\n        return json.loads(res.stdout) if is_json else res.stdout\n    except Exception as e:\n        print(f\"Mock hyprctl failed: {e}\")\n        return {} if is_json else \"\"")
-        with open(hypr_path, "w") as f: f.write(hcode)
         
-    # Patch screenshot.py to use spectacle
     screenshot_path = None
     for p in search_paths:
         candidate = os.path.join(p, "caelestia", "subcommands", "screenshot.py")
@@ -288,30 +196,6 @@ except Exception as e:
     echo "Caelestia CLI Record/Dolphin Patch" >> "$USER_CACHE/caelestia-kde/failed_patches.txt"
 fi
 EOF
-
-# Install kwin script
-if [ -d "$BUNDLE_DIR/src/kwin-script" ]; then
-    mkdir -p ~/.local/share/kwin/scripts/quickshell-kde-bridge/contents/code
-    cp "$BUNDLE_DIR/src/kwin-script/contents/code/main.js" ~/.local/share/kwin/scripts/quickshell-kde-bridge/contents/code/
-    cp "$BUNDLE_DIR/src/kwin-script/metadata.json" ~/.local/share/kwin/scripts/quickshell-kde-bridge/
-fi
-
-# Install systemd service
-if [ -d "$BUNDLE_DIR/src/systemd" ]; then
-    cp "$BUNDLE_DIR/src/systemd/qs-kwin-bridge.service" ~/.config/systemd/user/ 2>/dev/null || true
-    cp "$BUNDLE_DIR/src/systemd/caelestia-update-checker.service" ~/.config/systemd/user/ 2>/dev/null || true
-    cp "$BUNDLE_DIR/src/systemd/caelestia-update-checker.timer" ~/.config/systemd/user/ 2>/dev/null || true
-fi
-
-# Enable systemd service (silently unmask if previously masked)
-systemctl --user unmask qs-kwin-bridge.service &>/dev/null || true
-systemctl --user daemon-reload
-systemctl --user enable --now qs-kwin-bridge.service &>/dev/null || true
-systemctl --user enable --now caelestia-update-checker.timer &>/dev/null || true
-
-# Load and start KWin script
-qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript ~/.local/share/kwin/scripts/quickshell-kde-bridge/contents/code/main.js quickshell-kde-bridge &>/dev/null || true
-qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start &>/dev/null || true
 
 # Save current commit for the update checker
 mkdir -p ~/.config/quickshell/caelestia

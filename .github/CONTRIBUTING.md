@@ -9,15 +9,20 @@ Thanks for your interest in contributing to the KDE Plasma port!
 - We can accept features we don't personally use, but they **must be configurable** (off by default for experimental features)
 - For **big changes**, please open an issue first to discuss—it saves effort for everyone
 
-### Hyprland to KWin Mapping
-If you are adding a new feature to the UI (QML) that uses a `hyprctl dispatch` command, you **must** register that command in our JSON translation layer.
-1. Open `src/bin/hypr_kwin_map.json`.
-2. Add your new dispatch verb under the `"verbs"` section.
-3. Provide the expected arguments (`args`) and the KWin DBus Javascript equivalent (`kwin_action`).
-4. Run `python3 .github/scripts/test_hypr_shim.py` locally to verify that all commands in the QML codebase are correctly mapped. Failure to do this will cause the CI build to fail.
-## Translations
+### Native C++ KWin & Wayland Backend
+This port uses a native C++ plugin backend (`KWinActiveWindowBridge`, `KWinWorkspaceState`, and `GlobalShortcut`) to interact directly with KWin and the Wayland registry.
 
-See `src/config/quickshell/ii/translations/tools` for translation files.
+For a full list of exposed QML APIs, signals, and architectural details, refer to:
+* docs/kwin_port_architecture.md
+
+### Installer Development
+Caelestia uses a custom C++ TUI installer for interactive installation setups.
+- **Aesthetics & Theme**: Customize colors, ASCII splash screen, layout coordinates, and labels inside `installer/theme.json`
+- **Menu Options**: Configure the installation checklist options, groupings, and triggers inside `installer/menu.json`
+- **Core C++ Logic**: Edit terminal drawing (`Draw.cpp`), UI layouts (`UI.cpp`), and **Script execution order** (`Runner.cpp`) inside `installer/src/`
+
+For a complete configuration and styling guide, refer to:
+* `docs/installer_config.md`
 
 # Code
 
@@ -57,28 +62,29 @@ These instructions assume **Arch Linux** or an Arch-based distro.
 _For testing Quickshell widget changes without a full KDE installation:_
 
 - Install KDE Plasma 6+ and Quickshell: `yay -S plasma-desktop quickshell-git`
-- Copy `src/config/quickshell` folder to `~/.config/quickshell`
+- Copy `shell` folder to `~/.config/quickshell/caelestia`
 - Most widgets will work, but KDE integration may be limited
 
 ### Quickshell Development
 
-- **LSP setup**: Run `touch ~/.config/quickshell/ii/.qmlls.ini` for QML language server support
+- **LSP setup**: Run `touch ~/.config/quickshell/caelestia/.qmlls.ini` for QML language server support
 - **VSCode**: Install the official "Qt Qml" extension, then set `qmlls` custom exe path to `/usr/bin/qmlls6` in settings
 - **Live reload**: Changes to `.qml` files reload automatically when saved
 
 
 ## Testing Your Changes
 
-**For KDE widgets:**
-- Restart Plasmashell: `kquitapp6 plasmashell && kstart6 plasmashell`
-- Or restart the Quickshell service: `systemctl --user restart qs-kwin-bridge`
+**For C++ plugin changes:**
+- Recompile the C++ plugins: `bash scripts/08-build-shell.sh`
 
 **For Quickshell shell:**
-- In a terminal: `pkill qs; qs -c ii` (shows logs for debugging)
-- Edit files in `~/.config/quickshell/ii`, changes reload live
+- Restart the shell cleanly: `caelestia shell -k && caelestia shell -d`
+- Or run raw: `qs -c caelestia` in the terminal to view debugging logs
+- Edit files in `~/.config/quickshell/caelestia`, changes reload live
 
 **For KDE settings:**
 - Re-run the relevant installation step or manually test with `kwriteconfig6`
+
 
 ## Security & Conventions
 

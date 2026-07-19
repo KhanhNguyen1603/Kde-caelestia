@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.containers
 import qs.services
@@ -39,12 +40,16 @@ Variants {
         anchors.right: true
 
         TapHandler {
-            acceptedButtons: Qt.RightButton
-            onTapped: (eventPoint) => {
-                if (contentItem.Config.background.wallpaperEnabled) {
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onTapped: (eventPoint, button) => {
+                if (button === Qt.RightButton && contentItem.Config.background.wallpaperEnabled) {
                     contextMenuAnchor.x = eventPoint.position.x;
                     contextMenuAnchor.y = eventPoint.position.y;
                     desktopContextMenu.expanded = true;
+                } else if (button === Qt.LeftButton) {
+                    if (typeof KWinActiveWindowBridge !== "undefined") {
+                        KWinActiveWindowBridge.setActiveOutputName(win.screen.name);
+                    }
                 }
             }
         }

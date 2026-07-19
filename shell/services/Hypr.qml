@@ -7,6 +7,7 @@ import Quickshell.Io
 import Caelestia
 import Caelestia.Config
 import Caelestia.Internal
+import Caelestia.Services
 import qs.components.misc
 
 Singleton {
@@ -46,102 +47,35 @@ Singleton {
         return root._monitorCache;
     }
 
-    Process {
-        id: monitorPoller
-        command: ["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl monitors -j"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const parsed = JSON.parse(text);
-                    if (Array.isArray(parsed)) {
-                        for (let i = 0; i < parsed.length; i++) {
-                            let m = parsed[i];
-                            let cached = root._monitorCache[m.name];
-                            if (!cached) {
-                                cached = Qt.createQmlObject(`
-                                    import QtQuick
-                                    QtObject {
-                                        property int id: 0
-                                        property string name: ""
-                                        property bool focused: false
-                                        property real scale: 1.0
-                                        property real x: 0
-                                        property real y: 0
-                                        property var activeWorkspace: ({ id: 1 })
-                                        property var specialWorkspace: ({ name: "" })
-                                        property var lastIpcObject: null
-                                        Component.onCompleted: lastIpcObject = this
-                                    }
-                                `, root, "monitorMock");
-                                root._monitorCache[m.name] = cached;
-                            }
-                            cached.id = m.id;
-                            cached.name = m.name;
-                            cached.focused = m.focused;
-                            cached.scale = m.scale || 1.0;
-                            cached.x = m.x || 0;
-                            cached.y = m.y || 0;
-                            cached.activeWorkspace = m.activeWorkspace || { id: root.mockActiveWs };
-                            cached.specialWorkspace = m.specialWorkspace || { name: "" };
-                            cached.lastIpcObject = cached;
-                        }
-                        root.monitorState = parsed;
-                    }
-                } catch (e) {
-                }
-            }
-        }
-    }
-
-    Timer {
-        id: monitorDebounce
-        interval: 1000
-        running: true
-        repeat: true
-        onTriggered: monitorPoller.running = true
-    }
-    readonly property bool usingLua: false
-
-    property int mockActiveWs: 1
-    
-    Process {
-        id: wsPoller
-        command: ["qdbus6", "org.kde.KWin", "/KWin", "org.kde.KWin.currentDesktop"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const num = parseInt(text);
-                if (!isNaN(num) && num > 0) root.mockActiveWs = num;
-            }
-        }
-    }
-    
-    Timer {
-        id: wsDebounce
-        interval: 100
-        onTriggered: wsPoller.running = true
-    }
-
-    Process {
-        id: wsMonitor
-        command: ["dbus-monitor", "--session", "interface='org.kde.KWin.VirtualDesktopManager',member='currentChanged'"]
-        running: true
-        stdout: SplitParser {
-            onRead: wsDebounce.restart()
-        }
-    }
+    // Native Wayland/DBus state bindings are handled by Caelestia C++ services
 
     readonly property var activeToplevel: ToplevelManager.activeToplevel
     readonly property var focusedWorkspace: ({ id: root.mockActiveWs, name: root.mockActiveWs.toString() })
     readonly property var focusedMonitor: {
         let _ = root.monitorState;
+        
+        let targetName = "";
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeOutputName) {
+            targetName = KWinActiveWindowBridge.activeOutputName;
+        }
+        
+        if (targetName !== "") {
+            for (let key in root._monitorCache) {
+                if (root._monitorCache[key].name === targetName) {
+                    return root._monitorCache[key];
+                }
+            }
+        }
+        
         for (let key in root._monitorCache) {
             if (root._monitorCache[key].focused) {
                 return root._monitorCache[key];
             }
         }
-        return root._monitorCache[Object.keys(root._monitorCache)[0]];
+        
+        let keys = Object.keys(root._monitorCache);
+        if (keys.length > 0) return root._monitorCache[keys[0]];
+        return null;
     }
     readonly property int activeWsId: focusedWorkspace?.id ?? root.mockActiveWs
 
@@ -164,10 +98,12 @@ Singleton {
     function dispatch(request: string): void {
         if (request.startsWith("workspace ")) {
             const ws = request.split(" ")[1];
-            Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "setCurrentDesktop", ws]);
+            if (typeof KWinWorkspaceState !== "undefined") {
+                KWinWorkspaceState.switchTo(ws);
+            }
             return;
         }
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
+        console.log("Unhandled dispatch: " + request);
     }
 
     function cycleSpecialWorkspace(direction: string): void {
@@ -175,7 +111,6 @@ Singleton {
 
         if (openSpecials.length === 0)
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
 
         const activeSpecial = focusedMonitor.lastIpcObject.specialWorkspace.name ?? "";
 
@@ -185,12 +120,10 @@ Singleton {
                 if (workspace && workspace.lastIpcObject.windows > 0) {
                     dispatch(usingLua ? `hl.dsp.focus({ workspace = "${lastSpecialWorkspace}" })` : `workspace ${lastSpecialWorkspace}`);
                     return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
                 }
             }
             dispatch(usingLua ? `hl.dsp.focus({ workspace = "${openSpecials[0].name}" })` : `workspace ${openSpecials[0].name}`);
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
         }
 
         const currentIndex = openSpecials.findIndex(w => w.name === activeSpecial);
@@ -248,7 +181,6 @@ Singleton {
     onCapsLockChanged: {
         if (!GlobalConfig.utilities.toasts.capsLockChanged)
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
 
         if (capsLock)
             Toaster.toast(qsTr("Caps lock enabled"), qsTr("Caps lock is currently enabled"), "keyboard_capslock_badge");
@@ -259,7 +191,6 @@ Singleton {
     onNumLockChanged: {
         if (!GlobalConfig.utilities.toasts.numLockChanged)
             return;
-        Quickshell.execDetached(["bash", "-c", "PATH=$HOME/.local/bin:$PATH hyprctl dispatch \"$1\"", "--", request]);
 
         if (numLock)
             Toaster.toast(qsTr("Num lock enabled"), qsTr("Num lock is currently enabled"), "looks_one");

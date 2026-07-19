@@ -56,6 +56,7 @@ class BackgroundVisualiser : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(bool, autoHide, true)
+    CONFIG_PROPERTY(bool, hideOnAllMonitors, false)
     CONFIG_PROPERTY(bool, blur, false)
     CONFIG_PROPERTY(qreal, rounding, 1)
     CONFIG_PROPERTY(qreal, spacing, 1)

@@ -329,18 +329,6 @@ if [[ -d "$HOME/.local/share/kwin/scripts/quickshell-kde-bridge" ]]; then
     ok "Removed KWin script: quickshell-kde-bridge"
 fi
 
-# Desktop entries deployed from src/keyboardshortcuts/applications/
-if [[ -d "$BUNDLE_DIR/src/keyboardshortcuts/applications" ]]; then
-    for df in "$BUNDLE_DIR/src/keyboardshortcuts/applications/"*.desktop; do
-        [[ -f "$df" ]] || continue
-        target="$HOME/.local/share/applications/$(basename "$df")"
-        if [[ -f "$target" ]]; then
-            rm -f "$target"
-            ok "Removed desktop entry: $(basename "$target")"
-        fi
-    done
-    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
-fi
 
 section "Step 5 - Restore or Remove Config Directories"
 
