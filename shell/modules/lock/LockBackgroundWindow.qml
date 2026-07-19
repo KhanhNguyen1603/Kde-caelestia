@@ -23,6 +23,19 @@ Window {
     height: root.screen?.height ?? 1080
     visibility: Window.FullScreen
 
+    Loader {
+        id: wallpaperLoader
+        anchors.fill: parent
+        asynchronous: true
+        active: true
+
+        sourceComponent: Qt.createComponent("../background/Wallpaper.qml")
+        
+        onLoaded: {
+            item.screen = root.screen;
+        }
+    }
+
     Item {
         id: lockContent
 
