@@ -29,7 +29,9 @@ PageBase {
         if (Weather.applyLocationResult(pendingLocation)) {
             highlightedLocationIdx = -1;
             Weather.locationSearchResults = [];
+            Weather.locationSearchError = "";
             Weather.locationSearchQuery = "";
+            locationField.text = "";
         }
     }
 

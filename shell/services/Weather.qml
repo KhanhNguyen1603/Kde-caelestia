@@ -60,6 +60,7 @@ Singleton {
         locationSearchError = "";
 
         if (locationSearchQuery.length < 2) {
+            locationSearchToken++; // invalidate any in-flight searches
             locationSearchLoading = false;
             locationSearchResults = [];
             locationSearchDebounce.stop();
@@ -90,7 +91,14 @@ Singleton {
 
             locationSearchLoading = false;
 
-            const json = JSON.parse(text);
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (e) {
+                locationSearchResults = [];
+                locationSearchError = qsTr("Couldn't parse location results. Check your connection and try again.");
+                return;
+            }
             const results = [];
 
             if (json.results) {
@@ -109,7 +117,6 @@ Singleton {
             }
 
             locationSearchResults = results;
-        };
 
         const onError = function() {
             if (token !== locationSearchToken)
@@ -133,6 +140,8 @@ Singleton {
 
         const label = result.label || buildLocationLabel(result) || result.name || "";
 
+        const prevLoc = loc;
+
         GlobalConfig.services.weatherLocation = coords;
         loc = coords;
         if (label)
@@ -140,7 +149,8 @@ Singleton {
         if (label)
             cachedCities.set(coords, label);
 
-        fetchWeatherData();
+        if (coords === prevLoc)
+            fetchWeatherData();
         return true;
     }
 
