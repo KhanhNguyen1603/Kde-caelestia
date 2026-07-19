@@ -64,6 +64,7 @@ PageBase {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: qsTr("Background visualiser")
+                subtext: qsTr("Show music visualiser on wallpaper (May consume more power)")
                 checked: Config.background.visualiser.enabled
                 onToggled: {
                     GlobalConfig.background.visualiser.enabled = checked;
@@ -76,10 +77,20 @@ PageBase {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: qsTr("Auto-hide visualiser")
-                subtext: qsTr("Hide visualiser when a window is open")
+                subtext: qsTr("Hide visualiser when a window is fullscreen")
                 checked: Config.background.visualiser.autoHide
                 onToggled: GlobalConfig.background.visualiser.autoHide = checked
                 enabled: Config.background.visualiser.enabled || Config.background.visualiser.autoHide
+            }
+
+            ToggleRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                Layout.fillWidth: true
+                text: qsTr("Hide on all monitors")
+                subtext: qsTr("Also hide on all other monitors if disabled by a window")
+                checked: Config.background.visualiser.hideOnAllMonitors
+                onToggled: GlobalConfig.background.visualiser.hideOnAllMonitors = checked
+                enabled: Config.background.visualiser.enabled && Config.background.visualiser.autoHide
             }
 
             ToggleRow {

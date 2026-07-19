@@ -1,7 +1,8 @@
 pragma Singleton
 
 import QtQuick
-import Quickshell.Hyprland
+import Quickshell
+import Caelestia.Services
 
 QtObject {
     id: root
@@ -14,16 +15,16 @@ QtObject {
 
     function updateItems(): void {
         const windows = [];
-        for (const client of Hyprland.toplevels.values) {
+        for (const client of KWinActiveWindowBridge.windowList) {
             windows.push({
                 address: client.address,
                 title: client.title || "",
-                class: client.lastIpcObject?.class || "",
-                workspace: client.workspace?.name || "",
-                monitor: client.monitor?.name || "",
-                wayland: client.wayland,
-                size: client.lastIpcObject?.size || [0, 0],
-                at: client.lastIpcObject?.at || [0, 0]
+                class: client.class || "",
+                workspace: client.workspace?.id || "",
+                monitor: "",
+                wayland: true,
+                size: [client.width || 0, client.height || 0],
+                at: [client.x || 0, client.y || 0]
             });
         }
         items = windows;
@@ -37,11 +38,11 @@ QtObject {
     }
 
     function focusWindow(address: string): void {
-        Hyprland.dispatch(Hyprland.usingLua ? `hl.dsp.focus({ window = "address:0x${address}" })` : `focuswindow address:0x${address}`);
+        KWinActiveWindowBridge.focusWindow(address);
     }
 
     Component.onCompleted: {
         updateItems();
-        Hyprland.toplevels.onValuesChanged.connect(updateItems);
+        KWinActiveWindowBridge.onWindowListChanged.connect(updateItems);
     }
 }

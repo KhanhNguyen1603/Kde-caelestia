@@ -1,0 +1,130 @@
+#include "kwinworkspacestate.hpp"
+#include <QDebug>
+#include <algorithm>
+
+namespace caelestia::services {
+
+KWinWorkspaceState::KWinWorkspaceState(QObject *parent)
+    : QWaylandClientExtensionTemplate<KWinWorkspaceState>(1) // extension version
+{
+    initialize(); // Connects to the wayland display globally provided by Qt
+}
+
+KWinWorkspaceState::~KWinWorkspaceState() {
+    qDeleteAll(m_desktops);
+}
+
+int KWinWorkspaceState::activeId() const {
+    return m_activeId;
+}
+
+QVariantList KWinWorkspaceState::workspaces() const {
+    QVariantList list;
+    for (auto* d : m_desktops) {
+        if (d->id().isEmpty()) continue;
+        list.append(QVariantMap{
+            {"id", d->id()},
+            {"name", d->name().isEmpty() ? QString::number(d->position() + 1) : d->name()},
+            {"index", d->position() + 1},
+            {"active", d->isActive()}
+        });
+    }
+    return list;
+}
+
+void KWinWorkspaceState::switchTo(const QString& id) {
+    if (!isInitialized()) return;
+    
+    for (auto* d : m_desktops) {
+        if (d->id() == id || QString::number(d->position() + 1) == id || d->name() == id) {
+            d->request_activate();
+            break;
+        }
+    }
+}
+
+void KWinWorkspaceState::rebuildWorkspaceList() {
+    // Sort by position
+    std::sort(m_desktops.begin(), m_desktops.end(), [](KWinDesktop* a, KWinDesktop* b) {
+        return a->position() < b->position();
+    });
+    
+    // Find active
+    for (auto* d : m_desktops) {
+        if (d->isActive()) {
+            m_activeId = d->position() + 1;
+            emit activeIdChanged();
+            break;
+        }
+    }
+    
+    emit workspacesChanged();
+}
+
+void KWinWorkspaceState::org_kde_plasma_virtual_desktop_management_desktop_created(const QString &desktop_id, uint32_t position) {
+    if (desktop_id.isEmpty()) return;
+    
+    for (auto* d : m_desktops) {
+        if (d->id() == desktop_id) return;
+    }
+    
+    auto* handle = get_virtual_desktop(desktop_id);
+    if (!handle) return;
+    
+    auto* desktop = new KWinDesktop(this, handle);
+    m_desktops.append(desktop);
+}
+
+void KWinWorkspaceState::org_kde_plasma_virtual_desktop_management_desktop_removed(const QString &desktop_id) {
+    for (int i = 0; i < m_desktops.size(); ++i) {
+        if (m_desktops[i]->id() == desktop_id) {
+            delete m_desktops.takeAt(i);
+            rebuildWorkspaceList();
+            break;
+        }
+    }
+}
+
+void KWinWorkspaceState::org_kde_plasma_virtual_desktop_management_done() {
+    rebuildWorkspaceList();
+}
+
+void KWinWorkspaceState::org_kde_plasma_virtual_desktop_management_rows(uint32_t rows) {
+    if (rows > 0) m_rows = rows;
+}
+
+
+KWinDesktop::KWinDesktop(KWinWorkspaceState *manager, struct ::org_kde_plasma_virtual_desktop *desktop)
+    : QObject(manager)
+    , QtWayland::org_kde_plasma_virtual_desktop(desktop)
+    , m_manager(manager)
+{
+}
+
+KWinDesktop::~KWinDesktop() = default;
+
+void KWinDesktop::org_kde_plasma_virtual_desktop_desktop_id(const QString &desktop_id) {
+    m_id = desktop_id;
+}
+
+void KWinDesktop::org_kde_plasma_virtual_desktop_name(const QString &name) {
+    m_name = name;
+}
+
+void KWinDesktop::org_kde_plasma_virtual_desktop_activated() {
+    m_active = true;
+}
+
+void KWinDesktop::org_kde_plasma_virtual_desktop_deactivated() {
+    m_active = false;
+}
+
+void KWinDesktop::org_kde_plasma_virtual_desktop_position(uint32_t position) {
+    m_position = position;
+}
+
+void KWinDesktop::org_kde_plasma_virtual_desktop_done() {
+    m_manager->rebuildWorkspaceList();
+}
+
+} // namespace caelestia::services

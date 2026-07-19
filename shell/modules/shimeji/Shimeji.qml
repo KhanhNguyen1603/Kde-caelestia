@@ -16,7 +16,23 @@ StyledWindow {
 
     readonly property alias shimejiScreen: root.modelData
 
-    readonly property bool shouldBeVisible: !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableShimeji) && (!GlobalConfig.forScreen(modelData.name).shimeji.autoHide || (Hypr.monitorFor(modelData)?.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true))
+    readonly property bool windowHidesShimeji: {
+        let isHidden = false;
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeWindow) {
+            isHidden = KWinActiveWindowBridge.activeWindow.fullscreen || KWinActiveWindowBridge.activeWindow.maximized;
+            if (isHidden && !GlobalConfig.forScreen(modelData.name).shimeji.hideOnAllMonitors) {
+                isHidden = KWinActiveWindowBridge.activeOutputName === modelData.name;
+            }
+        } else {
+            if (GlobalConfig.forScreen(modelData.name).shimeji.hideOnAllMonitors) {
+                isHidden = Hypr.monitors.values.some(m => !(m.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true));
+            } else {
+                isHidden = !(Hypr.monitorFor(modelData)?.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true);
+            }
+        }
+        return isHidden;
+    }
+    readonly property bool shouldBeVisible: !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableShimeji) && (!GlobalConfig.forScreen(modelData.name).shimeji.autoHide || !windowHidesShimeji)
 
     property var extractedPaths: []
 

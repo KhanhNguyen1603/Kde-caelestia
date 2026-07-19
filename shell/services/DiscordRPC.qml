@@ -3,7 +3,6 @@ pragma Singleton
 import QtQuick
 import Caelestia.Config
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Caelestia
 import Caelestia.Services
@@ -79,10 +78,10 @@ Item {
     }
 
     Connections {
-        target: Hyprland.toplevels
+        target: KWinActiveWindowBridge
         enabled: root.active
         ignoreUnknownSignals: true
-        function onValuesChanged() { root.updatePresence(); }
+        function onWindowListChanged() { root.updatePresence(); }
     }
 
     Connections {
@@ -134,8 +133,8 @@ Item {
         let topTargetClass = "";
         let topTargetTitle = "";
 
-        for (const toplevel of Hyprland.toplevels.values) {
-            let winClass = toplevel.lastIpcObject?.class ?? "";
+        for (const toplevel of KWinActiveWindowBridge.windowList) {
+            let winClass = toplevel.class ?? "";
             let winTitle = toplevel.title ?? "";
 
             if (GlobalConfig.services.arpcSteamAutoDetect && winClass.startsWith("steam_app_")) {

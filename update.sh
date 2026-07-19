@@ -154,8 +154,6 @@ elif [[ -x "/usr/bin/caelestia" ]]; then
 else
     CAELESTIA_BIN="caelestia"
 fi
-
-systemctl --user restart qs-kwin-bridge.service 2>/dev/null || true
 "$CAELESTIA_BIN" shell -k 2>/dev/null || true
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/caelestia"
 SCHEME_FILE="$STATE_DIR/scheme.json"

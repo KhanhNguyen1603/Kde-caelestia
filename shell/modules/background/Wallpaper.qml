@@ -239,14 +239,14 @@ Item {
             sourceItem: maskWrapper
             anchors.fill: parent
             hideSource: true
-            live: true
+            live: img.needsMask
         }
 
         readonly property string currentSchemeName: Colours.showPreview ? Colours.previewScheme : Colours.scheme
         readonly property string currentVariantName: Colours.showPreview ? Colours.previewVariant : Colours.variant
         readonly property bool isDynamicScheme: currentSchemeName.startsWith("dynamic")
         readonly property bool isDynamicMonochrome: isDynamicScheme && currentVariantName === "monochrome"
-        readonly property bool needsMask: img.z === 1 && img.maskRadius < img.maxRadius
+        readonly property bool needsMask: img.z === 1 && maskAnim.running
         readonly property bool shouldRecolor: Config.background.wallpaperRecolor
         
 

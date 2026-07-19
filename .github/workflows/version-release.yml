@@ -1,4 +1,4 @@
-name: Rolling Release
+name: Version Release
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - main
 
 jobs:
-  rolling-release:
+  version-release:
     runs-on: ubuntu-latest
     concurrency:
-      group: rolling-release
+      group: version-release
       cancel-in-progress: true
     permissions:
       contents: write
@@ -20,10 +20,10 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Fetch dev Branch
+      - name: Fetch main Branch
         run: |
           set -euo pipefail
-          git fetch origin dev:refs/remotes/origin/dev --force
+          git fetch origin main:refs/remotes/origin/main --force
 
       - name: Load Version from Config
         run: |
@@ -58,27 +58,16 @@ jobs:
             exit 1
           fi
 
-      - name: Update Rolling Tag
+      - name: Create or Update Version Tag
         run: |
           set -euo pipefail
 
-          PREVIOUS_ROLLING=$(git rev-parse -q --verify refs/tags/rolling || true)
-          PREVIOUS_DEV_SYNC=$(git rev-parse -q --verify refs/tags/rolling-dev-sync || true)
-          DEV_SYNC_POINT=$(git merge-base "$GITHUB_SHA" origin/dev)
+          PREVIOUS_VERSION_TAG=$(git rev-parse -q --verify "refs/tags/$VERSION" || true)
 
-          if [[ -z "${DEV_SYNC_POINT:-}" ]]; then
-            echo "Unable to resolve a merge-base between main and origin/dev."
-            exit 1
-          fi
+          echo "PREVIOUS_VERSION_TAG=$PREVIOUS_VERSION_TAG" >> $GITHUB_ENV
 
-          echo "PREVIOUS_ROLLING=$PREVIOUS_ROLLING" >> $GITHUB_ENV
-          echo "PREVIOUS_DEV_SYNC=$PREVIOUS_DEV_SYNC" >> $GITHUB_ENV
-          echo "DEV_SYNC_POINT=$DEV_SYNC_POINT" >> $GITHUB_ENV
-
-          git tag -f rolling "$GITHUB_SHA"
-          git tag -f rolling-dev-sync "$DEV_SYNC_POINT"
-          git push origin refs/tags/rolling --force
-          git push origin refs/tags/rolling-dev-sync --force
+          git tag -f "$VERSION" "$GITHUB_SHA"
+          git push origin "refs/tags/$VERSION" --force
 
       - name: Create or Update Release
         env:
@@ -86,10 +75,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -n "$PREVIOUS_DEV_SYNC" ] && [ "$PREVIOUS_DEV_SYNC" != "$DEV_SYNC_POINT" ]; then
-            git log "$PREVIOUS_DEV_SYNC..$DEV_SYNC_POINT" --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
+          if [ -n "$PREVIOUS_VERSION_TAG" ] && [ "$PREVIOUS_VERSION_TAG" != "$VERSION" ]; then
+            git log "$PREVIOUS_VERSION_TAG..$GITHUB_SHA" --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
           else
-            git log origin/dev -n 15 --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
+            git log origin/main -n 15 --no-merges --invert-grep --grep='\[skip ci\]' --pretty='- %s (%h)' > commit_notes.txt
           fi
 
           {
@@ -106,14 +95,14 @@ jobs:
             echo "*May your desktop always reflect the stars.*"
           } > release_notes.md
 
-          if gh release view rolling >/dev/null 2>&1; then
-            gh release edit rolling \
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release edit "$VERSION" \
               --title "Caelestia KDE $VERSION" \
               --notes-file release_notes.md \
               --prerelease=false \
               --latest
           else
-            gh release create rolling \
+            gh release create "$VERSION" \
               --title "Caelestia KDE $VERSION" \
               --notes-file release_notes.md \
               --prerelease=false \
