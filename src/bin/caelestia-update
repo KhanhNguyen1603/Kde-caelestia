@@ -145,11 +145,11 @@ else
     git reset --hard -q origin/"$BRANCH" || die "Failed to apply updates"
 fi
 
-
+# Initialize submodules
 if [[ -f "$UPD_DIR/repo/.gitmodules" ]]; then
-    info "Initializing src/dots submodule..."
-    git submodule sync -- src/dots >/dev/null 2>&1 || true
-    git submodule update --init --recursive src/dots || die "Failed to initialize src/dots submodule"
+    info "Initializing all submodule..."
+    git submodule sync >/dev/null 2>&1 || true
+    git submodule update --init --recursive --force >/dev/null 2>&1 || die "Failed to initialize all submodules"
 fi
 
 [[ -f "$UPD_DIR/repo/src/dots/starship.toml" ]] || die "Missing src/dots content after update"
