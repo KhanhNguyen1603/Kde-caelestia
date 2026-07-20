@@ -168,7 +168,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: clearLoader.opacity > 0 ? clearLoader.width + Tokens.padding.medium * 2 : 0
         
-        height: toggleLayout.implicitHeight + Tokens.padding.large * 2
+        height: 0
+        visible: false
         radius: Tokens.rounding.large
         color: Colours.tPalette.m3surfaceContainer
         
