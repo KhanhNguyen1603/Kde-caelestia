@@ -54,7 +54,7 @@ Item {
             anchors.leftMargin: Tokens.spacing.medium
             anchors.verticalCenter: icon.verticalCenter
 
-            implicitWidth: parent.width - icon.width - 120
+            implicitWidth: parent.width - icon.width - 90
             implicitHeight: name.implicitHeight + comment.implicitHeight
 
             StyledText {
@@ -72,39 +72,9 @@ Item {
                 color: Colours.palette.m3outline
 
                 elide: Text.ElideRight
-                width: root.width - icon.width - 120 - Tokens.rounding.extraLargeIncreased
+                width: root.width - icon.width - 90 - Tokens.rounding.extraLargeIncreased
 
                 anchors.top: name.bottom
-            }
-        }
-
-        MouseArea {
-            id: hideIcon
-
-            width: 32
-            height: 32
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            hoverEnabled: true
-            onClicked: {
-                const appId = root.modelData?.id;
-                if (!appId)
-                    return;
-                const hiddenApps = GlobalConfig.launcher.hiddenApps ? [...GlobalConfig.launcher.hiddenApps] : [];
-                if (Strings.testRegexList(hiddenApps, appId)) {
-                    const idx = hiddenApps.indexOf(appId);
-                    if (idx !== -1)
-                        hiddenApps.splice(idx, 1);
-                } else {
-                    hiddenApps.push(appId);
-                }
-                GlobalConfig.launcher.hiddenApps = hiddenApps;
-            }
-
-            MaterialIcon {
-                anchors.centerIn: parent
-                text: Strings.testRegexList(GlobalConfig.launcher.hiddenApps, root.modelData?.id) ? "visibility_off" : "visibility"
-                color: hideIcon.containsMouse ? Colours.palette.m3primary : Colours.palette.m3outline
             }
         }
 
@@ -114,8 +84,7 @@ Item {
             width: 32
             height: 32
             anchors.verticalCenter: parent.verticalCenter
-            anchors.right: hideIcon.left
-            anchors.rightMargin: Tokens.padding.small
+            anchors.right: parent.right
             hoverEnabled: true
             onClicked: {
                 const appId = root.modelData?.id;
@@ -152,9 +121,16 @@ Item {
 
             property bool isPinned: false
 
+            // Detect trạng thái pin bằng cách check symlink hoặc file trên Desktop
             Process {
                 id: checkPinnedProc
-                command: ["sh", "-c", "test -f ~/Desktop/\"$1\" || test -f ~/Desktop/\"$1.desktop\"", "--", root.modelData?.id ?? ""]
+                command: [
+                    "sh", "-c",
+                    "DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null || echo ~/Desktop); " +
+                    "test -L \"$DESKTOP_DIR/$1\" || test -L \"$DESKTOP_DIR/$1.desktop\" || " +
+                    "test -f \"$DESKTOP_DIR/$1\" || test -f \"$DESKTOP_DIR/$1.desktop\"",
+                    "--", root.modelData?.id ?? ""
+                ]
                 running: true
                 onExited: code => {
                     pinIcon.isPinned = (code === 0);
@@ -162,22 +138,31 @@ Item {
             }
 
             onClicked: {
-                const appId = root.modelData?.id;
-                if (!appId)
+                const entryFile = root.modelData?.file || "";
+                const entryId = root.modelData?.id || "";
+                if (!entryId)
                     return;
-                
+
                 if (isPinned) {
+                    // Unpin: xóa symlink hoặc file ra khỏi Desktop
                     Quickshell.execDetached([
-                        "sh", "-c", 
-                        `rm -f ~/Desktop/"$1" ~/Desktop/"$1.desktop"`, 
-                        "--", appId
+                        "sh", "-c",
+                        "DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null || echo ~/Desktop); " +
+                        "rm -f \"$DESKTOP_DIR/$1\" \"$DESKTOP_DIR/$1.desktop\"",
+                        "--", entryId
                     ]);
                     isPinned = false;
                 } else {
+                    // Pin: tạo symlink ln -sf ra Desktop (giữ nguyên file gốc, không tốn dung lượng)
                     Quickshell.execDetached([
-                        "sh", "-c", 
-                        `FILE=$(find /usr/share/applications ~/.local/share/applications /var/lib/flatpak/exports/share/applications -name "$1" -o -name "$1.desktop" 2>/dev/null | head -n 1); if [ -n "$FILE" ]; then cp "$FILE" ~/Desktop/; BASENAME=$(basename "$FILE"); chmod +x ~/Desktop/"$BASENAME"; fi`, 
-                        "--", appId
+                        "sh", "-c",
+                        `FILE_PATH="${entryFile}"; ` +
+                        `if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then ` +
+                        `FILE_PATH=$(find /usr/share/applications /usr/local/share/applications ~/.local/share/applications ` +
+                        `-name "${entryId}" -o -name "${entryId}.desktop" -print -quit 2>/dev/null); fi; ` +
+                        `if [ -n "$FILE_PATH" ] && [ -f "$FILE_PATH" ]; then ` +
+                        `DESKTOP_DIR=$(xdg-user-dir DESKTOP 2>/dev/null || echo ~/Desktop); ` +
+                        `ln -sf "$FILE_PATH" "$DESKTOP_DIR/"; fi`
                     ]);
                     isPinned = true;
                 }
