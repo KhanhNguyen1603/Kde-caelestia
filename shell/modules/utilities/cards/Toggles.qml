@@ -30,6 +30,9 @@ StyledRect {
             },
             {
                 id: "pauseWallpaper"
+            },
+            {
+                id: "transparentDesktop"
             }
         ].filter(t => !disabledIds.has(t.id));
 
@@ -206,6 +209,20 @@ StyledRect {
                         onClicked: {
                             const newVal = !GlobalConfig.background.videoWallpaperPaused;
                             GlobalConfig.background.videoWallpaperPaused = newVal;
+                        }
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "transparentDesktop"
+                    delegate: Toggle {
+                        icon: "desktop_windows"
+                        checked: Config.background.enabled
+                        onClicked: {
+                            const newVal = !Config.background.enabled;
+                            GlobalConfig.background.enabled = newVal;
+                            if (newVal) {
+                                GlobalConfig.background.wallpaperEnabled = true;
+                            }
                         }
                     }
                 }

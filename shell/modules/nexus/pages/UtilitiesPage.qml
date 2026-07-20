@@ -141,16 +141,17 @@ PageBase {
         Repeater {
             id: toggleRepeater
             model: [
-                { id: "wifi",           label: qsTr("Wi-Fi") },
-                { id: "bluetooth",      label: qsTr("Bluetooth") },
-                { id: "mic",            label: qsTr("Microphone") },
-                { id: "settings",       label: qsTr("Settings") },
-                { id: "colorpicker",    label: Strings.localizeEnglishSpelling(qsTr("Colour Picker")) },
-                { id: "dnd",            label: qsTr("Do Not Disturb") },
-                { id: "vpn",            label: qsTr("VPN") },
-                { id: "wallpaper",      label: qsTr("Wallpaper") },
-                { id: "badapple",       label: qsTr("Bad Apple") },
-                { id: "pauseWallpaper", label: qsTr("Pause Wallpaper") },
+                { id: "wifi",               label: qsTr("Wi-Fi") },
+                { id: "bluetooth",          label: qsTr("Bluetooth") },
+                { id: "mic",                label: qsTr("Microphone") },
+                { id: "settings",           label: qsTr("Settings") },
+                { id: "colorpicker",        label: Strings.localizeEnglishSpelling(qsTr("Colour Picker")) },
+                { id: "dnd",                label: qsTr("Do Not Disturb") },
+                { id: "vpn",                label: qsTr("VPN") },
+                { id: "wallpaper",          label: qsTr("Wallpaper") },
+                { id: "badapple",           label: qsTr("Bad Apple") },
+                { id: "pauseWallpaper",     label: qsTr("Pause Wallpaper") },
+                { id: "transparentDesktop", label: qsTr("Transparent Desktop") },
             ]
 
             delegate: ToggleRow {

@@ -33,6 +33,18 @@ PageBase {
             ToggleRow {
                 Layout.fillWidth: true
                 first: true
+                text: qsTr("Transparent desktop window")
+                subtext: qsTr("Enable Caelestia desktop window, lyrics, visualiser, and addons")
+                checked: Config.background.enabled
+                onToggled: {
+                    GlobalConfig.background.enabled = checked;
+                    GlobalConfig.background.wallpaperEnabled = true;
+                }
+            }
+
+            ToggleRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                Layout.fillWidth: true
                 text: qsTr("Desktop clock")
                 checked: Config.background.desktopClock.enabled
                 onToggled: GlobalConfig.background.desktopClock.enabled = checked
