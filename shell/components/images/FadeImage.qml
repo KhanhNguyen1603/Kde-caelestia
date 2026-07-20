@@ -24,7 +24,9 @@ Image {
 
     sourceSize: {
         const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
-        return Qt.size(width * dpr, height * dpr);
+        const w = width > 0 ? width * dpr : 64;
+        const h = height > 0 ? height * dpr : 64;
+        return Qt.size(w, h);
     }
 
     retainWhileLoading: true
