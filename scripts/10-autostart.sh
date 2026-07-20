@@ -41,7 +41,7 @@ cat > "$HOME/.local/bin/caelestia-autostart.sh" << EOF
 #!/bin/bash
 export QML2_IMPORT_PATH="\$HOME/.local/lib/qt6/qml"
 export CAELESTIA_LIB_DIR="\$HOME/.local/lib/caelestia"
-exec "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
+exec env __NV_PRIME_RENDER_OFFLOAD=0 DRI_PRIME=0 "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
 EOF
 chmod +x "$HOME/.local/bin/caelestia-autostart.sh"
 
