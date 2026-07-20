@@ -147,7 +147,6 @@ ColumnLayout {
             }
         }
     }
-
     IconTextButton {
         Layout.fillWidth: true
         inactiveColour: Colours.palette.m3primaryContainer
