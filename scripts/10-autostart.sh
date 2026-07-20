@@ -37,7 +37,7 @@ while [ \$i -lt 15 ] && [ ! -s "\$SCHEME_FILE" ]; do
     sleep 1
     i=\$((i + 1))
 done
-"$CAELESTIA_PATH" shell -d &
+__NV_PRIME_RENDER_OFFLOAD=0 DRI_PRIME=0 "$CAELESTIA_PATH" shell -d &
 EOF
 chmod +x "$HOME/.local/bin/caelestia-autostart.sh"
 
