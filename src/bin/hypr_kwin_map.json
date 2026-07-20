@@ -12,6 +12,10 @@
       "args": ["address"],
       "kwin_action": "w.minimized = false; workspace.activeWindow = w;"
     },
+    "minimize": {
+      "args": ["address"],
+      "kwin_action": "w.minimized = true;"
+    },
     "closewindow": {
       "args": ["address"],
       "kwin_action": "w.closeWindow();"

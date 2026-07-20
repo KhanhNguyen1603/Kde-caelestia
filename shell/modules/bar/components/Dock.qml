@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import Quickshell.Io
 import Quickshell.Widgets
 import Caelestia
@@ -306,8 +307,34 @@ Item {
                                     bounceAnim.start();
                                 }
                                 
-                                if (modelData.toplevels.length > 0) {
-                                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.toplevels[0].address}" })` : `focuswindow address:0x${modelData.toplevels[0].address}`);
+                                if (modelData.toplevels.length === 1) {
+                                    const win = modelData.toplevels[0];
+                                    const activeWin = HyprlandData.activeWindow;
+                                    const isWinActive = activeWin && (activeWin.address === win.address);
+                                    
+                                    if (isWinActive && !win.minimized) {
+                                        Hypr.dispatch(`minimize address:0x${win.address}`);
+                                    } else {
+                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${win.address}" })` : `focuswindow address:0x${win.address}`);
+                                    }
+                                } else if (modelData.toplevels.length > 1) {
+                                    let activeIdx = -1;
+                                    const activeWin = HyprlandData.activeWindow;
+                                    for (let i = 0; i < modelData.toplevels.length; i++) {
+                                        const isWinActive = activeWin && (activeWin.address === modelData.toplevels[i].address);
+                                        if (isWinActive) {
+                                            activeIdx = i;
+                                            break;
+                                        }
+                                    }
+                                    if (activeIdx === -1) {
+                                        const targetWin = modelData.toplevels[0];
+                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${targetWin.address}" })` : `focuswindow address:0x${targetWin.address}`);
+                                    } else {
+                                        const nextIdx = (activeIdx + 1) % modelData.toplevels.length;
+                                        const targetWin = modelData.toplevels[nextIdx];
+                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${targetWin.address}" })` : `focuswindow address:0x${targetWin.address}`);
+                                    }
                                 } else if (modelData.entry) {
                                     // Mark as launching
                                     let newLaunching = Object.assign({}, root.launchingApps);
@@ -364,10 +391,10 @@ Item {
                     ]
 
                     property bool isActive: {
-                        const dummy = root.modelUpdateTrigger;
-                        if (!modelData) return false;
+                        const activeWin = HyprlandData.activeWindow;
+                        if (!activeWin || !modelData) return false;
                         for (const top of modelData.toplevels) {
-                            if (top.focused) return true;
+                            if (activeWin.address === top.address) return true;
                         }
                         return false;
                     }

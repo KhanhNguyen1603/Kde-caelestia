@@ -1,8 +1,24 @@
-console.info("Quickshell KDE Bridge script starting...");
+var lastActiveWindowId = "";
+
 function updateWindows() {
     let wins = workspace.windowList();
     console.info("Quickshell: found " + wins.length + " windows");
     let result = [];
+    let active = workspace.activeWindow;
+    if (active) {
+        let activeClass = active.resourceClass || "";
+        let isQuickshell = activeClass.toLowerCase() === "qs" ||
+                           activeClass.toLowerCase().indexOf("quickshell") !== -1 || 
+                           activeClass.toLowerCase().indexOf("caelestia") !== -1;
+        if (active.desktopWindow) {
+            lastActiveWindowId = "";
+        } else if (active.normalWindow && !isQuickshell) {
+            lastActiveWindowId = active.internalId ? active.internalId.toString() : "";
+        }
+    } else {
+        lastActiveWindowId = "";
+    }
+    let activeId = lastActiveWindowId;
     for (let i = 0; i < wins.length; ++i) {
         let w = wins[i];
         if (w.normalWindow) {
@@ -10,6 +26,7 @@ function updateWindows() {
             if (w.desktops && w.desktops.length > 0) {
                 desktopId = w.desktops[0].x11DesktopNumber || 1;
             }
+            let winId = w.internalId ? w.internalId.toString() : i.toString();
             result.push({
                 title: w.caption,
                 class: w.resourceClass,
@@ -17,12 +34,13 @@ function updateWindows() {
                 workspace: { id: desktopId },
                 at: [w.frameGeometry ? w.frameGeometry.x : 0, w.frameGeometry ? w.frameGeometry.y : 0],
                 size: [w.frameGeometry ? w.frameGeometry.width : 0, w.frameGeometry ? w.frameGeometry.height : 0],
-                internalId: w.internalId ? w.internalId.toString() : i.toString(),
-                address: w.internalId ? w.internalId.toString() : i.toString(),
+                internalId: winId,
+                address: winId,
                 floating: !w.tile,
                 fullscreen: w.fullScreen,
+                minimized: w.minimized,
                 xwayland: w.xwayland,
-                focused: (workspace.activeWindow === w)
+                focused: (activeId && activeId === winId)
             });
         }
     }
@@ -78,7 +96,21 @@ function triggerMonitorsUpdate() {
     callDBus("org.kde.qs", "/bridge", "org.kde.qs.bridge", "triggerMonitorsUpdate", "");
 }
 
-workspace.windowAdded.connect(updateWindows);
+function watchWindow(w) {
+    if (w && w.minimizedChanged) {
+        w.minimizedChanged.connect(updateWindows);
+    }
+}
+
+let initialWins = workspace.windowList();
+for (let i = 0; i < initialWins.length; i++) {
+    watchWindow(initialWins[i]);
+}
+
+workspace.windowAdded.connect(function(w) {
+    watchWindow(w);
+    updateWindows();
+});
 workspace.windowRemoved.connect(updateWindows);
 workspace.windowActivated.connect(updateWindows);
 
