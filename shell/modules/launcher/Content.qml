@@ -1,7 +1,8 @@
-pragma ComponentBehavior: Bound
-
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
+import Quickshell
+import Caelestia.Services
 import Caelestia
 import Caelestia.Config
 import qs.components
@@ -36,7 +37,7 @@ Item {
     }
 
     implicitWidth: listWrapper.width + padding * 2
-    implicitHeight: searchWrapper.height + listWrapper.height + padding + searchWrapper.anchors.bottomMargin
+    implicitHeight: searchWrapper.height + listWrapper.height + padding * 2 + Tokens.spacing.medium + launcherSessionRow.implicitHeight
 
     Item {
         id: listWrapper
@@ -54,7 +55,7 @@ Item {
             content: root
             visibilities: root.visibilities
             panels: root.panels
-            maxHeight: root.maxHeight - searchWrapper.implicitHeight - root.padding * 3
+            maxHeight: root.maxHeight - searchWrapper.implicitHeight - launcherSessionRow.implicitHeight - Tokens.spacing.medium - root.padding * 3
             search: search
             padding: root.padding
             rounding: root.rounding
@@ -69,9 +70,9 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.bottom: launcherSessionRow.top
         anchors.margins: root.padding
-        anchors.bottomMargin: CUtils.clamp(root.padding - Config.border.thickness, 0, root.padding)
+        anchors.bottomMargin: Tokens.spacing.medium
 
         implicitHeight: Math.max(searchIcon.implicitHeight, search.implicitHeight, clearClipboardIcon.implicitHeight, clearIcon.implicitHeight)
 
@@ -319,6 +320,91 @@ Item {
         background: StyledRect {
             radius: Tokens.rounding.large
             color: Colours.palette.m3surfaceContainer
+        }
+    }
+
+    RowLayout {
+        id: launcherSessionRow
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: root.padding
+        anchors.bottomMargin: CUtils.clamp(root.padding - Config.border.thickness, 0, root.padding)
+        spacing: Tokens.spacing.small
+        implicitHeight: 40
+
+        LauncherSessionButton {
+            iconText: "logout"
+            labelText: qsTr("Log Out")
+            command: ["sh", "-c", "qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null"]
+        }
+
+        LauncherSessionButton {
+            iconText: "bedtime"
+            labelText: qsTr("Sleep")
+            command: ["suspend"]
+        }
+
+        LauncherSessionButton {
+            iconText: "refresh"
+            labelText: qsTr("Restart")
+            command: Config.session.commands.reboot
+        }
+
+        LauncherSessionButton {
+            iconText: "power_settings_new"
+            labelText: qsTr("Shut Down")
+            command: Config.session.commands.shutdown
+        }
+    }
+
+    component LauncherSessionButton: Item {
+        id: btn
+        required property string iconText
+        required property string labelText
+        required property list<string> command
+
+        implicitWidth: 1
+        Layout.fillWidth: true
+        implicitHeight: parent.implicitHeight
+
+        StyledRect {
+            anchors.fill: parent
+            radius: Tokens.rounding.medium
+            color: mouseArea.containsMouse ? Colours.palette.m3surfaceContainerHigh : Colours.tPalette.m3surfaceContainerLow
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: Tokens.spacing.small
+
+                MaterialIcon {
+                    text: btn.iconText
+                    color: Colours.palette.m3onSurface
+                    fontStyle: Tokens.font.icon.builders.small.weight(Font.Medium).build()
+                }
+
+                StyledText {
+                    text: btn.labelText
+                    color: Colours.palette.m3onSurface
+                    font: Tokens.font.body.small
+                }
+            }
+        }
+
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (!SessionManager.exec(btn.command)) {
+                    Quickshell.execDetached(btn.command);
+                }
+                root.visibilities.launcher = false;
+            }
         }
     }
 }
