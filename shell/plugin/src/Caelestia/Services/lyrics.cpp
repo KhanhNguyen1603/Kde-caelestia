@@ -234,7 +234,7 @@ void Lyrics::setTrack(const QString& artist, const QString& title, const QString
     const QString a = artist.trimmed();
     const QString t = title.trimmed();
 
-    if (a == m_artist && t == m_title && album == m_album && qFuzzyCompare(duration + 1.0, m_duration + 1.0)) {
+    if (a == m_artist && t == m_title) {
         return;
     }
 
