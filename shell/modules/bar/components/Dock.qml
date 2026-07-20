@@ -308,10 +308,60 @@ Item {
                                 }
                                 
                                 if (modelData.toplevels.length > 0) {
-                                    if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
-                                        KWinActiveWindowBridge.focusWindow(modelData.toplevels[0].address);
+                                    let activeIdx = -1;
+                                    let activeAddr = "";
+                                    
+                                    if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeWindow) {
+                                        activeAddr = KWinActiveWindowBridge.activeWindow.address ? String(KWinActiveWindowBridge.activeWindow.address) : "";
+                                        console.log("Dock debug: KWin activeWindow address is:", activeAddr);
+                                    } else if (root.activeTop && root.activeTop.address) {
+                                        activeAddr = String(root.activeTop.address);
+                                        console.log("Dock debug: Hyprland activeTop address is:", activeAddr);
                                     } else {
-                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.toplevels[0].address}" })` : `focuswindow address:0x${modelData.toplevels[0].address}`);
+                                        console.log("Dock debug: No active window detected!");
+                                    }
+
+                                    console.log("Dock debug: Checking", modelData.toplevels.length, "toplevels for app.");
+                                    for (let i = 0; i < modelData.toplevels.length; i++) {
+                                        let top = modelData.toplevels[i];
+                                        let topAddr = String(top.address);
+                                        let isMinimized = top.minimized || false;
+                                        console.log("Dock debug: Toplevel", i, "address:", topAddr, "focused:", top.focused, "minimized:", isMinimized);
+                                        if (!isMinimized && (top.focused || (activeAddr !== "" && activeAddr === topAddr))) {
+                                            activeIdx = i;
+                                            console.log("Dock debug: Match found at index", i);
+                                            break;
+                                        }
+                                    }
+                                    
+                                    console.log("Dock debug: Final activeIdx:", activeIdx);
+                                    
+                                    const isKWin = (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList);
+                                    
+                                    if (modelData.toplevels.length === 1) {
+                                        let addr = String(modelData.toplevels[0].address);
+                                        if (activeIdx === 0) {
+                                            console.log("Dock debug: Single window, currently focused. Minimizing.");
+                                            if (isKWin) {
+                                                KWinActiveWindowBridge.minimizeWindow(addr);
+                                            }
+                                        } else {
+                                            console.log("Dock debug: Single window, NOT focused. Focusing.");
+                                            if (isKWin) {
+                                                KWinActiveWindowBridge.focusWindow(addr);
+                                            } else {
+                                                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${addr}" })` : `focuswindow address:0x${addr}`);
+                                            }
+                                        }
+                                    } else {
+                                        let nextIdx = activeIdx !== -1 ? (activeIdx + 1) % modelData.toplevels.length : 0;
+                                        let addr = String(modelData.toplevels[nextIdx].address);
+                                        console.log("Dock debug: Multiple windows. Cycling to index", nextIdx);
+                                        if (isKWin) {
+                                            KWinActiveWindowBridge.focusWindow(addr);
+                                        } else {
+                                            Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${addr}" })` : `focuswindow address:0x${addr}`);
+                                        }
                                     }
                                 } else if (modelData.entry) {
                                     // Mark as launching

@@ -46,6 +46,10 @@ function notifyActiveWindowReal() {
     let window = workspace.activeWindow;
     let cursorScreen = workspace.screenAt(workspace.cursorPos);
     let out = cursorScreen ? cursorScreen.name : "";
+    if (window && (window.resourceClass === "quickshell" || window.resourceClass === "plasmashell")) {
+        return; // Ignore shell panels taking focus
+    }
+    
     if (!window) {
         if (lastActiveUuid !== null) {
             lastActiveUuid = null;
@@ -113,6 +117,7 @@ function notifyWindowList() {
                 width: w.frameGeometry ? w.frameGeometry.width : w.width,
                 height: w.frameGeometry ? w.frameGeometry.height : w.height,
                 fullscreen: w.fullScreen ? true : false,
+                minimized: w.minimized ? true : false,
                 floating: !w.tile,
                 workspace: { id: deskId }
             });
@@ -122,10 +127,24 @@ function notifyWindowList() {
 }
 
 workspace.windowActivated.connect(onActiveWindowChanged);
-workspace.windowAdded.connect(notifyWindowList);
+
+function onWindowAdded(window) {
+    if (window && window.normalWindow) {
+        try { window.minimizedChanged.connect(notifyWindowList); } catch(e){}
+    }
+    notifyWindowList();
+}
+
+workspace.windowAdded.connect(onWindowAdded);
 workspace.windowRemoved.connect(notifyWindowList);
 
 // Initial push
+let initialWins = workspace.windowList();
+for (let i = 0; i < initialWins.length; ++i) {
+    if (initialWins[i].normalWindow) {
+        try { initialWins[i].minimizedChanged.connect(notifyWindowList); } catch(e){}
+    }
+}
 onActiveWindowChanged();
 notifyWindowList();
 )js";
@@ -193,49 +212,57 @@ QVariantList KWinActiveWindowBridge::windowList() const {
     return m_windowList;
 }
 
-void KWinActiveWindowBridge::focusWindow(const QString& address) {
-    QString scriptName = "caelestia-kwin-focus-" + QString::number(QCoreApplication::applicationPid()) + "-" +
+void KWinActiveWindowBridge::executeKWinScriptAction(const QString& scriptBody) {
+    QString scriptName = "caelestia-kwin-action-" + QString::number(QCoreApplication::applicationPid()) + "-" +
                          QString::number(QDateTime::currentMSecsSinceEpoch());
     QString fileName = QDir::tempPath() + "/" + scriptName + ".js";
     QFile tempFile(fileName);
     if (!tempFile.open(QIODevice::WriteOnly)) {
         return;
     }
+    tempFile.write(scriptBody.toUtf8());
+    tempFile.close();
 
-    QString scriptSource = QString(R"(
+    QDBusConnection bus = QDBusConnection::sessionBus();
+    QDBusMessage loadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadScript");
+    loadMsg << fileName << scriptName;
+    QDBusReply<int> reply = bus.call(loadMsg);
+    
+    if (reply.isValid()) {
+        int scriptId = reply.value();
+        QDBusMessage runMsg = QDBusMessage::createMethodCall("org.kde.KWin", QString("/Scripting/Script%1").arg(scriptId), "org.kde.kwin.Script", "run");
+        bus.call(runMsg);
+        
+        QDBusMessage unloadMsg = QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+        unloadMsg << scriptName;
+        bus.call(unloadMsg, QDBus::NoBlock);
+    } else {
+        qWarning() << "Failed to load script:" << reply.error().message();
+    }
+    
+    QFile::remove(fileName);
+}
+
+void KWinActiveWindowBridge::runArbitraryScript(const QString& script) {
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::focusWindow(const QString& address) {
+    QString script = QString(R"(
         let wins = workspace.windowList();
         for (let i = 0; i < wins.length; ++i) {
             if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                wins[i].minimized = false;
                 workspace.activeWindow = wins[i];
                 break;
             }
         }
-    )")
-                               .arg(address);
-
-    tempFile.write(scriptSource.toUtf8());
-    tempFile.close();
-
-    QProcess::startDetached("bash", { "-c", QString(
-        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript %1 %2 > /dev/null && "
-        "script_id=$(qdbus6 org.kde.KWin | grep '/Scripting/Script' | tail -n 1) && "
-        "if [ ! -z \"$script_id\" ]; then qdbus6 org.kde.KWin $script_id org.kde.kwin.Script.run; fi; "
-        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript %2; "
-        "rm -f %1").arg(fileName).arg(scriptName)
-    });
+    )").arg(address);
+    executeKWinScriptAction(script);
 }
 
 void KWinActiveWindowBridge::closeWindow(const QString& address) {
-    qWarning() << "CLOSE WINDOW CALLED WITH ADDRESS" << address;
-    QString scriptName = "caelestia-kwin-close-" + QString::number(QCoreApplication::applicationPid()) + "-" +
-                         QString::number(QDateTime::currentMSecsSinceEpoch());
-    QString fileName = QDir::tempPath() + "/" + scriptName + ".js";
-    QFile tempFile(fileName);
-    if (!tempFile.open(QIODevice::WriteOnly)) {
-        return;
-    }
-
-    QString scriptSource = QString(R"(
+    QString script = QString(R"(
         let wins = workspace.windowList();
         for (let i = 0; i < wins.length; ++i) {
             if (wins[i].internalId && String(wins[i].internalId) === "%1") {
@@ -243,19 +270,134 @@ void KWinActiveWindowBridge::closeWindow(const QString& address) {
                 break;
             }
         }
-    )")
-                               .arg(address);
+    )").arg(address);
+    executeKWinScriptAction(script);
+}
 
-    tempFile.write(scriptSource.toUtf8());
-    tempFile.close();
+void KWinActiveWindowBridge::minimizeWindow(const QString& address) {
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                wins[i].minimized = true;
+                break;
+            }
+        }
+    )").arg(address);
+    executeKWinScriptAction(script);
+}
 
-    QProcess::startDetached("bash", { "-c", QString(
-        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript %1 %2 > /dev/null && "
-        "script_id=$(qdbus6 org.kde.KWin | grep '/Scripting/Script' | tail -n 1) && "
-        "if [ ! -z \"$script_id\" ]; then qdbus6 org.kde.KWin $script_id org.kde.kwin.Script.run; fi; "
-        "qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript %2; "
-        "rm -f %1").arg(fileName).arg(scriptName)
-    });
+void KWinActiveWindowBridge::maximizeWindow(const QString& address, bool horz, bool vert) {
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                wins[i].setMaximize(%2, %3);
+                break;
+            }
+        }
+    )").arg(address).arg(vert ? "true" : "false").arg(horz ? "true" : "false");
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::raiseWindow(const QString& address) {
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                workspace.raiseWindow(wins[i]);
+                break;
+            }
+        }
+    )").arg(address);
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::moveWindow(const QString& address, int x, int y) {
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                let q = Object.assign({}, wins[i].frameGeometry);
+                q.x = %2;
+                q.y = %3;
+                wins[i].frameGeometry = q;
+                break;
+            }
+        }
+    )").arg(address).arg(x).arg(y);
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::resizeWindow(const QString& address, int width, int height) {
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                let q = Object.assign({}, wins[i].frameGeometry);
+                q.width = %2;
+                q.height = %3;
+                wins[i].frameGeometry = q;
+                break;
+            }
+        }
+    )").arg(address).arg(width).arg(height);
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::setWindowProperty(const QString& address, const QString& property, bool enable) {
+    QString kwinProp;
+    if (property == "above") kwinProp = "keepAbove";
+    else if (property == "below") kwinProp = "keepBelow";
+    else if (property == "skip_taskbar") kwinProp = "skipTaskbar";
+    else if (property == "skip_pager") kwinProp = "skipPager";
+    else if (property == "fullscreen") kwinProp = "fullScreen";
+    else if (property == "shaded") kwinProp = "shade";
+    else if (property == "demands_attention") kwinProp = "demandsAttention";
+    else if (property == "no_border") kwinProp = "noBorder";
+    else if (property == "minimized") kwinProp = "minimized";
+    else return;
+
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                wins[i].%2 = %3;
+                break;
+            }
+        }
+    )").arg(address).arg(kwinProp).arg(enable ? "true" : "false");
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::setWindowDesktop(const QString& address, int desktopId) {
+    QString script = QString(R"(
+        let wins = workspace.windowList();
+        for (let i = 0; i < wins.length; ++i) {
+            if (wins[i].internalId && String(wins[i].internalId) === "%1") {
+                let id = %2;
+                if (id == -1) {
+                    wins[i].desktops = [workspace.currentDesktop];
+                } else if (id == -2) {
+                    wins[i].onAllDesktops = true;
+                } else {
+                    let d = workspace.desktops.find((d) => d.x11DesktopNumber == id);
+                    if (d) wins[i].desktops = [d];
+                }
+                break;
+            }
+        }
+    )").arg(address).arg(desktopId);
+    executeKWinScriptAction(script);
+}
+
+void KWinActiveWindowBridge::setDesktop(int desktopId) {
+    QString script = QString(R"(
+        let id = %1;
+        let d = workspace.desktops.find((d) => d.x11DesktopNumber == id);
+        if (d) workspace.currentDesktop = d;
+    )").arg(desktopId);
+    executeKWinScriptAction(script);
 }
 
 void KWinActiveWindowBridge::updateWindowList(const QString& windowsJson) {

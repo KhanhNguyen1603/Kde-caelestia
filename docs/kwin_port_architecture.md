@@ -46,6 +46,15 @@ Provides real-time information about active windows, monitors, and the global wi
 **Methods (Invokables):**
 * `void focusWindow(const QString &address)`: Brings the specified window to the front and focuses it.
 * `void closeWindow(const QString &address)`: Gracefully requests the specified window to close.
+* `void minimizeWindow(const QString &address)`: Minimizes the specified window.
+* `void maximizeWindow(const QString &address, bool horz = true, bool vert = true)`: Maximizes the window.
+* `void raiseWindow(const QString &address)`: Raises the window to the top of the stack.
+* `void moveWindow(const QString &address, int x, int y)`: Moves the window to absolute screen coordinates.
+* `void resizeWindow(const QString &address, int width, int height)`: Resizes the window.
+* `void setWindowProperty(const QString &address, const QString &property, bool enable)`: Toggles states (above, below, skip_taskbar, fullscreen, minimized, etc).
+* `void setWindowDesktop(const QString &address, int desktopId)`: Moves window to desktop (-1 for current, -2 for all).
+* `void setDesktop(int desktopId)`: Switches the current desktop workspace.
+* `void runArbitraryScript(const QString &script)`: Executes raw KWin JavaScript natively.
 * `void setActiveOutputName(const QString &outputName)`: Manually sets the active output tracker.
 
 ### `KWinWorkspaceState` (Singleton)
