@@ -15,6 +15,85 @@ Singleton {
     readonly property MprisPlayer active: props.manualActive ?? list.find(p => getIdentity(p) === GlobalConfig.services.defaultPlayer) ?? list[0] ?? null
     property alias manualActive: props.manualActive
 
+    property string fetchedArtUrl: ""
+    readonly property string activeArtUrl: active ? (getArtUrl(active) || fetchedArtUrl) : ""
+
+    onActiveChanged: {
+        fetchArtwork();
+    }
+
+    property string lastFetchedArtist: ""
+    property string lastFetchedTitle: ""
+
+    function fetchArtwork() {
+        const player = root.active;
+        if (!player) {
+            fetchedArtUrl = "";
+            lastFetchedArtist = "";
+            lastFetchedTitle = "";
+            return;
+        }
+
+        // If player already has art, no need to fetch online
+        if (getArtUrl(player) !== "") {
+            fetchedArtUrl = "";
+            lastFetchedArtist = "";
+            lastFetchedTitle = "";
+            return;
+        }
+
+        const artist = player.trackArtist ? player.trackArtist.trim() : "";
+        const title = player.trackTitle ? player.trackTitle.trim() : "";
+        if (title === "") {
+            fetchedArtUrl = "";
+            lastFetchedArtist = "";
+            lastFetchedTitle = "";
+            return;
+        }
+
+        if (artist === lastFetchedArtist && title === lastFetchedTitle) {
+            return;
+        }
+
+        lastFetchedArtist = artist;
+        lastFetchedTitle = title;
+        fetchedArtUrl = "";
+
+        // Clean parentheses, brackets, and common suffixes like remix, official video, etc.
+        let cleanTitle = title.replace(/\s*[\(\[][^\)\]]*[\)\]]/g, "");
+        cleanTitle = cleanTitle.replace(/\s*[-–—]?\s*(remix|official video|official audio|lyric video|lyrics video|lyrics|video|music video|audio)\s*$/i, "");
+        cleanTitle = cleanTitle.trim();
+        if (cleanTitle === "") cleanTitle = title;
+
+        // Ignore artist if it is empty or is generic "unknown"
+        const isArtistValid = (artist !== "" && !artist.toLowerCase().includes("unknown"));
+        const searchTerm = isArtistValid ? (artist + " " + cleanTitle) : cleanTitle;
+
+        const xhr = new XMLHttpRequest();
+        const query = encodeURIComponent(searchTerm);
+        const url = "https://itunes.apple.com/search?term=" + query + "&limit=1&entity=song";
+
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.results && response.results.length > 0) {
+                            const rawUrl = response.results[0].artworkUrl100 || "";
+                            if (rawUrl !== "") {
+                                fetchedArtUrl = rawUrl;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Error parsing iTunes artwork search response:", e);
+                    }
+                }
+            }
+        }
+        xhr.open("GET", url);
+        xhr.send();
+    }
+
     function getIdentity(player: MprisPlayer): string {
         if (!player)
             return "";
@@ -39,6 +118,7 @@ Singleton {
 
     Connections {
         function onPostTrackChanged() {
+            root.fetchArtwork();
             if (!GlobalConfig.utilities.toasts.nowPlaying) {
                 return;
             }
