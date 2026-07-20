@@ -307,6 +307,13 @@ Item {
                 }
             }
             DelegateChoice {
+                roleValue: "showDesktop"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen
+                    sourceComponent: ShowDesktop {}
+                }
+            }
+            DelegateChoice {
                 roleValue: "workspaces"
                 delegate: WrappedLoader {
                     visible: !root.fullscreen

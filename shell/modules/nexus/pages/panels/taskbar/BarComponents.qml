@@ -22,6 +22,7 @@ PageBase {
 
     readonly property var componentMeta: {
         "logo": { icon: "rocket_launch", name: qsTr("Logo") },
+        "showDesktop": { icon: "crop_din", name: qsTr("Show desktop") },
         "workspaces": { icon: "workspaces", name: qsTr("Workspaces") },
         "github": {
             icon: "commit",
@@ -94,6 +95,7 @@ PageBase {
     function defaultEntries() {
         return [
             { id: "logo", enabled: true, zone: "left" },
+            { id: "showDesktop", enabled: false, zone: "left" },
             { id: "workspaces", enabled: true, zone: "left" },
             { id: "activeWindow", enabled: true, zone: "left" },
             { id: "dock", enabled: true, zone: "middle" },

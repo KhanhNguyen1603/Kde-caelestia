@@ -226,6 +226,7 @@ class BarConfig : public ConfigObject {
     CONFIG_PROPERTY(QVariantList, entries,
         {
             vmap({ { u"id"_s, u"logo"_s }, { u"enabled"_s, true }, { u"zone"_s, u"left"_s } }),
+            vmap({ { u"id"_s, u"showDesktop"_s }, { u"enabled"_s, false }, { u"zone"_s, u"left"_s } }),
             vmap({ { u"id"_s, u"workspaces"_s }, { u"enabled"_s, true }, { u"zone"_s, u"left"_s } }),
             vmap({ { u"id"_s, u"activeWindow"_s }, { u"enabled"_s, true }, { u"zone"_s, u"left"_s } }),
             vmap({ { u"id"_s, u"dock"_s }, { u"enabled"_s, true }, { u"zone"_s, u"middle"_s } }),
