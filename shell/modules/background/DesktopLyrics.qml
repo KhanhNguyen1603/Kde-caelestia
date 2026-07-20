@@ -5,6 +5,7 @@ import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Wayland
 import Caelestia.Config
 import Caelestia.Services
 import qs.components
@@ -31,8 +32,19 @@ Item {
     readonly property string sansFont: GlobalConfig.appearance.font.body.family || "Sans Serif"
     readonly property int alignment: Config.background.desktopLyrics.alignment
     readonly property bool autoHide: Config.background.desktopLyrics.autoHide
-    readonly property bool allWindowsFloating: Hypr.monitorFor(screen)?.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true
-    readonly property bool shouldHide: autoHide && !allWindowsFloating
+    readonly property bool shouldHide: {
+        if (!autoHide || !Players.active?.isPlaying) {
+            return false;
+        }
+        const list = ToplevelManager.toplevels;
+        for (let i = 0; i < list.count; i++) {
+            const tl = list.get(i);
+            if (tl && tl.maximized && tl.screens.includes(screen)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     property bool hasLyrics: Lyrics.hasLyrics
     property int currentLyricIndex: -1

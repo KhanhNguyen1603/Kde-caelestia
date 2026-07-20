@@ -16,7 +16,21 @@ StyledWindow {
 
     readonly property alias shimejiScreen: root.modelData
 
-    readonly property bool shouldBeVisible: !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableShimeji) && (!GlobalConfig.forScreen(modelData.name).shimeji.autoHide || (Hypr.monitorFor(modelData)?.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true))
+    readonly property bool autoHide: GlobalConfig.forScreen(modelData.name).shimeji.autoHide
+    readonly property bool hasMaximizedWindow: {
+        if (!autoHide) {
+            return false;
+        }
+        const list = ToplevelManager.toplevels;
+        for (let i = 0; i < list.count; i++) {
+            const tl = list.get(i);
+            if (tl && tl.maximized && tl.screens.includes(modelData)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    readonly property bool shouldBeVisible: !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableShimeji) && !hasMaximizedWindow
 
     property var extractedPaths: []
 

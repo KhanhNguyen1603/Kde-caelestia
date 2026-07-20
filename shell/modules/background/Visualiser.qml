@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Wayland
 import Caelestia.Config
 import Caelestia.Internal
 import Caelestia.Services
@@ -15,7 +16,21 @@ Item {
     required property ShellScreen screen
     required property Item wallpaper
 
-    readonly property bool shouldBeActive: Config.background.visualiser.enabled && !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableVisualizer) && (!Config.background.visualiser.autoHide || (Hypr.monitorFor(screen)?.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true))
+    readonly property bool autoHide: Config.background.visualiser.autoHide
+    readonly property bool hasMaximizedWindow: {
+        if (!autoHide || !Players.active?.isPlaying) {
+            return false;
+        }
+        const list = ToplevelManager.toplevels;
+        for (let i = 0; i < list.count; i++) {
+            const tl = list.get(i);
+            if (tl && tl.maximized && tl.screens.includes(screen)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    readonly property bool shouldBeActive: Config.background.visualiser.enabled && !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableVisualizer) && !hasMaximizedWindow
     property real offset: shouldBeActive ? 0 : screen.height * 0.2
 
     readonly property var barWrapper: {
