@@ -286,8 +286,8 @@ PanelWindow {
             "" : "";
         var screenshotAction = root.getScreenshotAction();
         const command = ScreenshotAction.getCommand(
-            (root.regionX + root.monitorOffsetX) * root.monitorScale, //
-            (root.regionY + root.monitorOffsetY) * root.monitorScale, //
+            root.regionX * root.monitorScale, //
+            root.regionY * root.monitorScale, //
             root.regionWidth * root.monitorScale,// 
             root.regionHeight * root.monitorScale, //
             root.screenshotPath, //
