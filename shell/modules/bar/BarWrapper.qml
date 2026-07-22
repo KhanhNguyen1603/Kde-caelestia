@@ -42,6 +42,10 @@ Item {
         (content.item as Bar)?.checkPopout(y);
     }
 
+    function resetHover(): void {
+        (content.item as Bar)?.resetHover();
+    }
+
     function handleWheel(y: real, angleDelta: point): void {
         (content.item as Bar)?.handleWheel(y, angleDelta);
     }

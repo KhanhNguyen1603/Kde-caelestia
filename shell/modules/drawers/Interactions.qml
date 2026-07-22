@@ -292,10 +292,13 @@ CustomMouseArea {
         if (inBarArea(x, y)) {
             bar.checkPopout(isBarHorizontal ? x : y);
             popoutHideTimer.stop();
-        } else if ((!popouts.currentName.startsWith("traymenu") || (Config.bar.popouts.tray && ((popouts.current as StackView)?.depth ?? 0) <= 1)) && !inLeftPanel(panels.popoutsWrapper, x, y)) {
-            if (!popoutHideTimer.running) popoutHideTimer.start();
         } else {
-            popoutHideTimer.stop();
+            bar.resetHover();
+            if ((!popouts.currentName.startsWith("traymenu") || (Config.bar.popouts.tray && ((popouts.current as StackView)?.depth ?? 0) <= 1)) && !inLeftPanel(panels.popoutsWrapper, x, y)) {
+                if (!popoutHideTimer.running) popoutHideTimer.start();
+            } else {
+                popoutHideTimer.stop();
+            }
         }
 
         // Show utilities on hover
