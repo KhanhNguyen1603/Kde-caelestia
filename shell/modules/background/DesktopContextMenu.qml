@@ -14,6 +14,7 @@ Controls.Menu {
     attachSideY: Controls.Menu.Bottom
     thisSideX: Controls.Menu.Left
     thisSideY: Controls.Menu.Top
+    transparentBackground: true
     property string screenName: ""
     property var itemPool: ({})
     property var entryByKey: ({})

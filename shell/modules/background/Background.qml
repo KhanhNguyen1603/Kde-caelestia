@@ -8,6 +8,9 @@ import Caelestia.Services
 import qs.components
 import qs.components.containers
 import qs.services
+import "../drawers/blur" as Blur
+import Quickshell.Hyprland
+import Caelestia.Blobs
 
 Variants {
     model: Screens.screens.filter(s => GlobalConfig.forScreen(s.name).background.enabled)
@@ -43,27 +46,13 @@ Variants {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onTapped: (eventPoint, button) => {
                 if (button === Qt.RightButton && contentItem.Config.background.wallpaperEnabled) {
-                    contextMenuAnchor.x = eventPoint.position.x;
-                    contextMenuAnchor.y = eventPoint.position.y;
-                    desktopContextMenu.expanded = true;
+                    ContextMenuStore.openDesktopContextMenu(eventPoint.position.x, eventPoint.position.y, win.modelData.name);
                 } else if (button === Qt.LeftButton) {
                     if (typeof KWinActiveWindowBridge !== "undefined") {
                         KWinActiveWindowBridge.setActiveOutputName(win.screen.name);
                     }
                 }
             }
-        }
-
-        Item {
-            id: contextMenuAnchor
-            z: 9999
-        }
-
-        DesktopContextMenu {
-            id: desktopContextMenu
-            attachTo: contextMenuAnchor
-            screenName: win.modelData.name
-            z: 9999
         }
 
         Item {

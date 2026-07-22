@@ -79,6 +79,92 @@ PageBase {
 
         StyledText {
             Layout.topMargin: Tokens.spacing.small
+            text: qsTr("Color Theme")
+            font: Tokens.font.title.medium
+        }
+
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 2
+            rowSpacing: Tokens.spacing.medium
+            columnSpacing: Tokens.spacing.medium
+
+            Repeater {
+                model: [
+                    {
+                        name: qsTr("Dark"),
+                        description: qsTr("Dark theme mode"),
+                        icon: "dark_mode",
+                        mode: "dark"
+                    },
+                    {
+                        name: qsTr("Light"),
+                        description: qsTr("Light theme mode"),
+                        icon: "light_mode",
+                        mode: "light"
+                    }
+                ]
+
+                StyledRect {
+                    id: modeDelegateRect
+                    required property var modelData
+
+                    readonly property bool isSelected: (modelData?.mode === "light") === Colours.light
+
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    implicitHeight: modeCol.implicitHeight + Tokens.padding.large * 2
+                    radius: Tokens.rounding.large
+                    color: isSelected ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainer
+                    border.width: isSelected ? 2 : 1
+                    border.color: isSelected ? Colours.palette.m3secondary : Colours.palette.m3surfaceVariant
+
+                    StateLayer {
+                        radius: parent.radius
+                        onClicked: Colours.setMode(modeDelegateRect.modelData?.mode)
+                    }
+
+                    RowLayout {
+                        id: modeCol
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: Tokens.padding.large
+                        spacing: Tokens.spacing.large
+
+                        MaterialIcon {
+                            Layout.alignment: Qt.AlignTop
+                            text: modeDelegateRect.modelData?.icon ?? ""
+                            fontStyle: Tokens.font.icon.extraLarge
+                            color: modeDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Tokens.spacing.extraSmall
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: modeDelegateRect.modelData?.name ?? ""
+                                font: Tokens.font.title.small
+                                color: modeDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+                            }
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: modeDelegateRect.modelData?.description ?? ""
+                                font: Tokens.font.body.medium
+                                color: modeDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3outline
+                                wrapMode: Text.Wrap
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        StyledText {
+            Layout.topMargin: Tokens.spacing.large
             text: qsTr("Schemes")
             font: Tokens.font.title.medium
         }

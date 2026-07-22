@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtCore
 import QtQuick.Layouts
 import Caelestia.Components
 import Caelestia.Config
@@ -13,7 +14,7 @@ PageBase {
     id: root
 
     isSubPage: true
-    title: qsTr("Appearance")
+    title: qsTr("Theme & Effects")
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -52,18 +53,75 @@ PageBase {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: qsTr("Transparency")
-                subtext: qsTr("Base %1, layers %2").arg(Colours.transparency.base).arg(Colours.transparency.layers)
-                checked: Colours.transparency.enabled
-                onToggled: GlobalConfig.appearance.transparency.enabled = checked
+                subtext: qsTr("Enable transparency across the shell")
+                checked: GlobalConfig.appearance.transparency.enabled
+                onToggled: {
+                    GlobalConfig.appearance.transparency.enabled = checked
+                    if (!checked) {
+                        GlobalConfig.appearance.blur = false
+                    }
+                }
+            }
+
+            SliderRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                label: qsTr("Base opacity")
+                valueLabel: Math.round(value * 100) + "%"
+                value: GlobalConfig.appearance.transparency.base
+                enabled: GlobalConfig.appearance.transparency.enabled
+                onMoved: v => GlobalConfig.appearance.transparency.base = v
+            }
+
+            SliderRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                label: qsTr("Layers opacity")
+                subtext: qsTr("Requires shell restart")
+                valueLabel: Math.round(value * 100) + "%"
+                value: GlobalConfig.appearance.transparency.layers
+                enabled: GlobalConfig.appearance.transparency.enabled
+                onMoved: v => GlobalConfig.appearance.transparency.layers = v
             }
 
             ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
+                text: qsTr("Background Blur")
+                subtext: qsTr("Apply blur to transparent window backgrounds")
+                checked: GlobalConfig.appearance.blur
+                enabled: GlobalConfig.appearance.transparency.enabled
+                onToggled: {
+                    GlobalConfig.appearance.blur = checked
+                    if (GlobalConfig.appearance.transparency.enabled && checked) {
+                        // Hack to force Quickshell blur region to update when enabling blur
+                        GlobalConfig.appearance.transparency.enabled = false
+                        blurHackTimer.start()
+                    }
+                }
+
+                Timer {
+                    id: blurHackTimer
+                    interval: 50
+                    onTriggered: GlobalConfig.appearance.transparency.enabled = true
+                }
+            }
+
+            Settings {
+                id: blurSettings
+                category: "Blur"
+                property int blurQuality: 20
+            }
+
+            StepperRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 last: true
-                text: qsTr("Dark theme")
-                checked: !Colours.light
-                onToggled: Colours.setMode(checked ? "dark" : "light")
+                label: qsTr("Blur Corner Quality")
+                subtext: qsTr("Increasing this can cause lags! Requires shell restart")
+                value: blurSettings.blurQuality
+                enabled: GlobalConfig.appearance.transparency.enabled && GlobalConfig.appearance.blur
+                from: 1
+                to: 100
+                stepSize: 1
+                onMoved: v => blurSettings.blurQuality = Math.round(v)
             }
         }
     }

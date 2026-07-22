@@ -6,7 +6,9 @@ import Quickshell
 import Quickshell.Wayland
 import Caelestia.Config
 import qs.components
+import qs.components.effects
 import qs.services
+import qs.modules.drawers.blur
 
 Window {
     id: root
@@ -22,6 +24,8 @@ Window {
     width: root.screen?.width ?? 1920
     height: root.screen?.height ?? 1080
     visibility: Window.FullScreen
+
+
 
     Loader {
         id: wallpaperLoader
@@ -49,6 +53,34 @@ Window {
         implicitWidth: root.isPortrait ? lockShort : lockLong
         implicitHeight: root.isPortrait ? lockLong : lockShort
 
+        Elevation {
+            anchors.fill: lockBg
+            radius: lockBg.radius
+            level: 2
+        }
+
+        ShaderEffectSource {
+            id: bgSource
+            anchors.fill: lockBg
+            sourceItem: wallpaperLoader
+            sourceRect: Qt.rect(lockContent.x, lockContent.y, lockContent.width, lockContent.height)
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                blurEnabled: true
+                blurMax: 64
+                blur: 1.0
+                maskEnabled: true
+                maskSource: ShaderEffectSource {
+                    sourceItem: Rectangle {
+                        width: lockBg.width
+                        height: lockBg.height
+                        radius: lockBg.radius
+                    }
+                }
+            }
+        }
+
         StyledRect {
             id: lockBg
 
@@ -56,13 +88,6 @@ Window {
             color: Colours.palette.m3surface
             radius: lockContent.Tokens.rounding.extraLarge * 1.5
             opacity: Colours.transparency.enabled ? Colours.transparency.base : 1
-
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                blurMax: 15
-                shadowColor: Qt.alpha(Colours.palette.m3shadow, 0.7)
-            }
         }
 
         MaterialIcon {

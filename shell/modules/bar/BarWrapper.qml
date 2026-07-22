@@ -8,6 +8,7 @@ import qs.components
 import qs.components.controls
 import qs.utils
 import qs.modules.bar.popouts as BarPopouts
+import Quickshell.Wayland
 
 Item {
     id: root

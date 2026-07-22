@@ -18,6 +18,8 @@ Singleton {
     property real loadStartedAt: 0
     property real saveStartedAt: 0
 
+    signal openDesktopContextMenu(real x, real y, string screenName)
+
     function defaultEntries() {
         return [
             { id: "toggle_desktop_icons", label: qsTr("Desktop Icons"), icon: "desktop_windows", action: "ToggleDesktopIcons", enabled: true, type: "default" },
