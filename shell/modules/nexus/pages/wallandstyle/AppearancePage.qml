@@ -3,8 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtCore
 import QtQuick.Layouts
+import Caelestia
 import Caelestia.Components
 import Caelestia.Config
+import Quickshell.Io
 import qs.components
 import qs.components.controls
 import qs.services
@@ -15,6 +17,20 @@ PageBase {
 
     isSubPage: true
     title: qsTr("Theme & Effects")
+
+    headerActions: [
+        IconTextButton {
+            text: qsTr("Restart Shell")
+            icon: "restart_alt"
+            type: TextButton.Primary
+            onClicked: restartProcess.running = true
+
+            Process {
+                id: restartProcess
+                command: ["bash", "-c", "nohup bash -c 'caelestia shell -k; sleep 2; caelestia shell -d; sleep 1;caelestia shell nexus openPage 0 8' >/dev/null 2>&1 & disown"]
+            }
+        }
+    ]
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter

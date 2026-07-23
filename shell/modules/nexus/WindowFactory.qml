@@ -26,6 +26,9 @@ Singleton {
             id: win
             
             property alias nexus: nexus
+            
+            property int initialPageIdx: 0
+            property int initialSubPageIdx: -1
 
             color: Colours.tPalette.m3surface
             surfaceFormat.opaque: false
@@ -64,6 +67,8 @@ Singleton {
                 id: nexus
 
                 anchors.fill: parent
+                initialPageIdx: win.initialPageIdx
+                initialSubPageIdx: win.initialSubPageIdx
                 nState.screen: win.screen
                 nState.isWindow: true
                 onClose: win.destroy()

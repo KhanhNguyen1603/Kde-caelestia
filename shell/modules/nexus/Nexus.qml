@@ -13,8 +13,17 @@ import qs.modules.nexus
 Item {
     id: root
 
+    property int initialPageIdx: 0
+    property int initialSubPageIdx: -1
+
     readonly property NexusState nState: NexusState {
         id: nState
+
+        currentPageIdx: root.initialPageIdx
+        Component.onCompleted: {
+            if (root.initialSubPageIdx !== -1)
+                openSubPage(root.initialSubPageIdx);
+        }
 
         onClose: root.requestClose()
     }

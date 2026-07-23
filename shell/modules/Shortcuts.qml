@@ -350,6 +350,14 @@ Scope {
             WindowFactory.create();
         }
 
+        function openPage(pageIdx: string, subPageIdx: string): void {
+            const hasSubPage = subPageIdx !== "-1" && subPageIdx !== "";
+            WindowFactory.create(null, {
+                initialPageIdx: parseInt(pageIdx),
+                initialSubPageIdx: hasSubPage ? parseInt(subPageIdx) : -1
+            });
+        }
+
         target: "nexus"
     }
 

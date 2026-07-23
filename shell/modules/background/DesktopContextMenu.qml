@@ -19,6 +19,17 @@ Controls.Menu {
     property var itemPool: ({})
     property var entryByKey: ({})
     property real perfMenuOpenStartedAt: 0
+    
+    Timer {
+        id: execTimer
+        interval: 250
+        repeat: false
+        property var pendingAction: null
+        onTriggered: {
+            if (pendingAction) pendingAction();
+            pendingAction = null;
+        }
+    }
 
     Component {
         id: menuItemComp
@@ -44,32 +55,38 @@ Controls.Menu {
         let entry = root.entryByKey[key];
         if (!entry) return;
 
-        if (entry.action) {
-            if (entry.action === "Wallpapers.next()") Wallpapers.next();
-            else if (entry.action === "Quickshell.reload()") Quickshell.reload();
-            else if (entry.action === "WindowFactory.create()") WindowFactory.create();
-            else if (entry.action === "ToggleDesktopIcons") {
-                let newState = !GlobalConfig.background.desktopIconsEnabled;
-                GlobalConfig.background.desktopIconsEnabled = newState;
-                for (let i = 0; i < Quickshell.screens.length; i++) {
-                    let sConf = GlobalConfig.forScreen(Quickshell.screens[i].name);
-                    if (sConf) sConf.background.resetOption("desktopIconsEnabled");
+        root.expanded = false;
+
+        execTimer.pendingAction = () => {
+            if (entry.action) {
+                if (entry.action === "Wallpapers.next()") Wallpapers.next();
+                else if (entry.action === "Quickshell.reload()") Quickshell.reload();
+                else if (entry.action === "WindowFactory.create()") WindowFactory.create();
+                else if (entry.action === "ToggleDesktopIcons") {
+                    let newState = !GlobalConfig.background.desktopIconsEnabled;
+                    GlobalConfig.background.desktopIconsEnabled = newState;
+                    for (let i = 0; i < Quickshell.screens.length; i++) {
+                        let sConf = GlobalConfig.forScreen(Quickshell.screens[i].name);
+                        if (sConf) sConf.background.resetOption("desktopIconsEnabled");
+                    }
+                    GlobalConfig.save();
+                } else if (entry.action === "OpenRightClickMenu") {
+                    WindowFactory.create(null, {
+                        initialPageIdx: 1, // Desktop
+                        initialSubPageIdx: 2 // Right Click Menu is index 2
+                    });
+                } else if (entry.action === "OpenTerminal") {
+                    Quickshell.execDetached([...GlobalConfig.general.apps.terminal]);
                 }
-                GlobalConfig.save();
-            } else if (entry.action === "OpenRightClickMenu") {
-                let win = WindowFactory.create();
-                win.nexus.nState.currentPageIdx = 0; // Wallpaper & Style
-                win.nexus.nState.openSubPage(9); // Right Click Menu is index 9
-            } else if (entry.action === "OpenTerminal") {
-                Quickshell.execDetached([...GlobalConfig.general.apps.terminal]);
+            } else if (entry.command) {
+                if (entry.command === "terminal") {
+                    Quickshell.execDetached([...GlobalConfig.general.apps.terminal]);
+                } else {
+                    Quickshell.execDetached(typeof entry.command === "string" ? entry.command.split(" ") : entry.command);
+                }
             }
-        } else if (entry.command) {
-            if (entry.command === "terminal") {
-                Quickshell.execDetached([...GlobalConfig.general.apps.terminal]);
-            } else {
-                Quickshell.execDetached(typeof entry.command === "string" ? entry.command.split(" ") : entry.command);
-            }
-        }
+        };
+        execTimer.restart();
     }
 
     function applyEntries(entries, sourceName) {
