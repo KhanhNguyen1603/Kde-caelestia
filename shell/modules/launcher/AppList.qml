@@ -22,7 +22,7 @@ StyledListView {
     readonly property string displayState: stateForText(displayText)
 
     function syncDisplayText(): void {
-        if (screenState.launcher && requestedState === displayState)
+        if (visibilities.launcher && requestedState === displayState)
             displayText = search.text;
     }
 
@@ -118,7 +118,7 @@ StyledListView {
         }
     }
 
-    state: screenState.launcher ? requestedState : displayState
+    state: visibilities.launcher ? requestedState : displayState
 
     onStateChanged: {
         if (state === "scheme" || state === "variant")
@@ -416,6 +416,6 @@ StyledListView {
             root.syncDisplayText();
         }
 
-        target: root.screenState
+        target: root.visibilities
     }
 }

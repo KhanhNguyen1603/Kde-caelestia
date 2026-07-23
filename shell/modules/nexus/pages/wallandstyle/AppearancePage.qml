@@ -86,7 +86,7 @@ PageBase {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: qsTr("Background Blur")
-                subtext: qsTr("Apply blur to transparent window backgrounds")
+                subtext: qsTr("Best used with KDE's native blur.\nFor Force Blur or Better Blur DX, exclude \"quickshell\" and keep this enabled")
                 checked: GlobalConfig.appearance.blur
                 enabled: GlobalConfig.appearance.transparency.enabled
                 onToggled: {
