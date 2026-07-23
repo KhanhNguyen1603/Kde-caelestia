@@ -18,6 +18,7 @@ ColumnLayout {
     property bool scrollable: true
     readonly property int cappedWidth: Math.min(Tokens.sizes.nexus.maxContentWidth, width)
     readonly property alias flickable: flickable
+    property list<Item> headerActions
 
     default property Item contentChild
 
@@ -28,9 +29,11 @@ ColumnLayout {
         implicitWidth: header.implicitWidth
         implicitHeight: header.implicitHeight - Layout.bottomMargin
         Layout.bottomMargin: -flickable.topMargin // Extra height to block clicks on flickable top margin
+        Layout.fillWidth: true
 
         RowLayout {
             id: header
+            width: parent.width
 
             spacing: Tokens.spacing.largeIncreased
 
@@ -54,6 +57,11 @@ ColumnLayout {
                 text: root.title
                 font: Tokens.font.title.large
                 elide: Text.ElideRight
+            }
+
+            RowLayout {
+                spacing: Tokens.spacing.small
+                children: root.headerActions
             }
         }
     }

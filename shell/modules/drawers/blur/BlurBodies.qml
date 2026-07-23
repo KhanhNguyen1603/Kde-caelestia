@@ -11,9 +11,18 @@ Region {
     required property real inTop
     required property real inBottom
     // These are big rectangles bluring most of the body
-    Region { x: inLeft; y: inTop; width: Math.max(0, inRight - inLeft); height: Math.max(0, inBottom - inTop) } // Center
-    Region { x: bX; y: inTop; width: Math.max(0, inLeft - bX); height: Math.max(0, inBottom - inTop) } // Left
-    Region { x: inRight; y: inTop; width: Math.max(0, bX + bW - inRight); height: Math.max(0, inBottom - inTop) } // Right
-    Region { x: inLeft; y: bY; width: Math.max(0, inRight - inLeft); height: Math.max(0, inTop - bY) } // Top
-    Region { x: inLeft; y: inBottom; width: Math.max(0, inRight - inLeft); height: Math.max(0, bY + bH - inBottom) } // Bottom
+    Region {
+        // Horizontal
+        x: bX
+        y: inTop
+        width: Math.max(0, bW)
+        height: Math.max(0, inBottom - inTop)
+    }
+    Region {
+        // Vertical
+        x: inLeft
+        y: bY
+        width: Math.max(0, inRight - inLeft)
+        height: Math.max(0, bH)
+    }
 }
