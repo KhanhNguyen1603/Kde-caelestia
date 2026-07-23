@@ -53,7 +53,7 @@ PageBase {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
             text: qsTr("Material You Icons")
-            subtext: qsTr("Override the KDE icon theme for desktop icons only (Still in progress)")
+            subtext: qsTr("Override the KDE icon theme for desktop icons only")
             checked: Config.background.materialYouIconsEnabled
             onToggled: {
                 GlobalConfig.background.materialYouIconsEnabled = checked;
@@ -70,7 +70,7 @@ PageBase {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
             text: qsTr("Vibrant Icons")
-            subtext: qsTr("Boost saturation of Material You icons for extra vibrancy (Still in progress)")
+            subtext: qsTr("Boost saturation of Material You icons for extra vibrancy")
             checked: Config.background.materialYouIconsVibrant
             onToggled: {
                 GlobalConfig.background.materialYouIconsVibrant = checked;

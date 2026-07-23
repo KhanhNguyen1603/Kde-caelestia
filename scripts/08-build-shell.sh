@@ -24,7 +24,15 @@ SHELL_DIR="$BUNDLE_DIR/shell"
 # RUN THE REQUIRED UPDATE
 
 if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
-    info "Running standalone update mode... deploying services first."
+    info "Running standalone update mode... syncing submodules first."
+    
+    if [[ -f "$BUNDLE_DIR/.gitmodules" ]]; then
+        info "Initializing all submodule..."
+        git submodule sync --recursive >/dev/null 2>&1 || true
+        git submodule update --init --recursive --force >/dev/null 2>&1 || die "Failed to initialize all submodules"
+    fi
+
+    info "Installing Caelestia Services..."
     if [[ -f "$BUNDLE_DIR/scripts/06-services.sh" ]]; then
         bash "$BUNDLE_DIR/scripts/06-services.sh" || warn "06-services.sh failed"
     fi
@@ -63,6 +71,19 @@ if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
         fi
     else
         info "KDE Lock Screen configuration skipped."
+    fi
+
+    info "Deleting yet-another-monochrome-icon-set for lag free update..."
+    if [ -z "${SHELL_DIR-}" ]; then
+        warn "SHELL_DIR is not set. Aborting deletion to prevent system damage."
+        return 1 2>/dev/null || exit 1
+    fi
+    TARGET_DIR="$SHELL_DIR/assets/icons/yet-another-monochrome-icon-set"
+    if [ -d "$TARGET_DIR" ]; then
+        if ! rm -rf "$TARGET_DIR"; then
+            warn "Failed to delete yet-another-monochrome-icon-set."
+            return 1 2>/dev/null || exit 1
+        fi
     fi
 fi
 
@@ -239,6 +260,25 @@ except Exception as e:
     echo "Caelestia CLI Record/Dolphin Patch" >> "$USER_CACHE/caelestia-kde/failed_patches.txt"
 fi
 EOF
+
+
+# Copying mono icon theme
+DEST_DIR="$HOME/.config/quickshell/caelestia/assets/icons/yet-another-monochrome-icon-set"
+TMP_DIR="${DEST_DIR}.tmp"
+
+mkdir -p "$(dirname "$DEST_DIR")"
+
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+
+if rsync -a --chmod=u+w --exclude='.git' "$BUNDLE_DIR/src/yet-another-monochrome-icon-set/" "$TMP_DIR/"; then
+    rm -rf "$DEST_DIR"
+    mv "$TMP_DIR" "$DEST_DIR"
+    info "Yet another monochrome icon set copied successfully."
+else
+    rm -rf "$TMP_DIR"
+    warn "Failed to copy yet-another-monochrome-icon-set."
+fi
 
 # Save current commit for the update checker
 mkdir -p ~/.config/quickshell/caelestia

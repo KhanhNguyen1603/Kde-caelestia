@@ -5,3 +5,7 @@
 [submodule "plasma-wallpaper-application"]
 	path = src/plasma-wallpaper-application
 	url = https://invent.kde.org/dos/plasma-wallpaper-application
+[submodule "yet-another-monochrome-icon-set"]
+	path = src/yet-another-monochrome-icon-set
+	url = https://bitbucket.org/dirn-typo/yet-another-monochrome-icon-set
+	branch = main
