@@ -85,6 +85,11 @@ if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
             return 1 2>/dev/null || exit 1
         fi
     fi
+
+    info "Updating autostart environment variables"
+    if [[ -f "$BUNDLE_DIR/scripts/10-autostart.sh" ]]; then
+        bash "$BUNDLE_DIR/scripts/10-autostart.sh" || warn "10-autostart.sh failed"
+    fi
 fi
 
 # UPDATER ONLY BLOCK END

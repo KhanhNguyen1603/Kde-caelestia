@@ -21,10 +21,10 @@ done
 echo "  Disabling legacy quickshell-kde-bridge KWin script..."
 kwriteconfig6 --file kwinrc --group "Plugins" --key "quickshell-kde-bridgeEnabled" "false"
 
-echo "  Ensuring KWin has 10 virtual desktops..."
-kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "10"
+echo "  Ensuring KWin has 5 virtual desktops..."
+kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "5"
 kwriteconfig6 --file kwinrc --group "Desktops" --key "Rows" "1"
-for i in $(seq 1 10); do
+for i in $(seq 1 5); do
     kwriteconfig6 --file kwinrc --group "Desktops" --key "Name_$i" "Desktop $i"
 done
 

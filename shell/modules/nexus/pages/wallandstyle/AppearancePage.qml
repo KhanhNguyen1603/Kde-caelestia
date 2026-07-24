@@ -98,13 +98,21 @@ PageBase {
                 onMoved: v => GlobalConfig.appearance.transparency.layers = v
             }
 
+            Process {
+                id: bbdxCheck
+                command: ["bash", "-c", "kreadconfig6 --file kwinrc --group Plugins --key better_blur_dxEnabled"]
+                running: true
+            }
+
+            property bool isBbdxEnabled: bbdxCheck.stdout.trim() === "true"
+
             ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: qsTr("Background Blur")
-                subtext: qsTr("Best used with KDE's native blur.\nFor Force Blur or Better Blur DX, exclude \"quickshell\" and keep this enabled")
-                checked: GlobalConfig.appearance.blur
-                enabled: GlobalConfig.appearance.transparency.enabled
+                subtext: qsTr("Restart the shell if the whole screen goes blur.")
+                checked: parent.isBbdxEnabled ? true : GlobalConfig.appearance.blur
+                enabled: GlobalConfig.appearance.transparency.enabled && !parent.isBbdxEnabled
                 onToggled: {
                     GlobalConfig.appearance.blur = checked
                     if (GlobalConfig.appearance.transparency.enabled && checked) {
