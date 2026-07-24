@@ -385,7 +385,7 @@ namespace UI {
                 bool failed = check_failed(steps_file, name);
                 string mark = failed ? "[X]" : "[OK]";
                 string color = failed ? Draw::color("red") : Draw::color("green");
-                Draw::text(left + 2, y++, color + mark + Draw::reset + " " + desc);
+                Draw::text(left + 2, y++, color + fit_line(mark + " " + desc, content_width) + Draw::reset);
             };
 
             auto print_patch = [&](const string& name, const string& desc) {
@@ -393,13 +393,13 @@ namespace UI {
                 bool failed = check_failed(patches_file, name);
                 string mark = failed ? "[X]" : "[OK]";
                 string color = failed ? Draw::color("red") : Draw::color("green");
-                Draw::text(left + 2, y++, color + mark + Draw::reset + " " + desc);
+                Draw::text(left + 2, y++, color + fit_line(mark + " " + desc, content_width) + Draw::reset);
             };
 
             if (g_base_distro == "arch") {
-                Draw::text(left + 2, y++, "[OK] " + fit_line("System updated (pacman -Syu)", content_width), Draw::color("green"));
+                Draw::text(left + 2, y++, fit_line("[OK] System updated (pacman -Syu)", content_width), Draw::color("green"));
             } else {
-                Draw::text(left + 2, y++, "[OK] " + fit_line("System updated (dnf upgrade)", content_width), Draw::color("green"));
+                Draw::text(left + 2, y++, fit_line("[OK] System updated (dnf upgrade)", content_width), Draw::color("green"));
             }
 
             print_step("Package installation", fit_line("Packages installed (PKGBUILDs + fonts + deps)", content_width));
@@ -429,7 +429,7 @@ namespace UI {
                 Draw::text(left + 2, y++, "FAILED PACKAGES", Draw::bold + Draw::color("red"));
                 for (const auto& p : failed_pkgs) {
                     if (y >= top + h - 2) break;
-                    Draw::text(left + 2, y++, "- " + fit_line(p, content_width > 2 ? content_width - 2 : 0), Draw::color("red"));
+                    Draw::text(left + 2, y++, fit_line("- " + p, content_width), Draw::color("red"));
                 }
             }
 
@@ -458,7 +458,7 @@ namespace UI {
                 long s = elapsed % 60;
                 char buf[64];
                 snprintf(buf, sizeof(buf), "Total installation time: %ldh %ldm %lds", h, m, s);
-                Draw::text(left + 2, y++, "[OK] " + fit_line(buf, content_width), Draw::color("green"));
+                Draw::text(left + 2, y++, fit_line(string("[OK] ") + buf, content_width), Draw::color("green"));
             }
 
             Draw::text(left + 2, top + h - 2, fit_line("Would you like to log out now? (y/N): ", content_width), Draw::bold + Draw::color("default"));
