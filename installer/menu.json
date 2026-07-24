@@ -101,9 +101,9 @@
           "default": true
         },
         {
-          "id": "POLONIUM_ENABLED",
+          "id": "KROHNKITE_ENABLED",
           "type": "boolean",
-          "title": "Enable Polonium (tiling window manager plugin)",
+          "title": "Enable Krohnkite (tiling window manager plugin)",
           "default": false
         },
         {

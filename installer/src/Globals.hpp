@@ -25,7 +25,7 @@ void load_theme();
 struct Config {
     bool enable_transaction_confirm = true;
     bool remove_cache = false;
-    bool enable_polonium = false;
+    bool enable_krohnkite = false;
     bool apply_darkly = true;
     bool enable_material_you = true;
     bool apply_custom_fonts = true;

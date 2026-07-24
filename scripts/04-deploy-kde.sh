@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 04-deploy-kde.sh  Apply KDE Plasma settings: Darkly theme, Kvantum, polonium,
+# 04-deploy-kde.sh  Apply KDE Plasma settings: Darkly theme, Kvantum, krohnkite,
 #                    5 virtual desktops, disable KDE OSDs.
 #
 # Applies:
@@ -7,12 +7,12 @@
 #   - Application style: Darkly (via kvantum-dark as engine)
 #   - Window decoration: Darkly
 #   - Kvantum theme:     MaterialAdw (from repo-base .config/Kvantum)
-#   - Polonium:          disabled by default (or user-chosen at start)
+#   - Krohnkite:         disabled by default (or user-chosen at start)
 #   - 5 virtual desktops with Meta+1..0 / Meta+Shift+1..0 shortcuts
 #   - KDE OSD disabled (volume/brightness popups)
 
 BUNDLE_DIR="${BUNDLE_DIR:?BUNDLE_DIR not set}"
-POLONIUM_ENABLED="${POLONIUM_ENABLED:-false}"
+KROHNKITE_ENABLED="${KROHNKITE_ENABLED:-false}"
 
 echo
 echo ""
@@ -46,10 +46,10 @@ else
     echo "  [SKIP] Skipping Darkly theme & Bibata cursor application."
 fi
 
-#  Polonium: tiling window manager 
-echo "  Configuring Polonium (tiling)  enabled=$POLONIUM_ENABLED ..."
+#  Krohnkite: tiling window manager 
+echo "  Configuring Krohnkite (tiling)  enabled=$KROHNKITE_ENABLED ..."
 kwriteconfig6 --file kwinrc --group "Plugins" \
-    --key "poloniumEnabled" "$POLONIUM_ENABLED" 2>/dev/null || true
+    --key "krohnkiteEnabled" "$KROHNKITE_ENABLED" 2>/dev/null || true
 
 
 

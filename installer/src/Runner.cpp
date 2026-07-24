@@ -333,7 +333,7 @@ void execute() {
     setenv("CONFIRM_ARG", "", 1); // Empty string for false
   }
 
-  // The other variables (REMOVE_CACHE, POLONIUM_ENABLED, APPLY_DARKLY,
+  // The other variables (REMOVE_CACHE, KROHNKITE_ENABLED, APPLY_DARKLY,
   // APPLY_MATERIAL_YOU, APPLY_FONTS) are already exported correctly as "true"
   // or "false" by the dynamic UI!
 

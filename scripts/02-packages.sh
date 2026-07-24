@@ -37,21 +37,22 @@ if [[ "$BASE_DISTRO" == "fedora" ]]; then
 fi
 
 echo
-if [[ "${POLONIUM_ENABLED:-false}" == "true" ]]; then
-    echo "--- Installing Polonium KWin Script ---"
+if [[ "${KROHNKITE_ENABLED:-false}" == "true" ]]; then
+    echo "--- Installing Krohnkite KWin Script ---"
     if ! command -v kpackagetool6 >/dev/null 2>&1; then
         echo "  [ERR] kpackagetool6 not found. Please ensure KDE Plasma development/package tools are installed."
     else
         tmpdir="$(mktemp -d)"
-        if curl -sL "https://github.com/zeroxoneafour/polonium/releases/latest/download/polonium.kwinscript" -o "$tmpdir/polonium.kwinscript"; then
-            if kpackagetool6 -t KWin/Script -s polonium >/dev/null 2>&1; then
-                kpackagetool6 -t KWin/Script -u "$tmpdir/polonium.kwinscript" 2>/dev/null || true
+        kwinscript_url="$(curl -sL https://api.github.com/repos/esjeon/krohnkite/releases/latest | grep -oP '"browser_download_url":\s*"\K[^"]+\.kwinscript' | head -1)"
+        if [[ -n "$kwinscript_url" ]] && curl -sL "$kwinscript_url" -o "$tmpdir/krohnkite.kwinscript"; then
+            if kpackagetool6 -t KWin/Script -s krohnkite >/dev/null 2>&1; then
+                kpackagetool6 -t KWin/Script -u "$tmpdir/krohnkite.kwinscript" 2>/dev/null || true
             else
-                kpackagetool6 -t KWin/Script -i "$tmpdir/polonium.kwinscript" 2>/dev/null || true
+                kpackagetool6 -t KWin/Script -i "$tmpdir/krohnkite.kwinscript" 2>/dev/null || true
             fi
-            echo "  [OK]  Polonium installed."
+            echo "  [OK]  Krohnkite installed."
         else
-            echo "  [ERR] Failed to download Polonium."
+            echo "  [ERR] Failed to download Krohnkite."
         fi
         rm -rf "$tmpdir"
     fi
