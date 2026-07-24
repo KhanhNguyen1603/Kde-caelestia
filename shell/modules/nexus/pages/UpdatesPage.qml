@@ -78,7 +78,8 @@ PageBase {
 
     readonly property int updatesPageIdx: {
         const idx = PageRegistry.pages.findIndex(page => page.icon === "update");
-        return idx >= 0 ? idx : 12;
+        if (idx >= 0) return idx;
+        return PageRegistry.pages.length > 0 ? Math.min(Math.max(nState.currentPageIdx, 0), PageRegistry.pages.length - 1) : 0;
     }
 
     readonly property var selectedEntry: {
