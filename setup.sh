@@ -19,38 +19,91 @@ SCRIPTS_DIR="$BUNDLE_DIR/scripts"
 export BUNDLE_DIR
 export INSTALL_START_EPOCH="$(date +%s)"
 
-normalize_line_endings_first() {
-    export BASE_DISTRO="unknown"
-    local -a crlf_files=()
-    local convert_choice=""
+detect_base_distro() {
+    local detected="unknown"
 
     if [[ -f /etc/os-release ]]; then
        # shellcheck disable=SC1091
         . /etc/os-release
         case "$ID" in
             arch|cachyos|endeavouros|manjaro|artix)
-                BASE_DISTRO="arch"
+                detected="arch"
                 ;;
             fedora|nobara|bazzite|rhel|centos|almalinux|rocky)
-                BASE_DISTRO="fedora"
+                detected="fedora"
                 ;;
             *)
                 if echo "${ID_LIKE:-}" | grep -iq "arch"; then
-                    BASE_DISTRO="arch"
+                    detected="arch"
                 elif echo "${ID_LIKE:-}" | grep -iq "fedora"; then
-                    BASE_DISTRO="fedora"
+                    detected="fedora"
                 fi
                 ;;
         esac
     fi
 
-    if [[ "$BASE_DISTRO" == "unknown" ]]; then
+    if [[ "$detected" == "unknown" ]]; then
         if command -v pacman >/dev/null 2>&1; then
-            BASE_DISTRO="arch"
+            detected="arch"
         elif command -v dnf >/dev/null 2>&1; then
-            BASE_DISTRO="fedora"
+            detected="fedora"
         fi
     fi
+
+    echo "$detected"
+}
+
+silent_refresh_pacman_sources() {
+    if [[ "$BASE_DISTRO" != "arch" ]]; then
+        return 0
+    fi
+
+    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+        pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
+        return 0
+    fi
+
+    if sudo -n true >/dev/null 2>&1; then
+        sudo -n pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
+    else
+        echo "[WARN]  Skipping early pacman source refresh (sudo requires a password)."
+    fi
+}
+
+run_arch_pacman_install() {
+    local -a pkgs=("$@")
+    local -a pacman_args=(-S --needed --noconfirm)
+
+    if (( ${#pkgs[@]} == 0 )); then
+        return 0
+    fi
+
+    if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+        pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources before install. Continuing..."
+        pacman "${pacman_args[@]}" "${pkgs[@]}" && return 0
+
+        echo "[WARN]  pacman install failed. Refreshing sources and retrying once..."
+        pacman -Syy --noconfirm >/dev/null 2>&1 || true
+        pacman "${pacman_args[@]}" "${pkgs[@]}"
+        return $?
+    fi
+
+    sudo pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources before install. Continuing..."
+    sudo pacman "${pacman_args[@]}" "${pkgs[@]}" && return 0
+
+    echo "[WARN]  pacman install failed. Refreshing sources and retrying once..."
+    sudo pacman -Syy --noconfirm >/dev/null 2>&1 || true
+    sudo pacman "${pacman_args[@]}" "${pkgs[@]}"
+}
+
+export BASE_DISTRO="$(detect_base_distro)"
+silent_refresh_pacman_sources
+
+normalize_line_endings_first() {
+    export BASE_DISTRO="$(detect_base_distro)"
+    local -a crlf_files=()
+    local convert_choice=""
+
     mapfile -t crlf_files < <(
         find "$BUNDLE_DIR" -path "$BUNDLE_DIR/.git" -prune -o -type f -print0 | \
             xargs -0 grep -Il $'\r' 2>/dev/null || true
@@ -71,7 +124,7 @@ normalize_line_endings_first() {
                     echo "[WARN]  dos2unix is not installed. Attempting to install it now..."
                     case "$BASE_DISTRO" in
                         arch)
-                            sudo pacman -S --needed --noconfirm dos2unix || return 1
+                            run_arch_pacman_install dos2unix || return 1
                             ;;
                         fedora)
                             sudo dnf install -y dos2unix || return 1
@@ -147,9 +200,9 @@ if [[ "${CAELESTIA_TMUX_MASTER:-0}" == "0" ]]; then
         echo "Missing build tools: ${MISSING_PKGS[*]}. Installing..."
         if [[ "$BASE_DISTRO" == "arch" ]]; then
             if [[ "${CAELESTIA_USE_TMUX:-1}" == "1" ]]; then
-                sudo pacman -S --needed --noconfirm base-devel cmake tmux
+                run_arch_pacman_install base-devel cmake tmux
             else
-                sudo pacman -S --needed --noconfirm base-devel cmake
+                run_arch_pacman_install base-devel cmake
             fi
         elif [[ "$BASE_DISTRO" == "fedora" ]]; then
             if [[ "${CAELESTIA_USE_TMUX:-1}" == "1" ]]; then
