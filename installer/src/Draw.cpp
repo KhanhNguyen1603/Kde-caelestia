@@ -22,6 +22,16 @@ namespace Draw {
             return name;
         }
 
+        if (name == "reset") {
+            return reset;
+        }
+        if (name == "bold") {
+            return bold;
+        }
+        if (name == "dim") {
+            return dim;
+        }
+
         static const string bold_prefix = "bold_";
         if (name.rfind(bold_prefix, 0) == 0 && name.size() > bold_prefix.size()) {
             return bold + color(name.substr(bold_prefix.size()));
