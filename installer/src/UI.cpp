@@ -130,8 +130,8 @@ namespace UI {
 
             string box_title = "PRIVILEGE ESCALATION";
             string box_color = "magenta";
-            string title_color = "white";
-            string text_color = "white";
+            string title_color = "default";
+            string text_color = "default";
             string prompt_color = "cyan";
             if (!g_theme.is_null() && g_theme.contains("layout") && g_theme["layout"].contains("sudo_prompt")) {
                 auto& l = g_theme["layout"]["sudo_prompt"];
@@ -360,7 +360,7 @@ namespace UI {
             
             string box_title = "CAELESTIA INSTALLATION SUMMARY";
             string box_color = "green";
-            string title_color = "white";
+            string title_color = "default";
             if (!g_theme.is_null() && g_theme.contains("layout") && g_theme["layout"].contains("summary_screen")) {
                 auto& l = g_theme["layout"]["summary_screen"];
                 if (l.contains("title")) box_title = l["title"].get<string>();
@@ -453,7 +453,7 @@ namespace UI {
                 Draw::text(left + 2, y++, buf, Draw::color("green"));
             }
 
-            Draw::text(left + 2, top + h - 2, "Would you like to log out now? (y/N): ", Draw::bold + Draw::color("white"));
+            Draw::text(left + 2, top + h - 2, "Would you like to log out now? (y/N): ", Draw::bold + Draw::color("default"));
             cout << Draw::sync_end() << flush;
             
             string key = Input::wait_key();
@@ -484,8 +484,8 @@ namespace UI {
 
         string box_title = title;
         string box_color = "cyan";
-        string title_color = "white";
-        string text_color = "white";
+        string title_color = "default";
+        string text_color = "default";
         if (!g_theme.is_null() && g_theme.contains("layout") && g_theme["layout"].contains("config_checklist")) {
             auto& l = g_theme["layout"]["config_checklist"];
             if (l.contains("color")) box_color = l["color"].get<string>();

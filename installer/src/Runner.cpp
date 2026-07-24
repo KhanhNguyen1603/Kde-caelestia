@@ -118,20 +118,20 @@ string show_error_dialog(const string &step_name, const string &script_path,
       return "Exit";
     }
 
-    Draw::box(pad_x, pad_y, w, h, "INSTALLATION ERROR", "red", "white");
+    Draw::box(pad_x, pad_y, w, h, "INSTALLATION ERROR", "red", "default");
 
     Draw::text(pad_x + 2, pad_y + 2, "Step failed:", "red");
-    Draw::text(pad_x + 2, pad_y + 3, step_name, "bold_white");
+    Draw::text(pad_x + 2, pad_y + 3, step_name, "bold_default");
 
     Draw::text(pad_x + 2, pad_y + 5, "Script at fault:", "red");
-    Draw::text(pad_x + 2, pad_y + 6, script_path, "bold_white");
+    Draw::text(pad_x + 2, pad_y + 6, script_path, "bold_default");
 
     int opt_start_y = pad_y + 9;
     for (size_t i = 0; i < opts.size(); ++i) {
       if (i == (size_t)selected) {
         Draw::text(pad_x + 4 + i * 12, opt_start_y, "> " + opts[i], "green");
       } else {
-        Draw::text(pad_x + 4 + i * 12, opt_start_y, "  " + opts[i], "white");
+        Draw::text(pad_x + 4 + i * 12, opt_start_y, "  " + opts[i], "default");
       }
     }
     cout << Draw::sync_end() << flush;
@@ -157,14 +157,14 @@ void draw_progress_ui(int current_step) {
 
   string box_title = "INSTALLATION PROGRESS";
   string box_color = "cyan";
-  string box_title_color = "white";
+  string box_title_color = "default";
   string text_color = "cyan";
   int pad_x = 4;
   int pad_y = 2;
 
   string list_title = "STEPS";
   string list_color = "cyan";
-  string list_title_color = "white";
+  string list_title_color = "default";
   int list_offset_y = 3;
   int list_offset_x = 2;
   int list_spacing_x = 10;
@@ -276,7 +276,7 @@ void draw_progress_ui(int current_step) {
       color_name = "red";
     } else {
       prefix = status_pending + " ";
-      color_name = "white";
+      color_name = "default";
     }
 
     string text = prefix + steps[step_idx].name;

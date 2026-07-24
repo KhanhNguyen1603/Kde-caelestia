@@ -31,7 +31,8 @@ namespace Draw {
         if (it != g_theme_colors.end()) {
             return it->second;
         }
-        return esc + "37m"; // fallback white
+        // Use terminal default foreground so light/dark themes remain readable.
+        return esc + "39m";
     }
     
     // Box chars
