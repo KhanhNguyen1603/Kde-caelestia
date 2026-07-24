@@ -16,6 +16,7 @@ Variants {
         required property ShellScreen modelData
         screen: modelData
         name: "drawers" // Use 'drawers' namespace so Hyprland blurs it automatically
+        isDesktopWidget: true
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Bottom
         color: "transparent"

@@ -13,6 +13,7 @@ import Caelestia.Config
 import qs.components.containers
 import qs.utils
 import qs.services
+import "services" as Services
 import "modules"
 import "modules/drawers"
 import "modules/background"
@@ -28,7 +29,7 @@ ShellRoot {
     GSFLoader {}
 
     Background {}
-    // BadAppleOverlay {}
+    BadAppleOverlay {}
 
     Drawers {}
     // AreaPicker {}
@@ -71,6 +72,8 @@ ShellRoot {
     Component.onCompleted: {
         Qt.callLater(() => { Weather.reload(); });
     }
+
+    Services.StartupTasks {}
 
     Process {
         id: bbdxCheckProcess

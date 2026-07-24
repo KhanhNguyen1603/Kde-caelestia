@@ -14,8 +14,8 @@ Region {
 
     Config.screen: win.screen.name
 
-    readonly property real borderThickness: win.contentItem.Config.border.thickness
-    readonly property real clampedThickness: win.contentItem.Config.border.clampedThickness
+    readonly property real borderThickness: Config.border.thickness
+    readonly property real clampedThickness: Config.border.clampedThickness
 
     readonly property real barLeftWidth: Config.bar.position === "left" ? bar.clampedThickness : clampedThickness
     readonly property real barRightWidth: Config.bar.position === "right" ? bar.clampedThickness : clampedThickness

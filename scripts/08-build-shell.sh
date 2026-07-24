@@ -216,6 +216,7 @@ try:
 
         notif = notify("-p", "Recording started", "Recording...")"""
     launch_new = """        recording_path.unlink(missing_ok=True)
+        subprocess.run(["sh", "-c", "if ! systemctl --user is-active --quiet plasma-xdg-desktop-portal-kde; then systemctl --user restart plasma-xdg-desktop-portal-kde; systemctl --user restart xdg-desktop-portal; sleep 1; fi"])
         proc = subprocess.Popen([RECORDER, *args, "-o", str(recording_path)], start_new_session=True)
         while proc.poll() is None and not recording_path.exists():
             time.sleep(0.1)
