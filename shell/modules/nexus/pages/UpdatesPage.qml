@@ -12,6 +12,7 @@ import qs.components
 import qs.components.controls
 import qs.components.containers
 import qs.services
+import qs.modules.nexus
 import qs.modules.nexus.common
 import qs.utils
 
@@ -74,6 +75,11 @@ PageBase {
     property string pendingBranch: ""
 
     readonly property bool branchDataLoading: root.pendingBranch !== "" && UpdateChecker.checkingUpdates
+
+    readonly property int updatesPageIdx: {
+        const idx = PageRegistry.pages.findIndex(page => page.icon === "update");
+        return idx >= 0 ? idx : 12;
+    }
 
     readonly property var selectedEntry: {
         for (let i = 0; i < root.timelineEntries.length; i++) {
@@ -263,6 +269,14 @@ PageBase {
                             } else {
                                 const target = root.selectedVersionId;
                                 root.selectedVersionId = "";
+                                if (!nState.isWindow) {
+                                    WindowFactory.create(null, {
+                                        initialPageIdx: root.updatesPageIdx
+                                    });
+                                    nState.close();
+                                    Qt.callLater(() => UpdateChecker.startUpdate(target));
+                                    return;
+                                }
                                 UpdateChecker.startUpdate(target);
                             }
                         }
