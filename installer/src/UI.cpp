@@ -348,6 +348,13 @@ namespace UI {
         string pkgs_file = cache_dir + "/failed_packages.txt";
         string patches_file = cache_dir + "/failed_patches.txt";
 
+        auto fit_line = [](const string& text, size_t max_len) {
+            if (max_len == 0) return string();
+            if (text.size() <= max_len) return text;
+            if (max_len <= 3) return text.substr(0, max_len);
+            return text.substr(0, max_len - 3) + "...";
+        };
+
         while (true) {
             if (g_resized) { Term::get_size(); g_resized = false; }
             cout << Draw::sync_start() << Draw::clear();
@@ -357,6 +364,7 @@ namespace UI {
             int h = g_term_height - 2;
             int left = (g_term_width - w) / 2;
             int top = 1;
+            const size_t content_width = w > 4 ? static_cast<size_t>(w - 4) : 0;
             
             string box_title = "CAELESTIA INSTALLATION SUMMARY";
             string box_color = "green";
@@ -389,25 +397,25 @@ namespace UI {
             };
 
             if (g_base_distro == "arch") {
-                Draw::text(left + 2, y++, Draw::color("green") + "[OK]" + Draw::reset + " System updated (pacman -Syu)");
+                Draw::text(left + 2, y++, "[OK] " + fit_line("System updated (pacman -Syu)", content_width), Draw::color("green"));
             } else {
-                Draw::text(left + 2, y++, Draw::color("green") + "[OK]" + Draw::reset + " System updated (dnf upgrade)");
+                Draw::text(left + 2, y++, "[OK] " + fit_line("System updated (dnf upgrade)", content_width), Draw::color("green"));
             }
 
-            print_step("Package installation", "Packages installed (PKGBUILDs + fonts + deps)");
-            print_step("Config deployment", "Configs (repo-base + KDE overrides, clean deploy)");
-            print_step("KDE settings", "Darkly theme + Kvantum + default wallpaper");
-            print_step("System tweaks", "5 virtual desktops + KDE OSDs disabled");
-            print_step("Keyboard shortcuts", "Keyboard shortcuts (KDE native + keyd)");
-            print_step("Autostart", "Quickshell + kde-material-you-colors autostart");
-            print_step("Build Caelestia Shell", "Caelestia shell built and installed");
+            print_step("Package installation", fit_line("Packages installed (PKGBUILDs + fonts + deps)", content_width));
+            print_step("Config deployment", fit_line("Configs (repo-base + KDE overrides, clean deploy)", content_width));
+            print_step("KDE settings", fit_line("Darkly theme + Kvantum + default wallpaper", content_width));
+            print_step("System tweaks", fit_line("5 virtual desktops + KDE OSDs disabled", content_width));
+            print_step("Keyboard shortcuts", fit_line("Keyboard shortcuts (KDE native + keyd)", content_width));
+            print_step("Autostart", fit_line("Quickshell + kde-material-you-colors autostart", content_width));
+            print_step("Build Caelestia Shell", fit_line("Caelestia shell built and installed", content_width));
 
             y++;
             if (y < top + h - 2) {
                 Draw::text(left + 2, y++, "PATCH STATUS", Draw::bold + Draw::color("cyan"));
-                print_patch("Caelestia CLI Hyprctl Mock Patch", "Caelestia CLI Hyprctl mock patch");
-                print_patch("Caelestia CLI Record/Dolphin Patch", "Caelestia CLI record/dolphin patch");
-                print_patch("Caelestia CLI Theme Sequence Patch", "Caelestia CLI theme sequence patch");
+                print_patch("Caelestia CLI Hyprctl Mock Patch", fit_line("Caelestia CLI Hyprctl mock patch", content_width));
+                print_patch("Caelestia CLI Record/Dolphin Patch", fit_line("Caelestia CLI record/dolphin patch", content_width));
+                print_patch("Caelestia CLI Theme Sequence Patch", fit_line("Caelestia CLI theme sequence patch", content_width));
             }
 
             ifstream pf(pkgs_file);
@@ -421,23 +429,23 @@ namespace UI {
                 Draw::text(left + 2, y++, "FAILED PACKAGES", Draw::bold + Draw::color("red"));
                 for (const auto& p : failed_pkgs) {
                     if (y >= top + h - 2) break;
-                    Draw::text(left + 2, y++, "- " + p, Draw::color("red"));
+                    Draw::text(left + 2, y++, "- " + fit_line(p, content_width > 2 ? content_width - 2 : 0), Draw::color("red"));
                 }
             }
 
             if (check_failed(steps_file, "Build Caelestia Shell") && y < top + h - 4) {
                 y++;
                 Draw::text(left + 2, y++, "SHELL BUILD FAILED", Draw::bold + Draw::color("red"));
-                Draw::text(left + 2, y++, "Review logs, install missing dependencies, and re-run setup.sh.", Draw::color("red"));
+                Draw::text(left + 2, y++, fit_line("Review logs, install missing dependencies, and re-run setup.sh.", content_width), Draw::color("red"));
             }
 
             y++;
             if (y < top + h - 6) {
                 Draw::text(left + 2, y++, "Next steps:", Draw::bold + Draw::color("yellow"));
-                Draw::text(left + 2, y++, "1) Log out now, then log back in.");
-                Draw::text(left + 2, y++, "2) If a kernel update occurred, reboot immediately.");
-                Draw::text(left + 2, y++, "3) Remove all KDE panels after login (Super+D -> panel config).");
-                Draw::text(left + 2, y++, "4) To enter desktop edit mode later: Super+D -> right click desktop.");
+                Draw::text(left + 2, y++, fit_line("1) Log out now, then log back in.", content_width));
+                Draw::text(left + 2, y++, fit_line("2) If a kernel update occurred, reboot immediately.", content_width));
+                Draw::text(left + 2, y++, fit_line("3) Remove KDE panels after login (Super+D -> panel config).", content_width));
+                Draw::text(left + 2, y++, fit_line("4) Desktop edit mode later: Super+D -> right click desktop.", content_width));
             }
 
             const char* start_epoch_str = getenv("INSTALL_START_EPOCH");
@@ -449,11 +457,11 @@ namespace UI {
                 long m = (elapsed % 3600) / 60;
                 long s = elapsed % 60;
                 char buf[64];
-                snprintf(buf, sizeof(buf), "[OK] Total installation time: %ldh %ldm %lds", h, m, s);
-                Draw::text(left + 2, y++, buf, Draw::color("green"));
+                snprintf(buf, sizeof(buf), "Total installation time: %ldh %ldm %lds", h, m, s);
+                Draw::text(left + 2, y++, "[OK] " + fit_line(buf, content_width), Draw::color("green"));
             }
 
-            Draw::text(left + 2, top + h - 2, "Would you like to log out now? (y/N): ", Draw::bold + Draw::color("default"));
+            Draw::text(left + 2, top + h - 2, fit_line("Would you like to log out now? (y/N): ", content_width), Draw::bold + Draw::color("default"));
             cout << Draw::sync_end() << flush;
             
             string key = Input::wait_key();
