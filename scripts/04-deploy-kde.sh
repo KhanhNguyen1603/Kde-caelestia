@@ -12,7 +12,7 @@
 #   - KDE OSD disabled (volume/brightness popups)
 
 BUNDLE_DIR="${BUNDLE_DIR:?BUNDLE_DIR not set}"
-KHRONKITE_ENABLED="${KHRONKITE_ENABLED:-false}"
+KROHNKITE_ENABLED="${KROHNKITE_ENABLED:-false}"
 
 echo
 echo ""
@@ -47,9 +47,9 @@ else
 fi
 
 #  Krohnkite: tiling window manager 
-echo "  Configuring Krohnkite (tiling)  enabled=$KHRONKITE_ENABLED ..."
+echo "  Configuring Krohnkite (tiling)  enabled=$KROHNKITE_ENABLED ..."
 kwriteconfig6 --file kwinrc --group "Plugins" \
-    --key "krohnkiteEnabled" "$KHRONKITE_ENABLED" 2>/dev/null || true
+    --key "krohnkiteEnabled" "$KROHNKITE_ENABLED" 2>/dev/null || true
 
 
 

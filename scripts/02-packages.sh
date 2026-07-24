@@ -37,7 +37,7 @@ if [[ "$BASE_DISTRO" == "fedora" ]]; then
 fi
 
 echo
-if [[ "${KHRONKITE_ENABLED:-false}" == "true" ]]; then
+if [[ "${KROHNKITE_ENABLED:-false}" == "true" ]]; then
     echo "--- Installing Krohnkite KWin Script ---"
     if ! command -v kpackagetool6 >/dev/null 2>&1; then
         echo "  [ERR] kpackagetool6 not found. Please ensure KDE Plasma development/package tools are installed."

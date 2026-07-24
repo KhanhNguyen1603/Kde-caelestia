@@ -101,7 +101,7 @@
           "default": true
         },
         {
-          "id": "KHRONKITE_ENABLED",
+          "id": "KROHNKITE_ENABLED",
           "type": "boolean",
           "title": "Enable Krohnkite (tiling window manager plugin)",
           "default": false
