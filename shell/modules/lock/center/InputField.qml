@@ -6,6 +6,7 @@ import M3Shapes
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.utils
 import qs.modules.lock
 
 Item {
@@ -59,7 +60,7 @@ Item {
         id: placeholder
 
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 1
+        anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
 
         text: nonAnimPlaceholder.text
 

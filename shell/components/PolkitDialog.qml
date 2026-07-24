@@ -11,6 +11,7 @@ import qs.components
 import qs.components.containers
 import qs.components.controls
 import qs.services
+import qs.utils
 import M3Shapes
 
 StyledWindow {
@@ -353,7 +354,7 @@ StyledWindow {
                             id: placeholder
 
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: 1
+                            anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
                             text: nonAnimPlaceholder.text
                             animate: true
                             color: Colours.palette.m3outline
