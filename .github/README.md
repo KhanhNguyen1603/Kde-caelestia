@@ -62,7 +62,7 @@
   - **Deep KDE Integration:** Custom KWin bridge and Quickshell modules provide tight desktop-level behavior.
   - **Daily-Use Tools Included:** Screenshot, screen recording with audio, color picker, clipboard history, and emoji picker are ready out of the box.
   - **Simple Update Path:** Update from UI or command line without overwriting your shell settings.
-  - **Optional Tiling Workflow:** Polonium support is available if you want dynamic tiling on Plasma.
+  - **Optional Tiling Workflow:** Krohnkite support is available if you want dynamic tiling on Plasma.
   
 </details>
 
@@ -135,7 +135,7 @@ https://github.com/user-attachments/assets/9ad2e5f5-f80e-48c0-b65b-a4084bb363c6
 | **[Darkly](https://github.com/vinceliuice/Darkly)** | Theme Framework | Used for Plasma style + window decoration |
 | **[Kvantum](https://github.com/tsujan/Kvantum)** | Qt Theme Engine | For consistent, deep application styling |
 | **[KWin](https://invent.kde.org/plasma/kwin)** | Window Manager | KDE's robust compositing window manager |
-| **[Polonium](https://github.com/zeroxoneafour/polonium)** | Window Tiling | Optional KDE tiling plugin |
+| **[Krohnkite](https://github.com/esjeon/krohnkite)** | Window Tiling | Optional KDE tiling plugin |
 
 
 <details> 
@@ -150,7 +150,7 @@ https://github.com/user-attachments/assets/9ad2e5f5-f80e-48c0-b65b-a4084bb363c6
   - **Fonts & Themes:** `breeze-plus`, `darkly-bin`, `eza`, `starship`, `matugen-bin`, `ttf-jetbrains-mono-nerd`, `ttf-material-symbols-variable-git`, `otf-space-grotesk`
   - **KDE & Desktop:** `kvantum`, `systemsettings`, `kde-material-you-colors`, `xdg-desktop-portal-kde`
   - **Screen Capture & OCR:** `hyprshot`, `slurp`, `swappy`, `tesseract`, `wf-recorder`
-  - **Optional Features:** `polonium`
+  - **Optional Features:** `krohnkite`
   - **Custom Build:** `caelestia-quickshell-git`
 
   See [`sdata/`](https://github.com/ladybug-me/caelestia-dots-kde/tree/main/sdata/) for the complete custom PKGBUILDs structure.

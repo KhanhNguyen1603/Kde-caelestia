@@ -413,8 +413,8 @@ fi
 
 # Disable Caelestia KWin plugins
 kwriteconfig6 --file kwinrc --group "Plugins" --key "quickshell-kde-bridgeEnabled" "false" 2>/dev/null || true
-kwriteconfig6 --file kwinrc --group "Plugins" --key "poloniumEnabled"              "false" 2>/dev/null || true
-ok "Disabled KWin plugins: quickshell-kde-bridge, polonium"
+kwriteconfig6 --file kwinrc --group "Plugins" --key "krohnkiteEnabled"             "false" 2>/dev/null || true
+ok "Disabled KWin plugins: quickshell-kde-bridge, krohnkite"
 
 # Restore desktop count to 1 (KDE default)
 kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "1" 2>/dev/null || true
@@ -674,11 +674,11 @@ if [[ "$REMOVE_PACKAGES" == "true" ]]; then
         ok "Removed kde-material-you-colors (uv)"
     fi
 
-    # Remove Polonium KWin script if installed
+    # Remove Krohnkite KWin script if installed
     if command -v kpackagetool6 >/dev/null 2>&1; then
-        if kpackagetool6 -t KWin/Script -s polonium >/dev/null 2>&1; then
-            kpackagetool6 -t KWin/Script -r polonium 2>/dev/null || true
-            ok "Removed Polonium KWin script"
+        if kpackagetool6 -t KWin/Script -s krohnkite >/dev/null 2>&1; then
+            kpackagetool6 -t KWin/Script -r krohnkite 2>/dev/null || true
+            ok "Removed Krohnkite KWin script"
         fi
     fi
 else
