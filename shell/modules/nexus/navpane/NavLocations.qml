@@ -6,6 +6,7 @@ import Caelestia.Config
 import qs.components
 import qs.components.containers
 import qs.services
+import qs.utils
 import qs.modules.nexus
 
 VerticalFadeFlickable {
@@ -92,7 +93,7 @@ VerticalFadeFlickable {
 
                         MaterialIcon {
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: 1
+                            anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
 
                             text: item.page.icon
                             color: item.isCurrentPage ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer

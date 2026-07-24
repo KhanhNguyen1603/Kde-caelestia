@@ -2,6 +2,7 @@ import QtQuick
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.utils
 
 Item {
     id: root
@@ -25,7 +26,7 @@ Item {
         id: icon
 
         anchors.centerIn: parent
-        anchors.horizontalCenterOffset: -1
+        anchors.horizontalCenterOffset: Centering.pixelAlign(parent.width, width)
 
         text: "power_settings_new"
         color: Colours.palette.m3error

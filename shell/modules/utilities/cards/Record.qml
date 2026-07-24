@@ -7,6 +7,7 @@ import Caelestia.Config
 import qs.components
 import qs.components.controls
 import qs.services
+import qs.utils
 
 StyledRect {
     id: root
@@ -35,10 +36,7 @@ StyledRect {
 
             StyledRect {
                 implicitWidth: implicitHeight
-                implicitHeight: {
-                    const h = icon.implicitHeight + Tokens.padding.small * 2;
-                    return h - (h % 2);
-                }
+                implicitHeight: icon.implicitHeight + Tokens.padding.small * 2
 
                 radius: Tokens.rounding.full
                 color: Recorder.running ? Colours.palette.m3secondary : Colours.palette.m3secondaryContainer
@@ -47,7 +45,7 @@ StyledRect {
                     id: icon
 
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: 1
+                    anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
                     text: "screen_record"
                     color: Recorder.running ? Colours.palette.m3onSecondary : Colours.palette.m3onSecondaryContainer
                     fontStyle: Tokens.font.icon.large
