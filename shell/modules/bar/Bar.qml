@@ -21,6 +21,16 @@ Item {
     required property DrawerVisibilities visibilities
     required property BarPopouts.Wrapper popouts
     required property bool fullscreen
+    property Item currentHoveredItem: null
+
+    function resetHover(): void {
+        if (currentHoveredItem) {
+            if (currentHoveredItem.hasOwnProperty("hoverPos"))
+                currentHoveredItem.hoverPos = -1;
+            currentHoveredItem = null;
+        }
+    }
+
     readonly property int vPadding: Tokens.padding.large
     readonly property real barScale: Math.max(0.6, !isNaN(Config.bar.scale) ? Config.bar.scale : 1.0)
     readonly property int thickness: Math.round(Tokens.sizes.bar.innerWidth * barScale)
@@ -79,6 +89,12 @@ Item {
     function checkPopout(pos: real): void {
         const ch = getLoaderAt(isHorizontal ? pos : width / 2, isHorizontal ? height / 2 : pos) as WrappedLoader;
 
+        if (currentHoveredItem && currentHoveredItem !== ch?.item) {
+            if (currentHoveredItem.hasOwnProperty("hoverPos"))
+                currentHoveredItem.hoverPos = -1;
+        }
+        currentHoveredItem = ch ? ch.item : null;
+
         if (ch?.id !== "tray")
             closeTray();
 
@@ -97,41 +113,15 @@ Item {
 
         if (id === "tray" && !Config.bar.popouts.tray) {
             return;
-        } else if (id === "statusIcons" && Config.bar.popouts.statusIcons) {
-            const items = (ch.item as StatusIcons).items;
-            const localPos = isHorizontal ? mapToItem(items, pos, 0).x : mapToItem(items, 0, pos).y;
-            let icon = items.childAt(isHorizontal ? localPos : items.width / 2, isHorizontal ? items.height / 2 : localPos);
-            if (!icon) {
-                // Find nearest visible child by center distance
-                let bestDist = 1e9;
-                for (let i = 0; i < items.children.length; i++) {
-                    const child = items.children[i];
-                    if (!child.visible || !child.name) continue;
-                    const center = isHorizontal
-                        ? child.mapToItem(items, child.width / 2, 0).x
-                        : child.mapToItem(items, 0, child.height / 2).y;
-                    const dist = Math.abs(localPos - center);
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        icon = child;
-                    }
-                }
-            }
-            if (icon) {
-                popouts.currentName = icon.name;
-                popouts.currentCenter = isHorizontal ? icon.mapToItem(null, icon.implicitWidth / 2, 0).x : icon.mapToItem(null, 0, icon.implicitHeight / 2).y;
-                popouts.hasCurrent = true;
-            } else {
-                popouts.hasCurrent = false;
-            }
         } else if (id === "tray" && Config.bar.popouts.tray && !visibilities.sidebar) {
             const tray = ch.item as Tray;
             const mouseMap = mapToItem(tray.expandIcon, isHorizontal ? pos : tray.implicitWidth / 2, isHorizontal ? tray.implicitHeight / 2 : pos);
             if (!Config.bar.tray.compact || (tray.expanded && !tray.expandIcon.contains(mouseMap))) {
                 const traySize = isHorizontal ? tray.layout.implicitWidth : tray.layout.implicitHeight;
-                const index = Math.floor(((pos - top - tray.padding * 2 + tray.spacing) / traySize) * tray.items.count);
+                const localX = isHorizontal ? tray.layout.mapFromItem(null, pos, 0).x : tray.layout.mapFromItem(null, 0, pos).y;
+                const index = Math.floor((localX / (traySize + Tokens.spacing.small)) * tray.items.count);
                 const trayItem = tray.items.itemAt(index);
-                if (trayItem) {
+                if (trayItem && localX >= 0 && localX <= traySize) {
                     popouts.currentName = `traymenu${index}`;
                     popouts.currentCenter = isHorizontal ? trayItem.mapToItem(null, trayItem.implicitWidth / 2, 0).x : trayItem.mapToItem(null, 0, trayItem.implicitHeight / 2).y;
                     popouts.hasCurrent = true;
@@ -141,6 +131,39 @@ Item {
             } else {
                 popouts.hasCurrent = false;
                 tray.expanded = true;
+            }
+        } else if (id === "statusIcons") {
+            const statusIcons = ch.item as StatusIcons;
+            const items = statusIcons.items;
+            const localX = isHorizontal ? items.mapFromItem(null, pos, 0).x : items.width / 2;
+            const localY = isHorizontal ? items.height / 2 : items.mapFromItem(null, 0, pos).y;
+            statusIcons.hoverPos = isHorizontal ? localX : localY;
+
+            if (!Config.bar.popouts.statusIcons) return;
+
+            let icon = items.childAt(localX, localY);
+            if (!icon) {
+                // Find nearest visible child by center distance
+                let bestDist = 1e9;
+                for (let i = 0; i < items.children.length; i++) {
+                    const child = items.children[i];
+                    if (!child.visible || !child.name) continue;
+                    const center = isHorizontal
+                        ? child.mapToItem(items, child.width / 2, 0).x
+                        : child.mapToItem(items, 0, child.height / 2).y;
+                    const dist = Math.abs((isHorizontal ? localX : localY) - center);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        icon = child;
+                    }
+                }
+            }
+            if (icon) {
+                popouts.currentName = icon.name;
+                popouts.currentCenter = isHorizontal ? icon.mapToItem(null, icon.width / 2, 0).x : icon.mapToItem(null, 0, icon.height / 2).y;
+                popouts.hasCurrent = true;
+            } else {
+                popouts.hasCurrent = false;
             }
         } else if (id === "activeWindow" && Config.bar.popouts.activeWindow && Config.bar.activeWindow.showOnHover) {
             const item = ch.item as Item;

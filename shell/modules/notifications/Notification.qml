@@ -175,7 +175,7 @@ StyledRect {
                         asynchronous: true
                         active: !root.hasAppIcon
                         anchors.centerIn: parent
-                        anchors.verticalCenterOffset: 1
+                        anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
 
                         sourceComponent: MaterialIcon {
                             text: Icons.getNotifIcon(root.modelData.summary, root.modelData.urgency)

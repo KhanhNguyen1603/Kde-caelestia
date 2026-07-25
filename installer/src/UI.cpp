@@ -9,6 +9,7 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
+#include <unordered_map>
 #include <vector>
 
 using namespace std;
@@ -129,8 +130,8 @@ namespace UI {
 
             string box_title = "PRIVILEGE ESCALATION";
             string box_color = "magenta";
-            string title_color = "white";
-            string text_color = "white";
+            string title_color = "default";
+            string text_color = "default";
             string prompt_color = "cyan";
             if (!g_theme.is_null() && g_theme.contains("layout") && g_theme["layout"].contains("sudo_prompt")) {
                 auto& l = g_theme["layout"]["sudo_prompt"];
@@ -347,6 +348,13 @@ namespace UI {
         string pkgs_file = cache_dir + "/failed_packages.txt";
         string patches_file = cache_dir + "/failed_patches.txt";
 
+        auto fit_line = [](const string& text, size_t max_len) {
+            if (max_len == 0) return string();
+            if (text.size() <= max_len) return text;
+            if (max_len <= 3) return text.substr(0, max_len);
+            return text.substr(0, max_len - 3) + "...";
+        };
+
         while (true) {
             if (g_resized) { Term::get_size(); g_resized = false; }
             cout << Draw::sync_start() << Draw::clear();
@@ -356,10 +364,11 @@ namespace UI {
             int h = g_term_height - 2;
             int left = (g_term_width - w) / 2;
             int top = 1;
+            const size_t content_width = w > 4 ? static_cast<size_t>(w - 4) : 0;
             
             string box_title = "CAELESTIA INSTALLATION SUMMARY";
             string box_color = "green";
-            string title_color = "white";
+            string title_color = "default";
             if (!g_theme.is_null() && g_theme.contains("layout") && g_theme["layout"].contains("summary_screen")) {
                 auto& l = g_theme["layout"]["summary_screen"];
                 if (l.contains("title")) box_title = l["title"].get<string>();
@@ -376,7 +385,7 @@ namespace UI {
                 bool failed = check_failed(steps_file, name);
                 string mark = failed ? "[X]" : "[OK]";
                 string color = failed ? Draw::color("red") : Draw::color("green");
-                Draw::text(left + 2, y++, color + mark + Draw::reset + " " + desc);
+                Draw::text(left + 2, y++, color + fit_line(mark + " " + desc, content_width) + Draw::reset);
             };
 
             auto print_patch = [&](const string& name, const string& desc) {
@@ -384,29 +393,29 @@ namespace UI {
                 bool failed = check_failed(patches_file, name);
                 string mark = failed ? "[X]" : "[OK]";
                 string color = failed ? Draw::color("red") : Draw::color("green");
-                Draw::text(left + 2, y++, color + mark + Draw::reset + " " + desc);
+                Draw::text(left + 2, y++, color + fit_line(mark + " " + desc, content_width) + Draw::reset);
             };
 
             if (g_base_distro == "arch") {
-                Draw::text(left + 2, y++, Draw::color("green") + "[OK]" + Draw::reset + " System updated (pacman -Syu)");
+                Draw::text(left + 2, y++, fit_line("[OK] System updated (pacman -Syu)", content_width), Draw::color("green"));
             } else {
-                Draw::text(left + 2, y++, Draw::color("green") + "[OK]" + Draw::reset + " System updated (dnf upgrade)");
+                Draw::text(left + 2, y++, fit_line("[OK] System updated (dnf upgrade)", content_width), Draw::color("green"));
             }
 
-            print_step("Package installation", "Packages installed (PKGBUILDs + fonts + deps)");
-            print_step("Config deployment", "Configs (repo-base + KDE overrides, clean deploy)");
-            print_step("KDE settings", "Darkly theme + Kvantum + default wallpaper");
-            print_step("System tweaks", "5 virtual desktops + KDE OSDs disabled");
-            print_step("Keyboard shortcuts", "Keyboard shortcuts (KDE native + keyd)");
-            print_step("Autostart", "Quickshell + kde-material-you-colors autostart");
-            print_step("Build Caelestia Shell", "Caelestia shell built and installed");
+            print_step("Package installation", fit_line("Packages installed (PKGBUILDs + fonts + deps)", content_width));
+            print_step("Config deployment", fit_line("Configs (repo-base + KDE overrides, clean deploy)", content_width));
+            print_step("KDE settings", fit_line("Darkly theme + Kvantum + default wallpaper", content_width));
+            print_step("System tweaks", fit_line("5 virtual desktops + KDE OSDs disabled", content_width));
+            print_step("Keyboard shortcuts", fit_line("Keyboard shortcuts (KDE native + keyd)", content_width));
+            print_step("Autostart", fit_line("Quickshell + kde-material-you-colors autostart", content_width));
+            print_step("Build Caelestia Shell", fit_line("Caelestia shell built and installed", content_width));
 
             y++;
             if (y < top + h - 2) {
                 Draw::text(left + 2, y++, "PATCH STATUS", Draw::bold + Draw::color("cyan"));
-                print_patch("Caelestia CLI Hyprctl Mock Patch", "Caelestia CLI Hyprctl mock patch");
-                print_patch("Caelestia CLI Record/Dolphin Patch", "Caelestia CLI record/dolphin patch");
-                print_patch("Caelestia CLI Theme Sequence Patch", "Caelestia CLI theme sequence patch");
+                print_patch("Caelestia CLI Hyprctl Mock Patch", fit_line("Caelestia CLI Hyprctl mock patch", content_width));
+                print_patch("Caelestia CLI Record/Dolphin Patch", fit_line("Caelestia CLI record/dolphin patch", content_width));
+                print_patch("Caelestia CLI Theme Sequence Patch", fit_line("Caelestia CLI theme sequence patch", content_width));
             }
 
             ifstream pf(pkgs_file);
@@ -420,23 +429,23 @@ namespace UI {
                 Draw::text(left + 2, y++, "FAILED PACKAGES", Draw::bold + Draw::color("red"));
                 for (const auto& p : failed_pkgs) {
                     if (y >= top + h - 2) break;
-                    Draw::text(left + 2, y++, "- " + p, Draw::color("red"));
+                    Draw::text(left + 2, y++, fit_line("- " + p, content_width), Draw::color("red"));
                 }
             }
 
             if (check_failed(steps_file, "Build Caelestia Shell") && y < top + h - 4) {
                 y++;
                 Draw::text(left + 2, y++, "SHELL BUILD FAILED", Draw::bold + Draw::color("red"));
-                Draw::text(left + 2, y++, "Review logs, install missing dependencies, and re-run setup.sh.", Draw::color("red"));
+                Draw::text(left + 2, y++, fit_line("Review logs, install missing dependencies, and re-run setup.sh.", content_width), Draw::color("red"));
             }
 
             y++;
             if (y < top + h - 6) {
                 Draw::text(left + 2, y++, "Next steps:", Draw::bold + Draw::color("yellow"));
-                Draw::text(left + 2, y++, "1) Log out now, then log back in.");
-                Draw::text(left + 2, y++, "2) If a kernel update occurred, reboot immediately.");
-                Draw::text(left + 2, y++, "3) Remove all KDE panels after login (Super+D -> panel config).");
-                Draw::text(left + 2, y++, "4) To enter desktop edit mode later: Super+D -> right click desktop.");
+                Draw::text(left + 2, y++, fit_line("1) Log out now, then log back in.", content_width));
+                Draw::text(left + 2, y++, fit_line("2) If a kernel update occurred, reboot immediately.", content_width));
+                Draw::text(left + 2, y++, fit_line("3) Remove KDE panels after login (Super+D -> panel config).", content_width));
+                Draw::text(left + 2, y++, fit_line("4) Desktop edit mode later: Super+D -> right click desktop.", content_width));
             }
 
             const char* start_epoch_str = getenv("INSTALL_START_EPOCH");
@@ -448,11 +457,11 @@ namespace UI {
                 long m = (elapsed % 3600) / 60;
                 long s = elapsed % 60;
                 char buf[64];
-                snprintf(buf, sizeof(buf), "[OK] Total installation time: %ldh %ldm %lds", h, m, s);
-                Draw::text(left + 2, y++, buf, Draw::color("green"));
+                snprintf(buf, sizeof(buf), "Total installation time: %ldh %ldm %lds", h, m, s);
+                Draw::text(left + 2, y++, fit_line(string("[OK] ") + buf, content_width), Draw::color("green"));
             }
 
-            Draw::text(left + 2, top + h - 2, "Would you like to log out now? (y/N): ", Draw::bold + Draw::color("white"));
+            Draw::text(left + 2, top + h - 2, fit_line("Would you like to log out now? (y/N): ", content_width), Draw::bold + Draw::color("default"));
             cout << Draw::sync_end() << flush;
             
             string key = Input::wait_key();
@@ -469,14 +478,22 @@ namespace UI {
 
 namespace UI {
     bool render_menu(const json& menu_items, const std::string& title) {
+        struct MenuItemMeta {
+            string type;
+            string title;
+            string id;
+            vector<string> options;
+            unordered_map<string, int> option_index;
+        };
+
         int selected = 0;
         int num_items = menu_items.size();
         if (num_items == 0) return true;
 
         string box_title = title;
         string box_color = "cyan";
-        string title_color = "white";
-        string text_color = "white";
+        string title_color = "default";
+        string text_color = "default";
         if (!g_theme.is_null() && g_theme.contains("layout") && g_theme["layout"].contains("config_checklist")) {
             auto& l = g_theme["layout"]["config_checklist"];
             if (l.contains("color")) box_color = l["color"].get<string>();
@@ -501,26 +518,90 @@ namespace UI {
         };
         init_defaults(menu_items);
 
+        vector<MenuItemMeta> meta;
+        meta.reserve(static_cast<size_t>(num_items));
+        for (int i = 0; i < num_items; ++i) {
+            auto& item = menu_items[i];
+            MenuItemMeta m;
+            m.type = item.contains("type") ? item["type"].get<string>() : "action";
+            m.title = item.contains("title") ? item["title"].get<string>() : "Unknown";
+            m.id = item.contains("id") ? item["id"].get<string>() : "";
+
+            if (m.type == "select" && item.contains("options") && item["options"].is_array()) {
+                auto& opts = item["options"];
+                m.options.reserve(opts.size());
+                for (size_t oi = 0; oi < opts.size(); ++oi) {
+                    string opt = opts[oi].get<string>();
+                    m.option_index[opt] = static_cast<int>(oi);
+                    m.options.push_back(opt);
+                }
+                if (!m.id.empty() && !m.options.empty() && g_answers[m.id].empty()) {
+                    g_answers[m.id] = m.options[0];
+                }
+            }
+
+            meta.push_back(std::move(m));
+        }
+
         bool typing_mode = false;
+        bool needs_full_redraw = true;
+        int last_selected = selected;
+        bool last_typing_mode = false;
+        int last_left = -1;
+        int last_top = -1;
+        int last_w = -1;
+        int last_h = -1;
+
+        auto build_display = [&](int index, int max_len) {
+            const auto& m = meta[index];
+            string display = m.title;
+
+            if (m.type == "submenu") {
+                display += " ->";
+            } else if (m.type == "boolean") {
+                bool val = (g_answers[m.id] == "true");
+                display = (val ? "[x] " : "[ ] ") + m.title;
+            } else if (m.type == "select") {
+                display = m.title + ": < " + g_answers[m.id] + " >";
+            } else if (m.type == "text") {
+                display = m.title + ": [" + g_answers[m.id];
+                if (typing_mode && index == selected) display += "_";
+                display += "]";
+            }
+
+            if (static_cast<int>(display.length()) > max_len && max_len >= 3) {
+                display = display.substr(0, static_cast<size_t>(max_len - 3)) + "...";
+            }
+
+            string line = (index == selected ? "> " : "  ") + display;
+            if (static_cast<int>(line.length()) < max_len + 2) {
+                line.append(static_cast<size_t>(max_len + 2 - static_cast<int>(line.length())), ' ');
+            }
+            return line;
+        };
+
+        auto draw_row = [&](int index, int left, int start_y, int top, int h, int max_len, const string& box_color, const string& text_color) {
+            if (index < 0 || index >= num_items) return;
+            if (start_y + index >= top + h - 1) return;
+            string color_name = (index == selected) ? ("bold_" + box_color) : text_color;
+            Draw::text(left + 4, start_y + index, build_display(index, max_len), color_name);
+        };
 
         while (!g_quit) {
             if (g_resized) { Term::get_size(); g_resized = false; }
             
             int w = 60;
             for (int i = 0; i < num_items; ++i) {
-                auto& item = menu_items[i];
-                string type = item.contains("type") ? item["type"].get<string>() : "action";
-                string item_title = item.contains("title") ? item["title"].get<string>() : "Unknown";
-                string id = item.contains("id") ? item["id"].get<string>() : "";
-                int len = item_title.length();
-                if (type == "submenu") {
+                const auto& m = meta[i];
+                int len = static_cast<int>(m.title.length());
+                if (m.type == "submenu") {
                     len += 3;
-                } else if (type == "boolean") {
+                } else if (m.type == "boolean") {
                     len += 6;
-                } else if (type == "select") {
-                    len += 5 + g_answers[id].length();
-                } else if (type == "text") {
-                    len += 3 + g_answers[id].length() + 2;
+                } else if (m.type == "select") {
+                    len += 5 + static_cast<int>(g_answers[m.id].length());
+                } else if (m.type == "text") {
+                    len += 3 + static_cast<int>(g_answers[m.id].length()) + 2;
                 }
                 if (len + 8 > w) w = len + 8;
             }
@@ -530,76 +611,88 @@ namespace UI {
             if (h > g_term_height - 4) h = g_term_height - 4;
             int left = (g_term_width - w) / 2;
             int top = (g_term_height - h) / 2;
-            
-            cout << Draw::sync_start() << Draw::clear();
-            Draw::box(left, top, w, h, box_title, box_color, title_color);
-
-            string inst = "Arrow keys to navigate, Enter/Space to select/toggle";
-            if ((int)inst.length() > w - 4) {
-                inst = inst.substr(0, w - 7) + "...";
-            }
-            Draw::text(left + 2, top + 2, inst, text_color);
-            
             int start_y = top + 4;
-            for (int i = 0; i < num_items; ++i) {
-                if (start_y + i >= top + h - 1) break;
-                auto& item = menu_items[i];
-                string type = item.contains("type") ? item["type"].get<string>() : "action";
-                string item_title = item.contains("title") ? item["title"].get<string>() : "Unknown";
-                string id = item.contains("id") ? item["id"].get<string>() : "";
-                
-                string display = item_title;
-                if (type == "submenu") {
-                    display += " ->";
-                } else if (type == "boolean") {
-                    bool val = (g_answers[id] == "true");
-                    display = (val ? "[x] " : "[ ] ") + item_title;
-                } else if (type == "select") {
-                    display = item_title + ": < " + g_answers[id] + " >";
-                } else if (type == "text") {
-                    display = item_title + ": [" + g_answers[id];
-                    if (typing_mode && i == selected) display += "_";
-                    display += "]";
-                }
+            int max_len = w - 8;
 
-                int max_len = w - 8;
-                if ((int)display.length() > max_len) {
-                    display = display.substr(0, max_len - 3) + "...";
-                }
+            bool geometry_changed = left != last_left || top != last_top || w != last_w || h != last_h;
+            bool mode_changed = typing_mode != last_typing_mode;
 
-                if (i == selected) {
-                    Draw::text(left + 4, start_y + i, "> " + display, "bold_" + box_color);
-                } else {
-                    Draw::text(left + 4, start_y + i, "  " + display, text_color);
+            cout << Draw::sync_start();
+            if (needs_full_redraw || geometry_changed || mode_changed) {
+                cout << Draw::clear();
+                Draw::box(left, top, w, h, box_title, box_color, title_color);
+
+                string inst = "Arrow keys to navigate, Enter/Space to select/toggle";
+                if (static_cast<int>(inst.length()) > w - 4) {
+                    inst = inst.substr(0, static_cast<size_t>(w - 7)) + "...";
                 }
+                Draw::text(left + 2, top + 2, inst, text_color);
+
+                for (int i = 0; i < num_items; ++i) {
+                    draw_row(i, left, start_y, top, h, max_len, box_color, text_color);
+                }
+            } else if (selected != last_selected) {
+                draw_row(last_selected, left, start_y, top, h, max_len, box_color, text_color);
+                draw_row(selected, left, start_y, top, h, max_len, box_color, text_color);
             }
-            
+
             cout << Draw::sync_end() << flush;
+
+            last_selected = selected;
+            last_typing_mode = typing_mode;
+            last_left = left;
+            last_top = top;
+            last_w = w;
+            last_h = h;
             
             string key = Input::wait_key();
             auto& item = menu_items[selected];
-            string type = item.contains("type") ? item["type"].get<string>() : "action";
-            string id = item.contains("id") ? item["id"].get<string>() : "";
-            string item_title = item.contains("title") ? item["title"].get<string>() : "Unknown";
+            auto& selected_meta = meta[selected];
+            string type = selected_meta.type;
+            string id = selected_meta.id;
+            string item_title = selected_meta.title;
+
+            bool selection_changed = false;
+            bool content_changed = false;
+            bool typing_mode_changed = false;
 
             if (typing_mode) {
                 if (key == "enter" || key == "escape") {
                     typing_mode = false;
+                    typing_mode_changed = true;
                 } else if (key == "backspace" || (key.length() == 1 && (key[0] == '\x7f' || key[0] == '\x08'))) {
-                    if (!g_answers[id].empty()) g_answers[id].pop_back();
+                    if (!g_answers[id].empty()) {
+                        g_answers[id].pop_back();
+                        content_changed = true;
+                    }
                 } else if (key.find("KEY_") != 0) {
                     // printable char
                     bool all_printable = true;
                     for (char c : key) {
                         if ((unsigned char)c < 32 || c == 127) all_printable = false;
                     }
-                    if (all_printable && !key.empty()) g_answers[id] += key;
+                    if (all_printable && !key.empty()) {
+                        g_answers[id] += key;
+                        content_changed = true;
+                    }
                 }
+
+                needs_full_redraw = content_changed || typing_mode_changed;
                 continue;
             }
 
-            if (key == "KEY_up") { if (selected > 0) selected--; }
-            else if (key == "KEY_down") { if (selected < num_items - 1) selected++; }
+            if (key == "KEY_up") {
+                if (selected > 0) {
+                    selected--;
+                    selection_changed = true;
+                }
+            }
+            else if (key == "KEY_down") {
+                if (selected < num_items - 1) {
+                    selected++;
+                    selection_changed = true;
+                }
+            }
             else if (key == "KEY_right" || key == "enter" || key == " ") {
                 if (type == "action") {
                     if (id == "action_back") return false;
@@ -611,31 +704,29 @@ namespace UI {
                     }
                 } else if (type == "boolean") {
                     g_answers[id] = (g_answers[id] == "true") ? "false" : "true";
+                    content_changed = true;
                 } else if (type == "select") {
-                    if (item.contains("options")) {
-                        auto& opts = item["options"];
+                    if (!selected_meta.options.empty()) {
                         int current_idx = 0;
-                        for (size_t i = 0; i < opts.size(); ++i) {
-                            if (opts[i].get<string>() == g_answers[id]) { current_idx = i; break; }
-                        }
-                        if (key == "KEY_right" || key == "enter" || key == " ") {
-                            current_idx = (current_idx + 1) % opts.size();
-                        }
-                        g_answers[id] = opts[current_idx].get<string>();
+                        auto it = selected_meta.option_index.find(g_answers[id]);
+                        if (it != selected_meta.option_index.end()) current_idx = it->second;
+                        current_idx = (current_idx + 1) % static_cast<int>(selected_meta.options.size());
+                        g_answers[id] = selected_meta.options[static_cast<size_t>(current_idx)];
+                        content_changed = true;
                     }
                 } else if (type == "text") {
                     typing_mode = true;
+                    typing_mode_changed = true;
                 }
             } else if (key == "KEY_left") {
                 if (type == "select") {
-                    if (item.contains("options")) {
-                        auto& opts = item["options"];
+                    if (!selected_meta.options.empty()) {
                         int current_idx = 0;
-                        for (size_t i = 0; i < opts.size(); ++i) {
-                            if (opts[i].get<string>() == g_answers[id]) { current_idx = i; break; }
-                        }
-                        current_idx = (current_idx - 1 + opts.size()) % opts.size();
-                        g_answers[id] = opts[current_idx].get<string>();
+                        auto it = selected_meta.option_index.find(g_answers[id]);
+                        if (it != selected_meta.option_index.end()) current_idx = it->second;
+                        current_idx = (current_idx - 1 + static_cast<int>(selected_meta.options.size())) % static_cast<int>(selected_meta.options.size());
+                        g_answers[id] = selected_meta.options[static_cast<size_t>(current_idx)];
+                        content_changed = true;
                     }
                 } else {
                     return false; // Back out of submenu
@@ -643,6 +734,8 @@ namespace UI {
             } else if (key == "escape") {
                 return false;
             }
+
+            needs_full_redraw = content_changed || typing_mode_changed || !selection_changed;
         }
         return false;
     }

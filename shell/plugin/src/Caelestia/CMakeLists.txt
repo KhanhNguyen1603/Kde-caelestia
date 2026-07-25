@@ -13,6 +13,7 @@ qml_module(caelestia-core
         Qt::Concurrent
         Qt::Sql
         PkgConfig::Qalculate
+        KF6::WindowSystem
 )
 
 # Bake the shell version in so CUtils can expose it without spawning a process

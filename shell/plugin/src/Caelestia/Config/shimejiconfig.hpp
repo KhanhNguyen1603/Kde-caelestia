@@ -12,6 +12,7 @@ class ShimejiConfig : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(bool, autoHide, true)
+    CONFIG_PROPERTY(bool, hideOnAllMonitors, false)
     CONFIG_PROPERTY(QString, path, QStringLiteral("root:/assets/shimeji/pusheen/"))
     CONFIG_PROPERTY(QStringList, excludedScreens)
     CONFIG_PROPERTY(int, count, 1)

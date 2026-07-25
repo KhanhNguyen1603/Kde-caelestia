@@ -14,13 +14,23 @@ Config g_config;
 bool g_logout = false;
 json g_theme;
 json g_menu;
+std::unordered_map<std::string, std::string> g_theme_colors;
 
 void load_theme() {
+    g_theme_colors.clear();
+
     std::string path = g_bundle_dir + "/installer/theme.json";
     std::ifstream f(path);
     if (f.is_open()) {
         try {
             g_theme = json::parse(f, nullptr, true, true);
+            if (g_theme.contains("colors") && g_theme["colors"].is_object()) {
+                for (auto& [name, value] : g_theme["colors"].items()) {
+                    if (value.is_string()) {
+                        g_theme_colors[name] = "\x1b[" + value.get<std::string>();
+                    }
+                }
+            }
         } catch (...) {
             std::cerr << "Failed to parse theme.json" << std::endl;
         }

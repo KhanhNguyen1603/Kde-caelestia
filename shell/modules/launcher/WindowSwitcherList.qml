@@ -51,16 +51,27 @@ PathView {
 
         readonly property string search: root.search.text.split(" ").slice(1).join(" ")
 
-        values: Windows.query(search)
-        onValuesChanged: root.currentIndex = 0
+        values: {
+            const _ = Windows.items;
+            return Windows.query(search);
+        }
+        onValuesChanged: {
+            if (scriptModel.search.trim() !== "") {
+                root.currentIndex = 0;
+            } else {
+                root.currentIndex = Qt.binding(() => Windows.selectedIndex);
+            }
+        }
     }
 
-    Component.onCompleted: Windows.reload()
+    Component.onCompleted: {
+        root.currentIndex = Qt.binding(() => Windows.selectedIndex);
+        Windows.reload();
+    }
     Component.onDestruction: {}
 
-    onCurrentItemChanged: {
-        if (currentItem) {}
-    }
+    function incrementCurrentIndex() { Windows.triggerCycleNext(); }
+    function decrementCurrentIndex() { Windows.triggerCyclePrev(); }
 
     implicitWidth: Math.min(numItems, count) * itemWidth
     pathItemCount: numItems
@@ -73,23 +84,10 @@ PathView {
 
     path: Path {
         startY: root.height / 2
-
-        PathAttribute {
-            name: "z"
-            value: 0
-        }
-        PathLine {
-            x: root.width / 2
-            relativeY: 0
-        }
-        PathAttribute {
-            name: "z"
-            value: 1
-        }
-        PathLine {
-            x: root.width
-            relativeY: 0
-        }
+        PathAttribute { name: "z"; value: 0 }
+        PathLine { x: root.width / 2; relativeY: 0 }
+        PathAttribute { name: "z"; value: 1 }
+        PathLine { x: root.width; relativeY: 0 }
     }
 
     delegate: WindowSwitcherItem {
@@ -107,4 +105,5 @@ PathView {
             wheel.accepted = true;
         }
     }
+
 }

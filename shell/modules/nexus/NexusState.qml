@@ -9,6 +9,7 @@ QtObject {
     property int currentPageIdx
     property list<int> subPageIdxStack
     property bool searchOpen
+    property string searchQuery
 
     property string selectedWallpaperCategory
     property string wallpaperFilterType: "all"

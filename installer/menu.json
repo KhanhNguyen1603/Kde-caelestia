@@ -95,9 +95,15 @@
           "default": true
         },
         {
-          "id": "POLONIUM_ENABLED",
+          "id": "APPLY_LOCKSCREEN",
           "type": "boolean",
-          "title": "Enable Polonium (tiling window manager plugin)",
+          "title": "Enable Lockscreen Wallpaper plugin",
+          "default": true
+        },
+        {
+          "id": "KROHNKITE_ENABLED",
+          "type": "boolean",
+          "title": "Enable Krohnkite (tiling window manager plugin)",
           "default": false
         },
         {

@@ -313,6 +313,8 @@ for f in \
     "$HOME/.local/bin/qs-kwin-bridge.py" \
     "$HOME/.local/bin/caelestia-shortcuts" \
     "$HOME/.local/bin/caelestia-record" \
+    "$HOME/.local/bin/caelestia-keyd-run" \
+    "$HOME/.local/bin/caelestia-shell-ipc" \
     "$HOME/.local/bin/ydotoold-wrapper" \
     "$HOME/.local/bin/caelestia-update" \
     "$HOME/.local/bin/caelestia-check-updates"
@@ -329,18 +331,6 @@ if [[ -d "$HOME/.local/share/kwin/scripts/quickshell-kde-bridge" ]]; then
     ok "Removed KWin script: quickshell-kde-bridge"
 fi
 
-# Desktop entries deployed from src/keyboardshortcuts/applications/
-if [[ -d "$BUNDLE_DIR/src/keyboardshortcuts/applications" ]]; then
-    for df in "$BUNDLE_DIR/src/keyboardshortcuts/applications/"*.desktop; do
-        [[ -f "$df" ]] || continue
-        target="$HOME/.local/share/applications/$(basename "$df")"
-        if [[ -f "$target" ]]; then
-            rm -f "$target"
-            ok "Removed desktop entry: $(basename "$target")"
-        fi
-    done
-    update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
-fi
 
 section "Step 5 - Restore or Remove Config Directories"
 
@@ -423,8 +413,8 @@ fi
 
 # Disable Caelestia KWin plugins
 kwriteconfig6 --file kwinrc --group "Plugins" --key "quickshell-kde-bridgeEnabled" "false" 2>/dev/null || true
-kwriteconfig6 --file kwinrc --group "Plugins" --key "poloniumEnabled"              "false" 2>/dev/null || true
-ok "Disabled KWin plugins: quickshell-kde-bridge, polonium"
+kwriteconfig6 --file kwinrc --group "Plugins" --key "krohnkiteEnabled"             "false" 2>/dev/null || true
+ok "Disabled KWin plugins: quickshell-kde-bridge, krohnkite"
 
 # Restore desktop count to 1 (KDE default)
 kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "1" 2>/dev/null || true
@@ -684,11 +674,11 @@ if [[ "$REMOVE_PACKAGES" == "true" ]]; then
         ok "Removed kde-material-you-colors (uv)"
     fi
 
-    # Remove Polonium KWin script if installed
+    # Remove Krohnkite KWin script if installed
     if command -v kpackagetool6 >/dev/null 2>&1; then
-        if kpackagetool6 -t KWin/Script -s polonium >/dev/null 2>&1; then
-            kpackagetool6 -t KWin/Script -r polonium 2>/dev/null || true
-            ok "Removed Polonium KWin script"
+        if kpackagetool6 -t KWin/Script -s krohnkite >/dev/null 2>&1; then
+            kpackagetool6 -t KWin/Script -r krohnkite 2>/dev/null || true
+            ok "Removed Krohnkite KWin script"
         fi
     fi
 else

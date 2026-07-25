@@ -69,7 +69,6 @@ class MetadataConsistencyTests(unittest.TestCase):
         contributing_text = (ROOT / ".github" / "CONTRIBUTING.md").read_text(encoding="utf-8")
 
         referenced = [
-            ".github/scripts/test_hypr_shim.py",
             "shell/scripts/qml-lint-conventions.py",
         ]
 

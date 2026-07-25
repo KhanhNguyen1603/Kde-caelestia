@@ -1,9 +1,12 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtCore
 import QtQuick.Layouts
+import Caelestia
 import Caelestia.Components
 import Caelestia.Config
+import Quickshell.Io
 import qs.components
 import qs.components.controls
 import qs.services
@@ -13,7 +16,21 @@ PageBase {
     id: root
 
     isSubPage: true
-    title: qsTr("Appearance")
+    title: qsTr("Theme & Effects")
+
+    headerActions: [
+        IconTextButton {
+            text: qsTr("Restart Shell")
+            icon: "restart_alt"
+            type: TextButton.Primary
+            onClicked: restartProcess.running = true
+
+            Process {
+                id: restartProcess
+                command: ["bash", "-c", "nohup bash -c 'caelestia shell -k; sleep 2; caelestia shell -d; sleep 1;caelestia shell nexus openPage 0 8' >/dev/null 2>&1 & disown"]
+            }
+        }
+    ]
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -52,18 +69,126 @@ PageBase {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: qsTr("Transparency")
-                subtext: qsTr("Base %1, layers %2").arg(Colours.transparency.base).arg(Colours.transparency.layers)
-                checked: Colours.transparency.enabled
-                onToggled: GlobalConfig.appearance.transparency.enabled = checked
+                subtext: qsTr("Enable transparency across the shell")
+                checked: GlobalConfig.appearance.transparency.enabled
+                onToggled: {
+                    GlobalConfig.appearance.transparency.enabled = checked
+                    if (!checked) {
+                        GlobalConfig.appearance.blur = false
+                    }
+                }
             }
+
+            SliderRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                label: qsTr("Base opacity")
+                valueLabel: Math.round(value * 100) + "%"
+                value: GlobalConfig.appearance.transparency.base
+                enabled: GlobalConfig.appearance.transparency.enabled
+                onMoved: v => GlobalConfig.appearance.transparency.base = v
+            }
+
+            SliderRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                label: qsTr("Layers opacity")
+                subtext: qsTr("Requires shell restart")
+                valueLabel: Math.round(value * 100) + "%"
+                value: GlobalConfig.appearance.transparency.layers
+                enabled: GlobalConfig.appearance.transparency.enabled
+                onMoved: v => GlobalConfig.appearance.transparency.layers = v
+            }
+
+            Process {
+                id: bbdxCheck
+                command: ["bash", "-c", "kreadconfig6 --file kwinrc --group Plugins --key better_blur_dxEnabled"]
+                running: true
+            }
+
+            Process {
+                id: bbdxFixProcess
+                command: ["bash", "-c", `
+                    IS_ENABLED=$(kreadconfig6 --file kwinrc --group Plugins --key better_blur_dxEnabled)
+                    if [ "$IS_ENABLED" = "true" ]; then
+                        BLUR_MATCHING=$(kreadconfig6 --file kwinrc --group Effect-better-blur-dx --key BlurMatching)
+                        BLUR_NON_MATCHING=$(kreadconfig6 --file kwinrc --group Effect-better-blur-dx --key BlurNonMatching)
+                        WINDOW_CLASSES=$(kreadconfig6 --file kwinrc --group Effect-better-blur-dx --key WindowClasses)
+                        
+                        if [ -z "$BLUR_MATCHING" ]; then BLUR_MATCHING="true"; fi
+                        if [ -z "$BLUR_NON_MATCHING" ]; then BLUR_NON_MATCHING="false"; fi
+                        
+                        MODIFIED=false
+                        
+                        if [ "$BLUR_MATCHING" = "true" ] && [ "$BLUR_NON_MATCHING" = "false" ]; then
+                            if echo "$WINDOW_CLASSES" | grep -q '\\bquickshell\\b'; then
+                                NEW_CLASSES=$(echo "$WINDOW_CLASSES" | sed -E 's/\\bquickshell\\b//g' | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
+                                kwriteconfig6 --file kwinrc --group Effect-better-blur-dx --key WindowClasses "$NEW_CLASSES"
+                                MODIFIED=true
+                            fi
+                        elif [ "$BLUR_MATCHING" = "false" ] && [ "$BLUR_NON_MATCHING" = "true" ]; then
+                            if ! echo "$WINDOW_CLASSES" | grep -q '\\bquickshell\\b'; then
+                                if [ -z "$WINDOW_CLASSES" ]; then 
+                                    NEW_CLASSES="quickshell"
+                                elif echo "$WINDOW_CLASSES" | grep -q ','; then
+                                    NEW_CLASSES="$WINDOW_CLASSES,quickshell"
+                                else 
+                                    NEW_CLASSES="$WINDOW_CLASSES"$'\n'"quickshell"
+                                fi
+                                kwriteconfig6 --file kwinrc --group Effect-better-blur-dx --key WindowClasses "$NEW_CLASSES"
+                                MODIFIED=true
+                            fi
+                        fi
+                        
+                        if [ "$MODIFIED" = "true" ]; then 
+                            qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
+                            qdbus6 org.kde.KWin /Effects reconfigureEffect better_blur_dx 2>/dev/null || true
+                        fi
+                    fi
+                `]
+            }
+
+            property bool isBbdxEnabled: bbdxCheck.stdout.trim() === "true"
 
             ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
+                text: qsTr("Background Blur")
+                subtext: qsTr("Enable a frosted glass effect by blurring the background")
+                checked: parent.isBbdxEnabled ? true : GlobalConfig.appearance.blur
+                enabled: GlobalConfig.appearance.transparency.enabled && !parent.isBbdxEnabled
+                onToggled: {
+                    bbdxFixProcess.running = true;
+                    GlobalConfig.appearance.blur = checked
+                    if (GlobalConfig.appearance.transparency.enabled && checked) {
+                        // Hack to force Quickshell blur region to update when enabling blur
+                        GlobalConfig.appearance.transparency.enabled = false
+                        blurHackTimer.start()
+                    }
+                }
+
+                Timer {
+                    id: blurHackTimer
+                    interval: 50
+                    onTriggered: GlobalConfig.appearance.transparency.enabled = true
+                }
+            }
+
+            Settings {
+                id: blurSettings
+                category: "Blur"
+                property int blurQuality: 20
+            }
+
+            StepperRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 last: true
-                text: qsTr("Dark theme")
-                checked: !Colours.light
-                onToggled: Colours.setMode(checked ? "dark" : "light")
+                label: qsTr("Blur Corner Quality")
+                subtext: qsTr("Increasing this can cause lags! Requires shell restart")
+                value: blurSettings.blurQuality
+                enabled: GlobalConfig.appearance.transparency.enabled && GlobalConfig.appearance.blur
+                from: 1
+                to: 100
+                stepSize: 1
+                onMoved: v => blurSettings.blurQuality = Math.round(v)
             }
         }
     }

@@ -93,6 +93,15 @@ tweak_five_desktops() {
 tweak_workspace_shortcuts() {
     info "Registering Meta+1..5 workspace switching shortcuts..."
 
+    # The keyboard-shortcut step runs before this script in the C++ installer.
+    # Do not recreate KWin bindings that it has just removed when active keyd
+    # mappings already own Meta+1..5.
+    if systemctl is-active --quiet keyd 2>/dev/null \
+        && grep -q "org.kde.KWin.setCurrentDesktop" /etc/keyd/quickshell.conf 2>/dev/null; then
+        info "Meta+1..5 are managed by keyd; skipping duplicate KWin bindings."
+        return
+    fi
+
     # Meta+1..5  Switch to Desktop N
     for i in $(seq 1 5); do
         kwriteconfig6 \

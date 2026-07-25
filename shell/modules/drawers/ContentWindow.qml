@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtCore
 import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell
@@ -12,11 +13,229 @@ import qs.components
 import qs.components.containers
 import qs.services
 import qs.modules.bar
+import qs.modules.background
+import "blur"
 
 StyledWindow {
     id: root
 
+    // Edit these variables to adjust how far the blur mask is inset from each logical edge.
+    // They are relative to the widget's growth direction from the bar.
+    property real blurOffsetTop: 0
+    property real blurOffsetBottom: 0
+    property real blurOffsetLeft: 0
+    property real blurOffsetRight: 0
+
     Config.screen: screen.name
+
+    Settings {
+        id: borderBlurSettings
+        category: "Blur"
+        property int blurQuality: 20
+    }
+
+    BackgroundEffect.blurRegion: Region {
+        Region { x: -10; y: -10; width: 1; height: 1 } // Prevent fallback to full-window blur when empty
+        
+        // Border Blur Masks
+        Region {
+            x: 0; y: 0
+            width: !GlobalConfig.appearance.islands && Config.bar.position !== "left" ? root.borderThickness : 0
+            height: root.height
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: root.width - root.borderThickness; y: 0
+            width: !GlobalConfig.appearance.islands && Config.bar.position !== "right" ? root.borderThickness : 0
+            height: root.height
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: 0; y: 0
+            width: root.width
+            height: !GlobalConfig.appearance.islands && Config.bar.position !== "top" ? root.borderThickness : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: 0; y: root.height - root.borderThickness
+            width: root.width
+            height: !GlobalConfig.appearance.islands && Config.bar.position !== "bottom" ? root.borderThickness : 0
+            intersection: Intersection.Combine
+        }
+        // Corner squares for inverted corners
+        Region {
+            x: Config.bar.position === "left" ? bar.implicitWidth : root.borderThickness
+            y: Config.bar.position === "top" ? bar.implicitHeight : root.borderThickness
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: root.width - (Config.bar.position === "right" ? bar.implicitWidth : root.borderThickness) - root.borderRounding
+            y: Config.bar.position === "top" ? bar.implicitHeight : root.borderThickness
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: Config.bar.position === "left" ? bar.implicitWidth : root.borderThickness
+            y: root.height - (Config.bar.position === "bottom" ? bar.implicitHeight : root.borderThickness) - root.borderRounding
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: root.width - (Config.bar.position === "right" ? bar.implicitWidth : root.borderThickness) - root.borderRounding
+            y: root.height - (Config.bar.position === "bottom" ? bar.implicitHeight : root.borderThickness) - root.borderRounding
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+
+        BlurCorners {
+            intersection: Intersection.Subtract
+            vAnchor: "none"
+            hAnchor: "none"
+            blurQuality: borderBlurSettings.blurQuality
+            inLeft: (Config.bar.position === "left" ? bar.implicitWidth : root.borderThickness) + root.borderRounding
+            inRight: root.width - (Config.bar.position === "right" ? bar.implicitWidth : root.borderThickness) - root.borderRounding
+            inTop: (Config.bar.position === "top" ? bar.implicitHeight : root.borderThickness) + root.borderRounding
+            inBottom: root.height - (Config.bar.position === "bottom" ? bar.implicitHeight : root.borderThickness) - root.borderRounding
+            rTop: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            rBottom: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            rLeft: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            rRight: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+        }
+        
+        BlurMask { 
+            target: bar
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: bar.vAnchor
+            hAnchor: bar.hAnchor
+        }
+        BlurMask { 
+            target: panels.sidebar
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.sidebar.vAnchor
+            hAnchor: panels.sidebar.hAnchor
+            offsetScale: panels.sidebar.offsetScale
+            deformMatrix: sidebarBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.notifications
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.notifications.vAnchor
+            hAnchor: panels.notifications.hAnchor
+            offsetScale: panels.notifications.offsetScale
+            deformMatrix: notifsBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.osdWrapper
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.osdWrapper.vAnchor
+            hAnchor: panels.osdWrapper.hAnchor
+            offsetScale: panels.osd.offsetScale
+            deformMatrix: osdBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.sessionWrapper
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.sessionWrapper.vAnchor
+            hAnchor: panels.sessionWrapper.hAnchor
+            offsetScale: panels.session.offsetScale
+            deformMatrix: sessionBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.launcher
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.launcher.vAnchor
+            hAnchor: panels.launcher.hAnchor
+            offsetScale: panels.launcher.offsetScale
+            deformMatrix: launcherBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.dashboard
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.dashboard.vAnchor
+            hAnchor: panels.dashboard.hAnchor
+            offsetScale: panels.dashboard.offsetScale
+            deformMatrix: dashBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.popoutsWrapper
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.popoutsWrapper.vAnchor
+            hAnchor: panels.popoutsWrapper.hAnchor
+            offsetScale: panels.popoutsWrapper.offsetScale
+            deformMatrix: popoutBg.deformMatrix
+        }
+        BlurMask { 
+            target: panels.utilities
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: panels.utilities.vAnchor
+            hAnchor: panels.utilities.hAnchor
+            offsetScale: panels.utilities.offsetScale
+            deformMatrix: utilsBg.deformMatrix
+        }
+        BlurMask {
+            target: desktopContextMenu.expanded ? desktopContextMenu.backgroundItem : null
+            contentItem: root.contentItem
+            blurOffsetTop: root.blurOffsetTop
+            blurOffsetBottom: root.blurOffsetBottom
+            blurOffsetLeft: root.blurOffsetLeft + 1
+            blurOffsetRight: root.blurOffsetRight
+            vAnchor: desktopContextMenu.backgroundItem.vAnchor
+            hAnchor: desktopContextMenu.backgroundItem.hAnchor
+            offsetScale: desktopContextMenu.backgroundItem.offsetScale
+            deformMatrix: contextMenuBg.deformMatrix
+        }
+        // BlurMask { 
+        //     target: panels.toasts
+        //     contentItem: root.contentItem
+        //     blurOffsetTop: root.blurOffsetTop
+        //     blurOffsetBottom: root.blurOffsetBottom
+        //     blurOffsetLeft: root.blurOffsetLeft
+        //     blurOffsetRight: root.blurOffsetRight
+        //     vAnchor: panels.toasts.vAnchor
+        //     hAnchor: panels.toasts.hAnchor
+        // }
+    }
 
     readonly property alias bar: bar
     readonly property alias interactionWrapper: interactions
@@ -37,10 +256,10 @@ StyledWindow {
 
     property real fsTransitionProg: hasFullscreen ? 1 : 0
     readonly property real sdfBorderOffset: 2 * fsTransitionProg // SDFs joins are not exact, so offset by 2px to ensure nothing shows
-    readonly property real borderThickness: contentItem.Config.border.thickness * (1 - fsTransitionProg)
-    readonly property real borderRounding: contentItem.Config.border.rounding * (1 - fsTransitionProg)
+    readonly property real borderThickness: Config.border.thickness * (1 - fsTransitionProg)
+    readonly property real borderRounding: Config.border.rounding * (1 - fsTransitionProg)
     readonly property real shadowOpacity: 0.7 * (1 - fsTransitionProg)
-    readonly property real borderLayoutThickness: hasFullscreen ? 0 : contentItem.Config.border.thickness
+    readonly property real borderLayoutThickness: hasFullscreen ? 0 : Config.border.thickness
 
     property color surfaceColour: Colours.tPalette.m3surface
 
@@ -53,8 +272,8 @@ StyledWindow {
 
         const thresholds = [];
         for (const panel of ["dashboard", "launcher", "session", "sidebar"])
-            if (contentItem.Config[panel].enabled)
-                thresholds.push(contentItem.Config[panel].dragThreshold);
+            if (Config[panel].enabled)
+                thresholds.push(Config[panel].dragThreshold);
         return Math.max(...thresholds);
     }
 
@@ -67,12 +286,12 @@ StyledWindow {
 
     name: "drawers"
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: (fsTransitionProg > 0 && contentItem.Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: (fsTransitionProg > 0 && Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.session || visibilities.dashboard || visibilities.sidebar || panels.popouts.hasCurrent ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     mask: {
         if (hasFullscreen) return emptyRegion;
-        if (focusGrabState.active || panels.popouts.isDetached) return fullRegion;
+        if (focusGrabState.active || panels.popouts.isDetached || desktopContextMenu.expanded) return fullRegion;
         return regions;
     }
 
@@ -121,10 +340,12 @@ StyledWindow {
         height: root.height
     }
 
+
+
     QtObject {
         id: focusGrabState
 
-        property bool active: (visibilities.launcher && root.contentItem.Config.launcher.enabled) || (visibilities.session && root.contentItem.Config.session.enabled) || (visibilities.sidebar && root.contentItem.Config.sidebar.enabled) || (!root.contentItem.Config.dashboard.showOnHover && visibilities.dashboard && root.contentItem.Config.dashboard.enabled) || (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
+        property bool active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.session && Config.session.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (!Config.utilities.showOnHover && visibilities.utilities && Config.utilities.enabled) || (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
         
         onActiveChanged: {
         }
@@ -134,6 +355,7 @@ StyledWindow {
             visibilities.session = false;
             visibilities.sidebar = false;
             visibilities.dashboard = false;
+            visibilities.utilities = false;
             panels.popouts.hasCurrent = false;
             panels.popouts.detachedMode = "";
             bar.closeTray();
@@ -182,7 +404,7 @@ StyledWindow {
 
         Config.screen: root.screen.name
         anchors.fill: parent
-        opacity: GlobalConfig.appearance.pitchBlack ? 1 : (Colours.transparency.enabled ? Colours.transparency.base : root.surfaceColour.a)
+        opacity: GlobalConfig.appearance.pitchBlack ? 1 : (Colours.transparency.enabled ? Colours.transparency.base : 1.0)
         layer.enabled: true
         layer.effect: MultiEffect {
             shadowEnabled: true
@@ -194,7 +416,7 @@ StyledWindow {
             id: blobGroup
 
             color: GlobalConfig.appearance.pitchBlack ? "#000000" : root.surfaceColour
-            smoothing: root.contentItem.Config.border.smoothing
+            smoothing: Config.border.smoothing
         }
 
         BlobInvertedRect {
@@ -291,6 +513,14 @@ StyledWindow {
             topRightRadius: GlobalConfig.appearance.islands ? radius : (Config.bar.position === "right" ? Math.max(0, Math.min(1, panels.sidebar.offsetScale / 0.3)) * radius : (Config.bar.position === "bottom" ? radius : Math.max(0, Math.min(1, panels.sidebar.offsetScale / 0.3)) * radius))
             bottomLeftRadius: GlobalConfig.appearance.islands ? radius : (Config.bar.position === "bottom" ? Math.max(0, Math.min(1, panels.sidebar.offsetScale / 0.3)) * radius : radius)
             bottomRightRadius: GlobalConfig.appearance.islands ? radius : (Config.bar.position === "bottom" ? Math.max(0, Math.min(1, panels.sidebar.offsetScale / 0.3)) * radius : radius)
+        }
+        
+        PanelBg {
+            id: contextMenuBg
+            panel: desktopContextMenu.backgroundItem
+            visible: desktopContextMenu.expanded
+            x: panel.x
+            y: panel.y
         }
 
         PanelBg {
@@ -497,7 +727,10 @@ StyledWindow {
 
         BarWrapper {
             id: bar
-
+            
+            property string vAnchor: (Config.bar.position === "left" || Config.bar.position === "right") ? "both" : (Config.bar.position === "top" ? "top" : "bottom")
+            property string hAnchor: (Config.bar.position === "top" || Config.bar.position === "bottom") ? "both" : (Config.bar.position === "left" ? "left" : "right")
+            
             screen: root.screen
             visibilities: visibilities
             popouts: panels.popouts
@@ -505,6 +738,28 @@ StyledWindow {
             fullscreen: root.hasFullscreen
 
             Component.onCompleted: Visibilities.registerBar(root.screen, this)
+        }
+
+        Connections {
+            target: ContextMenuStore
+            function onOpenDesktopContextMenu(x, y, screenName) {
+                if (root.screen.name === screenName) {
+                    desktopContextMenuAnchor.x = x - panels.leftMargin;
+                    desktopContextMenuAnchor.y = y - panels.topMargin;
+                    desktopContextMenu.expanded = true;
+                }
+            }
+        }
+
+        Item {
+            id: desktopContextMenuAnchor
+        }
+
+        DesktopContextMenu {
+            id: desktopContextMenu
+            attachTo: desktopContextMenuAnchor
+            screenName: root.screen.name
+            z: 9999
         }
     }
 

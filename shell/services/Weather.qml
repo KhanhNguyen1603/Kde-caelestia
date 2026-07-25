@@ -14,6 +14,11 @@ Singleton {
     property var cc
     property list<var> forecast
     property list<var> hourlyForecast
+    property string locationSearchQuery: ""
+    property bool locationSearchLoading: false
+    property string locationSearchError: ""
+    property list<var> locationSearchResults: []
+    property int locationSearchToken: 0
 
     readonly property string icon: cc ? Icons.getWeatherIcon(cc.weatherCode) : "cloud_alert"
     readonly property string description: cc?.weatherDesc ?? qsTr("No weather")
@@ -26,11 +31,138 @@ Singleton {
 
     readonly property var cachedCities: new Map()
 
-    function formatTemp(temp: var): string {
+    function formatTemp(temp) {
         return GlobalConfig.services.useFahrenheit ? `${temp !== undefined ? Math.round(toFahrenheit(temp)) : "--"}°F` : `${temp !== undefined ? Math.round(temp) : "--"}°C`;
     }
 
-    function reload(): void {
+    function normalizeCoords(lat, lon) {
+        if (!isFinite(lat) || !isFinite(lon))
+            return "";
+
+        return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    }
+
+    function buildLocationLabel(result) {
+        const parts = [];
+
+        if (result?.name)
+            parts.push(result.name);
+        if (result?.admin1 && result.admin1 !== result.name)
+            parts.push(result.admin1);
+        if (result?.country)
+            parts.push(result.country);
+
+        return parts.join(", ");
+    }
+
+    function queueLocationSearch(query) {
+        locationSearchQuery = (query ?? "").trim();
+        locationSearchError = "";
+
+        if (locationSearchQuery.length < 2) {
+            locationSearchToken++; // invalidate any in-flight searches
+            locationSearchLoading = false;
+            locationSearchResults = [];
+            locationSearchDebounce.stop();
+            return;
+        }
+
+        locationSearchDebounce.restart();
+    }
+
+    function searchLocations(query) {
+        const trimmed = (query ?? "").trim();
+        if (trimmed.length < 2) {
+            locationSearchLoading = false;
+            locationSearchResults = [];
+            locationSearchError = "";
+            return;
+        }
+
+        const token = ++locationSearchToken;
+        locationSearchLoading = true;
+        locationSearchError = "";
+
+        const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(trimmed)}&count=10&language=en&format=json`;
+
+        const onSuccess = function(text) {
+            if (token !== locationSearchToken)
+                return;
+
+            locationSearchLoading = false;
+
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (e) {
+                locationSearchResults = [];
+                locationSearchError = qsTr("Couldn't parse location results. Check your connection and try again.");
+                return;
+            }
+            const results = [];
+
+            if (json.results) {
+                for (const result of json.results) {
+                    const item = {
+                        name: result.name ?? "",
+                        admin1: result.admin1 ?? "",
+                        country: result.country ?? "",
+                        timezone: result.timezone ?? "",
+                        latitude: result.latitude,
+                        longitude: result.longitude
+                    };
+                    item.label = buildLocationLabel(item);
+                    results.push(item);
+                }
+            }
+
+            locationSearchResults = results;
+        };
+
+        const onError = function() {
+            if (token !== locationSearchToken)
+                return;
+
+            locationSearchLoading = false;
+            locationSearchResults = [];
+            locationSearchError = qsTr("Couldn't fetch locations. Check your connection and try again.");
+        };
+
+        Requests.get(url, onSuccess, onError);
+    }
+
+    function applyLocationResult(result) {
+        if (!result)
+            return false;
+
+        const coords = normalizeCoords(Number(result.latitude), Number(result.longitude));
+        if (!coords)
+            return false;
+
+        const label = result.label || buildLocationLabel(result) || result.name || "";
+
+        const prevLoc = loc;
+
+        GlobalConfig.services.weatherLocation = coords;
+        loc = coords;
+        if (label)
+            city = label;
+        if (label)
+            cachedCities.set(coords, label);
+
+        if (coords === prevLoc)
+            fetchWeatherData();
+        return true;
+    }
+
+    function resetToAutoLocation() {
+        GlobalConfig.services.weatherLocation = "";
+        loc = "";
+        city = "";
+        reload();
+    }
+
+    function reload() {
         const configLocation = GlobalConfig.services.weatherLocation;
 
         if (configLocation) {
@@ -38,7 +170,7 @@ Singleton {
                 loc = configLocation;
                 fetchCityFromCoords(configLocation);
             } else {
-                fetchCoordsFromCity(configLocation);
+                fetchCoordsFromCity(configLocation, true);
             }
         } else if (!loc || timer.elapsed() > 900) {
             Requests.get("https://ipinfo.io/json", text => {
@@ -52,7 +184,7 @@ Singleton {
         }
     }
 
-    function fetchCityFromCoords(coords: string): void {
+    function fetchCityFromCoords(coords) {
         if (cachedCities.has(coords)) {
             city = cachedCities.get(coords);
             return;
@@ -89,15 +221,26 @@ Singleton {
         }, fallbackToBigDataCloud);
     }
 
-    function fetchCoordsFromCity(cityName: string): void {
+    function fetchCoordsFromCity(cityName, persistCoords) {
         const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=en&format=json`;
 
         Requests.get(url, text => {
             const json = JSON.parse(text);
             if (json.results && json.results.length > 0) {
                 const result = json.results[0];
-                loc = result.latitude + "," + result.longitude;
-                city = result.name;
+                const coords = normalizeCoords(result.latitude, result.longitude);
+                if (!coords) {
+                    loc = "";
+                    reload();
+                    return;
+                }
+
+                loc = coords;
+                city = buildLocationLabel(result) || result.name;
+                cachedCities.set(coords, city);
+
+                if (persistCoords)
+                    GlobalConfig.services.weatherLocation = coords;
             } else {
                 loc = "";
                 reload();
@@ -105,7 +248,7 @@ Singleton {
         });
     }
 
-    function fetchWeatherData(): void {
+    function fetchWeatherData() {
         const url = getWeatherUrl();
         if (url === "")
             return;
@@ -161,11 +304,11 @@ Singleton {
         });
     }
 
-    function toFahrenheit(celcius: real): real {
+    function toFahrenheit(celcius) {
         return celcius * 9 / 5 + 32;
     }
 
-    function getWeatherUrl(): string {
+    function getWeatherUrl() {
         if (!loc || loc.indexOf(",") === -1)
             return "";
 
@@ -176,7 +319,7 @@ Singleton {
         return baseUrl + "?" + params.join("&");
     }
 
-    function getWeatherCondition(code: string): string {
+    function getWeatherCondition(code) {
         const conditions = {
             "0": "Clear",
             "1": "Clear",
@@ -218,6 +361,14 @@ Singleton {
         }
 
         target: GlobalConfig.services
+    }
+
+    Timer {
+        id: locationSearchDebounce
+
+        interval: 300
+        repeat: false
+        onTriggered: searchLocations(root.locationSearchQuery)
     }
 
     Timer {

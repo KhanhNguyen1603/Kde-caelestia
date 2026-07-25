@@ -2,6 +2,7 @@ import QtQuick
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.utils
 
 ButtonBase {
     id: root
@@ -26,19 +27,13 @@ ButtonBase {
     }
 
     implicitWidth: implicitHeight
-    implicitHeight: {
-        // Ensure even size so icon is centered properly
-        const h = label.implicitHeight + padding * 2;
-        if (h % 2 !== 0)
-            return h + 1;
-        return h;
-    }
+    implicitHeight: label.implicitHeight + padding * 2
 
     MaterialIcon {
         id: label
 
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 1 // AHHHHHHH material symbols whyyyy
+        anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
         color: root.onColour
         fontStyle: root.font
         fill: !root.isToggle || root.internalChecked ? 1 : 0

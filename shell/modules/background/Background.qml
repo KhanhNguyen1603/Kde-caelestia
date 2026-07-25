@@ -4,9 +4,13 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.containers
 import qs.services
+import "../drawers/blur" as Blur
+import Quickshell.Hyprland
+import Caelestia.Blobs
 
 Variants {
     model: Screens.screens.filter(s => GlobalConfig.forScreen(s.name).background.enabled)
@@ -18,14 +22,15 @@ Variants {
 
         screen: modelData
         name: "background"
+        isDesktopWidget: true
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Bottom
-        color: contentItem.Config.background.wallpaperEnabled ? "black" : "transparent"
+        color: Config.background.wallpaperEnabled ? "black" : "transparent"
         surfaceFormat.opaque: false
 
         // If Quickshell wallpaper is disabled, use empty mask so KDE desktop gets clicks
         // If enabled, use null mask so Quickshell captures clicks
-        mask: contentItem.Config.background.wallpaperEnabled ? null : emptyRegion
+        mask: Config.background.wallpaperEnabled ? null : emptyRegion
 
         Region {
             id: emptyRegion
@@ -39,26 +44,16 @@ Variants {
         anchors.right: true
 
         TapHandler {
-            acceptedButtons: Qt.RightButton
-            onTapped: (eventPoint) => {
-                if (contentItem.Config.background.wallpaperEnabled) {
-                    contextMenuAnchor.x = eventPoint.position.x;
-                    contextMenuAnchor.y = eventPoint.position.y;
-                    desktopContextMenu.expanded = true;
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onTapped: (eventPoint, button) => {
+                if (button === Qt.RightButton && Config.background.wallpaperEnabled) {
+                    ContextMenuStore.openDesktopContextMenu(eventPoint.position.x, eventPoint.position.y, win.modelData.name);
+                } else if (button === Qt.LeftButton) {
+                    if (typeof KWinActiveWindowBridge !== "undefined") {
+                        KWinActiveWindowBridge.setActiveOutputName(win.screen.name);
+                    }
                 }
             }
-        }
-
-        Item {
-            id: contextMenuAnchor
-            z: 9999
-        }
-
-        DesktopContextMenu {
-            id: desktopContextMenu
-            attachTo: contextMenuAnchor
-            screenName: win.modelData.name
-            z: 9999
         }
 
         Item {

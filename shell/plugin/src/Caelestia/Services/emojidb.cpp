@@ -9,6 +9,7 @@
 #include <qloggingcategory.h>
 #include <qstandardpaths.h>
 #include <qtextstream.h>
+#include <QDir>
 
 Q_LOGGING_CATEGORY(lcEmojiDb, "caelestia.services.emojidb", QtInfoMsg)
 

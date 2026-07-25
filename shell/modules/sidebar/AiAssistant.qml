@@ -645,7 +645,7 @@ Item {
 
                                     if (toolName === "take_screenshot") {
                                         currentActionText = "Analyzing screen...";
-                                        var screenCmd = `grim -g "$(hyprctl monitors -j | jq -r '.[] | select(.focused) | \\"\\\\(.x),\\\\(.y) \\\\(.width)x\\\\(.height)\\"')" ${Paths.runtimeTemp("orion_screenshot.png")}`;
+                                        var screenCmd = `spectacle -b -m -n -o ${Paths.runtimeTemp("orion_screenshot.png")}`;
                                         runAgentCommand(screenCmd, "screenshot_take");
 
                                     } else if (toolName === "web_search") {

@@ -5,12 +5,14 @@ Flickable {
     id: root
 
     property bool doneFakeFlick
+    property bool enableFakeFlick: true
 
     maximumFlickVelocity: 3000
 
     rebound: Transition {
         onRunningChanged: {
-            if (!running && !root.doneFakeFlick) {
+            const canScroll = root.interactive && (root.contentHeight > root.height || root.contentWidth > root.width);
+            if (!running && !root.doneFakeFlick && root.enableFakeFlick && canScroll) {
                 root.doneFakeFlick = true;
                 root.flick(1, 1);
                 root.flick(-1, -1);

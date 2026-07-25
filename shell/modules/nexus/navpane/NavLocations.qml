@@ -6,12 +6,15 @@ import Caelestia.Config
 import qs.components
 import qs.components.containers
 import qs.services
+import qs.utils
 import qs.modules.nexus
 
 VerticalFadeFlickable {
     id: root
 
     required property NexusState nState
+    readonly property string normalizedQuery: root.nState.searchQuery.trim().toLowerCase()
+    readonly property var filteredPages: PageRegistry.fuzzyPages(root.normalizedQuery)
 
     topMargin: Tokens.padding.large
     bottomMargin: Tokens.padding.large
@@ -27,17 +30,19 @@ VerticalFadeFlickable {
         Repeater {
             id: list
 
-            model: PageRegistry.pages
+            model: root.filteredPages
 
             StyledRect {
                 id: item
 
                 required property var modelData
                 required property int index
+                readonly property var page: modelData.page
+                readonly property int pageIdx: modelData.pageIdx
 
-                readonly property bool isCurrentPage: index === root.nState.currentPageIdx
-                readonly property bool isCategoryStart: index === 0 || PageRegistry.pages[index - 1].category !== modelData.category
-                readonly property bool isCategoryEnd: index === list.model.length - 1 || PageRegistry.pages[index + 1].category !== modelData.category
+                readonly property bool isCurrentPage: pageIdx === root.nState.currentPageIdx
+                readonly property bool isCategoryStart: index === 0 || list.model[index - 1].page.category !== page.category
+                readonly property bool isCategoryEnd: index === list.model.length - 1 || list.model[index + 1].page.category !== page.category
 
                 Layout.fillWidth: true
                 Layout.topMargin: index !== 0 && isCategoryStart ? Tokens.spacing.medium : 0
@@ -67,7 +72,7 @@ VerticalFadeFlickable {
                     bottomLeftRadius: parent.bottomLeftRadius
                     bottomRightRadius: parent.bottomRightRadius
 
-                    onClicked: root.nState.currentPageIdx = item.index
+                    onClicked: root.nState.currentPageIdx = item.pageIdx
                 }
 
                 RowLayout {
@@ -88,13 +93,13 @@ VerticalFadeFlickable {
 
                         MaterialIcon {
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: 1
+                            anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
 
-                            text: item.modelData.icon
+                            text: item.page.icon
                             color: item.isCurrentPage ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer
                             fontStyle: Tokens.font.icon.builders.medium.weight(Font.Medium).build()
                             grade: 25
-                            fill: item.modelData.noFill ? 0 : 1
+                            fill: item.page.noFill ? 0 : 1
                         }
                     }
 
@@ -104,14 +109,14 @@ VerticalFadeFlickable {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: item.modelData.label
+                            text: item.page.label
                             font: Tokens.font.body.medium
                             elide: Text.ElideRight
                         }
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: item.modelData.description
+                            text: item.page.description
                             color: Colours.palette.m3onSurfaceVariant
                             font: Tokens.font.label.small
                             elide: Text.ElideRight

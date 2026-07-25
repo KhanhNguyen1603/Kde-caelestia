@@ -46,6 +46,7 @@ Variants {
             right: true
         }
 
+        WlrLayershell.namespace: "osd"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 

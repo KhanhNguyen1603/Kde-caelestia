@@ -151,6 +151,7 @@ PageBase {
                 { id: "wallpaper",      label: qsTr("Wallpaper") },
                 { id: "badapple",       label: qsTr("Bad Apple") },
                 { id: "pauseWallpaper", label: qsTr("Pause Wallpaper") },
+                { id: "restartShell",   label: qsTr("Restart Shell") },
             ]
 
             delegate: ToggleRow {

@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.services
 
@@ -27,36 +28,35 @@ Item {
 
 
         readonly property bool onSpecial: false
-        property int activeWsId: 1
-        
-        Process {
-            id: kwinDesktopPollerInit
-            running: true
-            command: ["qdbus6", "org.kde.KWin", "/KWin", "currentDesktop"]
-            stdout: StdioCollector {
-                onStreamFinished: {
-                    var val = parseInt(text.trim());
-                    if (!isNaN(val)) container.activeWsId = val;
-                }
+        property int activeWsId: {
+            if (typeof KWinActiveWindowBridge !== "undefined") {
+                return KWinActiveWindowBridge.currentDesktop || 1;
             }
-        }
-
-        Process {
-            id: kwinDesktopListener
-            running: true
-            command: ["dbus-monitor", "type='signal',interface='org.kde.KWin.VirtualDesktopManager',member='currentChanged'"]
-            stdout: StdioCollector {
-                waitForEnd: false
-                onDataChanged: {
-                    kwinDesktopPollerInit.running = true;
-                }
-            }
+            return Hyprland.workspace?.id || 1;
         }
 
         readonly property var occupied: {
             const occ = {};
-            for (let i = 1; i <= Config.bar.workspaces.shown; i++) {
-                occ[i] = true;
+            
+            if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                const wins = KWinActiveWindowBridge.windowList;
+                for (let i = 0; i < wins.length; ++i) {
+                    const w = wins[i];
+                    if (w.desktops && w.desktops.length > 0) {
+                        occ[w.desktops[0]] = true;
+                    }
+                }
+            } else if (Hyprland.workspaces) {
+                const hyprWins = Hyprland.workspaces.values();
+                for (let i = 0; i < hyprWins.length; ++i) {
+                    if (hyprWins[i].windows > 0) {
+                        occ[hyprWins[i].id] = true;
+                    }
+                }
+            } else {
+                for (let i = 1; i <= Config.bar.workspaces.shown; i++) {
+                    occ[i] = false;
+                }
             }
             return occ;
         }
@@ -142,16 +142,32 @@ Item {
                     const ws = (layout.childAt(event.x, event.y) as Workspace)?.ws;
                     if (!ws)
                         return;
-                    if (container.activeWsId !== ws)
-                        Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "setCurrentDesktop", ws.toString()]);
+                    if (container.activeWsId !== ws) {
+                        const isKWin = typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList;
+                        if (isKWin) {
+                            KWinActiveWindowBridge.setDesktop(ws);
+                        } else {
+                            Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "setCurrentDesktop", ws.toString()]);
+                        }
+                    }
                 }
                 onWheel: event => {
                     if (!Config.bar.scrollActions.workspaces) return;
                     
+                    const isKWin = typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList;
+                    
                     if (event.angleDelta.y > 0 || event.angleDelta.x > 0) {
-                        Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "previousDesktop"]);
+                        if (isKWin) {
+                            KWinActiveWindowBridge.previousDesktop();
+                        } else {
+                            Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "previousDesktop"]);
+                        }
                     } else if (event.angleDelta.y < 0 || event.angleDelta.x < 0) {
-                        Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "nextDesktop"]);
+                        if (isKWin) {
+                            KWinActiveWindowBridge.nextDesktop();
+                        } else {
+                            Quickshell.execDetached(["qdbus6", "org.kde.KWin", "/KWin", "nextDesktop"]);
+                        }
                     }
                 }
             }

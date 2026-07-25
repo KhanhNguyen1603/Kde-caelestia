@@ -1,5 +1,6 @@
 {
   "colors": {
+    "default": "39m",
     "cyan": "36m",
     "magenta": "35m",
     "green": "32m",
@@ -31,7 +32,7 @@
     "progress_box": {
       "title": "INSTALLATION PROGRESS",
       "color": "cyan",
-      "title_color": "white",
+      "title_color": "default",
       "text_color": "cyan",
       "padding_x": 4,
       "padding_y": 2
@@ -39,7 +40,7 @@
     "step_list": {
       "title": "STEPS",
       "color": "cyan",
-      "title_color": "white",
+      "title_color": "default",
       "offset_y": 3,
       "offset_x": 2,
       "spacing_x": 10
@@ -47,26 +48,26 @@
     "sudo_prompt": {
       "title": "PRIVILEGE ESCALATION",
       "color": "cyan",
-      "title_color": "white",
-      "text_color": "white",
+      "title_color": "default",
+      "text_color": "default",
       "prompt_color": "cyan"
     },
     "distro_select": {
       "title": "DETECTED OS",
       "color": "cyan",
-      "title_color": "white",
-      "text_color": "white"
+      "title_color": "default",
+      "text_color": "default"
     },
     "config_checklist": {
       "title": "CONFIGURATION",
       "color": "cyan",
-      "title_color": "white",
-      "text_color": "white"
+      "title_color": "default",
+      "text_color": "default"
     },
     "summary_screen": {
       "title": "CAELESTIA INSTALLATION SUMMARY",
       "color": "green",
-      "title_color": "white"
+      "title_color": "default"
     }
   },
   "strings": {

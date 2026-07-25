@@ -14,10 +14,35 @@ namespace Draw {
     
     // Colors
     string color(const string& name) {
-        if (!g_theme.is_null() && g_theme.contains("colors") && g_theme["colors"].contains(name)) {
-            return esc + g_theme["colors"][name].get<string>();
+        if (name.empty()) {
+            return "";
         }
-        return esc + "37m"; // fallback white
+
+        if (name.find("\x1b[") != string::npos) {
+            return name;
+        }
+
+        if (name == "reset") {
+            return reset;
+        }
+        if (name == "bold") {
+            return bold;
+        }
+        if (name == "dim") {
+            return dim;
+        }
+
+        static const string bold_prefix = "bold_";
+        if (name.rfind(bold_prefix, 0) == 0 && name.size() > bold_prefix.size()) {
+            return bold + color(name.substr(bold_prefix.size()));
+        }
+
+        auto it = g_theme_colors.find(name);
+        if (it != g_theme_colors.end()) {
+            return it->second;
+        }
+        // Use terminal default foreground so light/dark themes remain readable.
+        return esc + "39m";
     }
     
     // Box chars
@@ -106,6 +131,6 @@ namespace Draw {
 
     void text(int x, int y, const string& txt, const string& color_name) {
         string c = color_name.empty() ? "" : color(color_name);
-        cout << to(y, x) << c << txt << reset << flush;
+        cout << to(y, x) << c << txt << reset;
     }
 }

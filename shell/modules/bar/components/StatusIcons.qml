@@ -19,12 +19,19 @@ StyledRect {
     readonly property bool isHorizontal: Config.bar.position === "top" || Config.bar.position === "bottom"
     readonly property int barThickness: Math.round(Tokens.sizes.bar.innerWidth * Math.max(0.6, !isNaN(Config.bar.scale) ? Config.bar.scale : 1.0))
 
+    property real hoverPos: -1
+    property real hoverExpansion: 30 // Fixed px amount to expand the tray area when hovered
+
+    readonly property bool isHovering: hoverPos !== -1
+    property real currentHoverExpansion: isHovering ? hoverExpansion : 0
+    Behavior on currentHoverExpansion { Anim { type: Anim.DefaultEffects } }
+
     color: Colours.tPalette.m3surfaceContainer
     radius: Tokens.rounding.full
 
     clip: true
-    implicitWidth: isHorizontal ? (iconColumn.implicitWidth + Tokens.padding.medium * 2) : barThickness
-    implicitHeight: isHorizontal ? barThickness : (iconColumn.implicitHeight + Tokens.padding.medium * 2)
+    implicitWidth: isHorizontal ? (iconColumn.implicitWidth + Tokens.padding.medium * 2 + currentHoverExpansion) : barThickness
+    implicitHeight: isHorizontal ? barThickness : (iconColumn.implicitHeight + Tokens.padding.medium * 2 + currentHoverExpansion)
 
     GridLayout {
         id: iconColumn
@@ -35,8 +42,8 @@ StyledRect {
         anchors.right: parent.right
         anchors.bottom: isHorizontal ? undefined : parent.bottom
         anchors.bottomMargin: isHorizontal ? 0 : Tokens.padding.medium
-        anchors.top: undefined
-        anchors.topMargin: isHorizontal ? Tokens.padding.medium : 0
+        anchors.top: isHorizontal ? undefined : parent.top
+        anchors.topMargin: Tokens.padding.medium
         anchors.leftMargin: isHorizontal ? Tokens.padding.medium : 0
         anchors.rightMargin: isHorizontal ? Tokens.padding.medium : 0
         anchors.verticalCenter: isHorizontal ? parent.verticalCenter : undefined
@@ -397,6 +404,8 @@ StyledRect {
 
         asynchronous: false
         Layout.alignment: isHorizontal ? Qt.AlignVCenter : Qt.AlignHCenter
+        Layout.fillWidth: isHorizontal
+        Layout.fillHeight: !isHorizontal
         visible: active
     }
 }
