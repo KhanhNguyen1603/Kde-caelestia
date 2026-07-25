@@ -1,9 +1,9 @@
 #pragma once
+#include "json.hpp"
 #include <atomic>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "json.hpp"
 
 using json = nlohmann::json;
 
@@ -23,12 +23,11 @@ void load_bundle_dir();
 void load_theme();
 
 struct Config {
-    bool enable_transaction_confirm = true;
-    bool remove_cache = false;
-    bool enable_krohnkite = false;
-    bool apply_darkly = true;
-    bool enable_material_you = true;
-    bool apply_custom_fonts = true;
+  bool enable_transaction_confirm = true;
+  bool remove_cache = false;
+  bool apply_darkly = true;
+  bool enable_material_you = true;
+  bool apply_custom_fonts = true;
 };
 
 extern Config g_config;
