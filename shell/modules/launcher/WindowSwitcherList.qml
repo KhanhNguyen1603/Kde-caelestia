@@ -51,15 +51,28 @@ PathView {
 
         readonly property string search: root.search.text.split(" ").slice(1).join(" ")
 
-        values: Windows.query(search)
-        onValuesChanged: root.currentIndex = 0
+        values: {
+            const _ = Windows.items;
+            return Windows.query(search);
+        }
+        onValuesChanged: {
+            Qt.callLater(() => {
+                if (root.search.text.trim() === GlobalConfig.launcher.actionPrefix.trim() + "windows") {
+                    root.currentIndex = (scriptModel.values.length > 1) ? 1 : 0;
+                } else {
+                    root.currentIndex = 0;
+                }
+            });
+        }
     }
 
     Component.onCompleted: Windows.reload()
     Component.onDestruction: {}
 
     onCurrentItemChanged: {
-        if (currentItem) {}
+        if (currentItem && currentItem.modelData && currentItem.modelData.address) {
+            KWinActiveWindowBridge.focusWindow(currentItem.modelData.address);
+        }
     }
 
     implicitWidth: Math.min(numItems, count) * itemWidth
@@ -105,6 +118,16 @@ PathView {
             else
                 root.incrementCurrentIndex();
             wheel.accepted = true;
+        }
+    }
+
+    Connections {
+        target: Windows
+        function onCycleNext(): void {
+            root.incrementCurrentIndex();
+        }
+        function onCyclePrev(): void {
+            root.decrementCurrentIndex();
         }
     }
 }

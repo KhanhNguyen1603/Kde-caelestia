@@ -6,11 +6,13 @@ import Caelestia.Config
 import qs.components.misc
 import qs.services
 import qs.modules.nexus
+import qs.modules.launcher.services
 
 Scope {
     id: root
 
     property bool launcherInterrupted
+    property string lastAction: ""
     readonly property bool hasFullscreen: Hypr.focusedWorkspace?.toplevels?.values?.some(t => (t?.lastIpcObject?.fullscreen ?? 0) > 1) ?? false
 
     // qmllint disable unresolved-type
@@ -123,6 +125,7 @@ Scope {
         onPressed: root.launcherInterrupted = false
         onReleased: {
             if (!root.launcherInterrupted && !root.hasFullscreen) {
+                root.lastAction = "launcher";
                 const visibilities = Visibilities.getForActive();
                 visibilities.launcher = !visibilities.launcher;
             }
@@ -214,13 +217,40 @@ Scope {
     CustomShortcut {
         // qmllint enable unresolved-type
         name: "windowSwitcher"
+        key: "Alt+Tab"
         description: "Open window switcher"
         onPressed: {
             if (root.hasFullscreen)
                 return;
-            Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
             const visibilities = Visibilities.getForActive();
-            visibilities.launcher = true;
+            // Check if launcher is already open and in windows mode
+            if (visibilities.launcher && root.lastAction === "windows") {
+                Windows.cycleNext();
+            } else {
+                root.lastAction = "windows";
+                Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
+                visibilities.launcher = true;
+            }
+        }
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "windowSwitcherReverse"
+        key: "Alt+Shift+Tab"
+        description: "Open window switcher (reverse)"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            if (visibilities.launcher && root.lastAction === "windows") {
+                Windows.cyclePrev();
+            } else {
+                root.lastAction = "windows";
+                Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
+                visibilities.launcher = true;
+            }
         }
     }
 
@@ -383,6 +413,7 @@ Scope {
 
     IpcHandler {
         function action(name: string): void {
+            root.lastAction = name;
             Visibilities.launcherInitialSearch =
             `${GlobalConfig.launcher.actionPrefix}${name} `;
 

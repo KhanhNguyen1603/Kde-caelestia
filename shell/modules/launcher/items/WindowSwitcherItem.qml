@@ -60,26 +60,51 @@ Item {
         color: Colours.tPalette.m3surfaceContainer
         radius: Tokens.rounding.medium
 
+        readonly property real windowAspect: {
+            const size = root.modelData?.size;
+            if (size && size.length >= 2) {
+                const w = size[0];
+                const h = size[1];
+                if (w > 0 && h > 0) return w / h;
+            }
+            return 16.0 / 9.0;
+        }
+
         implicitWidth: Tokens.sizes.launcher.windowSwitcherWidth
         implicitHeight: implicitWidth / 16 * 9
 
-        WindowScreencastRequest {
-            id: screencastRequest
-            uuid: root.modelData?.address ?? ""
+        Timer {
+            id: debounceTimer
+            interval: 20
+            running: true
+            repeat: false
+            onTriggered: screencastLoader.active = true
         }
+
+        Loader {
+            id: screencastLoader
+            active: false
+            sourceComponent: WindowScreencastRequest {
+                uuid: root.modelData?.address ?? ""
+            }
+        }
+
+        readonly property int serial: screencastLoader.item ? screencastLoader.item.objectSerial : 0
 
         IconImage {
             anchors.centerIn: parent
             implicitSize: previewBox.height * 0.5
             asynchronous: true
-            visible: screencastRequest.objectSerial === 0
+            visible: previewBox.serial === 0
             source: root.modelData?.iconName ? Icons.getAppIcon(root.modelData.iconName, "image-missing") : ""
         }
 
         Pipewire.PipeWireSourceItem {
-            anchors.fill: parent
-            visible: screencastRequest.objectSerial !== 0
-            objectSerial: screencastRequest.objectSerial
+            anchors.centerIn: parent
+            width: Math.min(parent.width, parent.height * previewBox.windowAspect)
+            height: Math.min(parent.height, parent.width / previewBox.windowAspect)
+            visible: previewBox.serial !== 0
+            objectSerial: previewBox.serial
         }
     }
 

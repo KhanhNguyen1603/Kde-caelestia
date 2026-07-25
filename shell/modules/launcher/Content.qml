@@ -208,6 +208,16 @@ Item {
 
             Keys.onEscapePressed: root.visibilities.launcher = false
 
+            Keys.onReleased: event => {
+                if (event.key === Qt.Key_Alt && text.startsWith(`${GlobalConfig.launcher.actionPrefix}windows `)) {
+                    const currentItem = list.currentList?.currentItem;
+                    if (currentItem && currentItem.clicked) {
+                        currentItem.clicked();
+                    }
+                    event.accepted = true;
+                }
+            }
+
             Keys.onPressed: event => {
                 if (!GlobalConfig.launcher.vimKeybinds)
                     return;
