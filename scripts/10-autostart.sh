@@ -41,7 +41,10 @@ cat > "$HOME/.local/bin/caelestia-autostart.sh" << EOF
 #!/bin/bash
 export QML2_IMPORT_PATH="\$HOME/.local/lib/qt6/qml"
 export CAELESTIA_LIB_DIR="\$HOME/.local/lib/caelestia"
-exec "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
+# stdbuf forces line-buffered stdout/stderr; without it, glibc fully-buffers
+# output when it isn't attached to a TTY (e.g. when captured by journald via
+# systemd), so qDebug/qWarning messages can sit unflushed indefinitely.
+exec stdbuf -oL -eL "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
 EOF
 chmod +x "$HOME/.local/bin/caelestia-autostart.sh"
 
@@ -56,8 +59,41 @@ Hidden=false
 NoDisplay=false
 X-GNOME-Autostart-enabled=true
 X-KDE-AutostartPhase=2
+X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1
 EOF
 echo "  [OK]  Quickshell autostart created."
+
+# KWin restricts privileged Wayland protocols (like zkde_screencast_unstable_v1,
+# used for live window thumbnails). For every such protocol, KWin's
+# allowInterface() calls KWin::fetchRequestedInterfaces(client->executablePath()),
+# which uses KApplicationTrader::query() to find an installed .desktop file whose
+# Exec= *first token*, resolved via QFileInfo::canonicalFilePath(), matches the
+# client's executable path *exactly* (no $PATH lookup, no symlink allowances
+# beyond what canonicalFilePath() resolves, and no wrapper scripts). A desktop
+# file with no Exec= line at all never matches anything (QProcess::splitCommand
+# returns an empty list, so the predicate always rejects it). Create a
+# user-level override at the standard XDG path, with Exec= pointing at the
+# fully-resolved quickshell binary, so KWin can find it and grant the protocol.
+echo "  Creating quickshell KDE Wayland interface declaration..."
+mkdir -p "$HOME/.local/share/applications"
+QUICKSHELL_CANONICAL_PATH="$(realpath "$QUICKSHELL_PATH")"
+cat > "$HOME/.local/share/applications/quickshell.desktop" << DESKEOF
+[Desktop Entry]
+Type=Application
+Name=Quickshell
+NoDisplay=true
+Exec=$QUICKSHELL_CANONICAL_PATH
+X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1,org_kde_plasma_window_management
+DESKEOF
+update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+# KApplicationTrader/KService resolve through the ksycoca cache, not just the
+# desktop-file-database used above; force a rebuild so the new Exec= is seen.
+if command -v kbuildsycoca6 >/dev/null 2>&1; then
+    kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+elif command -v kbuildsycoca5 >/dev/null 2>&1; then
+    kbuildsycoca5 --noincremental >/dev/null 2>&1 || true
+fi
+echo "  [OK]  Quickshell Wayland interface declaration created."
 
 #  kde-material-you-colors systemd service 
 # Creates and enables a systemd user service for kde-material-you-colors.

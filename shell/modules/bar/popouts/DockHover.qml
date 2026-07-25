@@ -1,9 +1,9 @@
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Wayland
 import Quickshell.Widgets
 import Quickshell.Services.Mpris
+import org.kde.pipewire as Pipewire
 import Caelestia.Config
 import Caelestia.Services
 import qs.components
@@ -27,6 +27,10 @@ StyledRect {
     readonly property real elementFontOffset: GlobalConfig.bar.perElementFontScale ? (!isNaN(GlobalConfig.bar.previewFontScales.dock) ? GlobalConfig.bar.previewFontScales.dock : 0.0) : 0.0
     readonly property real fontScale: Math.max(0.1, scaleOffset + (!isNaN(GlobalConfig.bar.fontScaleOffset) ? GlobalConfig.bar.fontScaleOffset : 0.0) + elementFontOffset)
     readonly property int previewWidth: Math.round(Tokens.sizes.bar.windowPreviewSize * scaleOffset)
+
+    readonly property int cardWidth: (root.model && root.model.toplevels && root.model.toplevels.length > 1)
+        ? Math.round(previewWidth * 0.55)
+        : previewWidth
 
     radius: Tokens.rounding.medium
     color: Colours.tPalette.m3surfaceContainer
@@ -96,87 +100,149 @@ StyledRect {
             }
         }
 
-        // Active windows list
-        Repeater {
-            model: root.model && root.model.toplevels ? root.model.toplevels : []
+        // Active windows row - live thumbnail previews, native Plasma taskbar style
+        RowLayout {
+            id: windowsRow
 
-            delegate: StyledRect {
-                required property var modelData
-                
-                Layout.fillWidth: true
-                Layout.minimumWidth: previewWidth || 200
-                implicitHeight: itemLayout.implicitHeight + Tokens.padding.small * scaleOffset * 2
-                
-                radius: Tokens.rounding.small
-                color: "transparent"
-                
-                StateLayer {
-                    anchors.margins: -Tokens.padding.medium * scaleOffset / 2
-                    anchors.leftMargin: -Tokens.padding.medium * scaleOffset
-                    anchors.rightMargin: -Tokens.padding.medium * scaleOffset
-                    radius: parent.radius
-                    onClicked: {
-                        console.log("DOCKHOVER CLOSE CLICKED, ADDRESS:", modelData.address);
-                                  if (modelData.address) {
-                            if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
-                                KWinActiveWindowBridge.focusWindow(modelData.address);
-                            } else {
-                                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.address}" })` : `focuswindow address:0x${modelData.address}`);
+            Layout.alignment: Qt.AlignLeft
+            visible: root.model && root.model.toplevels && root.model.toplevels.length > 0
+            spacing: Tokens.spacing.medium
+
+            Repeater {
+                model: root.model && root.model.toplevels ? root.model.toplevels : []
+
+                delegate: StyledRect {
+                    id: card
+
+                    required property var modelData
+                    required property int index
+
+                    implicitWidth: root.cardWidth
+                    implicitHeight: cardLayout.implicitHeight
+                    radius: Tokens.rounding.small
+                    color: "transparent"
+
+                    // Match thumbnail height to the window's actual aspect ratio
+                    // (modelData.width/height come from KWin's frameGeometry via DBus),
+                    // clamped to a reasonable max height so tall windows don't explode
+                    // the popout.  Fall back to 16:10 if the geometry isn't available yet.
+                    readonly property real windowAspect: {
+                        const w = card.modelData.width;
+                        const h = card.modelData.height;
+                        return (w > 0 && h > 0) ? (w / h) : (16.0 / 10.0);
+                    }
+                    readonly property int thumbHeight: {
+                        const raw = Math.round(root.cardWidth / windowAspect);
+                        const max = Math.round(root.cardWidth * 1.6); // never taller than 1.6× width
+                        const min = Math.round(root.cardWidth * 0.4);
+                        return Math.max(min, Math.min(max, raw));
+                    }
+
+                    HoverHandler {
+                        id: cardHover
+                    }
+
+                    StateLayer {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        onClicked: {
+                            if (card.modelData.address) {
+                                if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                                    KWinActiveWindowBridge.focusWindow(card.modelData.address);
+                                } else {
+                                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${card.modelData.address}" })` : `focuswindow address:0x${card.modelData.address}`);
+                                }
                             }
+                            root.popouts.hasCurrent = false;
                         }
-                        root.popouts.hasCurrent = false;
-                    }
-                }
-
-                RowLayout {
-                    id: itemLayout
-                    anchors.fill: parent
-                    spacing: Tokens.spacing.medium
-
-                    IconImage {
-                        asynchronous: true
-                        Layout.alignment: Qt.AlignVCenter
-                        implicitSize: titleText.implicitHeight
-                        source: root.model ? Icons.getAppIcon(root.model.iconName, "image-missing") : ""
                     }
 
-                    StyledText {
-                        id: titleText
-                        Layout.fillWidth: true
-                        text: modelData.title || ""
-                        font.pointSize: Tokens.font.body.small.pointSize * root.fontScale
-                        color: Colours.palette.m3onSurfaceVariant
-                        elide: Text.ElideRight
-                    }
+                    ColumnLayout {
+                        id: cardLayout
 
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: Tokens.spacing.small / 2
 
-                    // Close button
-                    StyledRect {
-                        implicitWidth: closeIcon.implicitHeight + Tokens.padding.small * scaleOffset * 2
-                        implicitHeight: closeIcon.implicitHeight + Tokens.padding.small * scaleOffset * 2
-                        radius: Tokens.rounding.small
-                        color: Colours.tPalette.m3surfaceVariant
+                        StyledClippingRect {
+                            id: thumb
 
-                        StateLayer {
-                            anchors.fill: parent
+                            Layout.preferredWidth: root.cardWidth
+                            Layout.preferredHeight: card.thumbHeight
+                            color: Colours.tPalette.m3surfaceContainerHighest
                             radius: Tokens.rounding.small
-                            onClicked: {
-                                if (modelData.address) {
-                                    if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
-                                        KWinActiveWindowBridge.closeWindow(modelData.address);
-                                    } else {
-                                        Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${modelData.address}" })` : `closewindow address:0x${modelData.address}`);
+
+                            // Requests a live PipeWire feed for this specific window from KWin
+                            // via the zkde-screencast-unstable-v1 protocol (the same mechanism
+                            // Plasma's own Task Manager uses for taskbar thumbnails), keyed by
+                            // the window's KWin uuid (KWinActiveWindowBridge's "address" field).
+                            WindowScreencastRequest {
+                                id: screencastRequest
+                                uuid: card.modelData.address || ""
+                            }
+
+                            IconImage {
+                                anchors.centerIn: parent
+                                implicitSize: thumb.height * 0.5
+                                asynchronous: true
+                                visible: screencastRequest.objectSerial === 0
+                                source: root.model ? Icons.getAppIcon(root.model.iconName, "image-missing") : ""
+                            }
+
+                            Pipewire.PipeWireSourceItem {
+                                anchors.fill: parent
+                                visible: screencastRequest.objectSerial !== 0
+                                objectSerial: screencastRequest.objectSerial
+                            }
+
+                            // Close button - only revealed while hovering this thumbnail
+                            StyledRect {
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: Tokens.padding.small
+                                implicitWidth: closeIcon.implicitHeight + Tokens.padding.small * scaleOffset * 2
+                                implicitHeight: closeIcon.implicitHeight + Tokens.padding.small * scaleOffset * 2
+                                radius: Tokens.rounding.small
+                                color: Colours.tPalette.m3surfaceVariant
+                                opacity: cardHover.hovered ? 1 : 0
+                                visible: opacity > 0.01
+
+                                Behavior on opacity {
+                                    Anim {}
+                                }
+
+                                StateLayer {
+                                    anchors.fill: parent
+                                    radius: Tokens.rounding.small
+                                    onClicked: {
+                                        if (card.modelData.address) {
+                                            if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                                                KWinActiveWindowBridge.closeWindow(card.modelData.address);
+                                            } else {
+                                                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${card.modelData.address}" })` : `closewindow address:0x${card.modelData.address}`);
+                                            }
+                                        }
                                     }
                                 }
-                                root.popouts.hasCurrent = false;
+
+                                MaterialIcon {
+                                    id: closeIcon
+                                    anchors.centerIn: parent
+                                    text: "close"
+                                    fontStyle.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
+                                }
                             }
                         }
 
-                        MaterialIcon {
-                            id: closeIcon
-                            anchors.centerIn: parent
-                            text: "close"
-                            fontStyle.pointSize: Tokens.font.body.medium.pointSize * root.fontScale
+                        StyledText {
+                            id: titleText
+                            Layout.preferredWidth: root.cardWidth
+                            text: card.modelData.title || ""
+                            font.pointSize: Tokens.font.body.small.pointSize * root.fontScale
+                            color: Colours.palette.m3onSurfaceVariant
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignHCenter
                         }
                     }
                 }

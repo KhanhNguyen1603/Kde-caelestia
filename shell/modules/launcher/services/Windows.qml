@@ -8,26 +8,85 @@ QtObject {
     id: root
 
     property var items: []
+    property int selectedIndex: 0
+
+    function triggerCycleNext(): void {
+        if (items.length === 0) return;
+        selectedIndex = (selectedIndex + 1) % items.length;
+    }
+
+    function triggerCyclePrev(): void {
+        if (items.length === 0) return;
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+    }
+
+    function focusSelectedWindow(): void {
+        if (selectedIndex >= 0 && selectedIndex < items.length) {
+            focusWindow(items[selectedIndex].address);
+        }
+    }
 
     function reload(): void {
         updateItems();
     }
 
     function updateItems(): void {
-        const windows = [];
-        for (const client of KWinActiveWindowBridge.windowList) {
-            windows.push({
+        const activeAddress = KWinActiveWindowBridge.activeWindow ? KWinActiveWindowBridge.activeWindow.address : "";
+        const winList = KWinActiveWindowBridge.windowList;
+        
+        let currentItems = root.items.slice();
+        
+        // 1. Remove closed windows
+        currentItems = currentItems.filter(item => {
+            for (let i = 0; i < winList.length; i++) {
+                if (winList[i].address === item.address) return true;
+            }
+            return false;
+        });
+        
+        // Helper to format
+        const formatClient = (client) => {
+            return {
                 address: client.address,
                 title: client.title || "",
                 class: client.class || "",
+                iconName: client.iconName || client.class || "",
                 workspace: client.workspace?.id || "",
                 monitor: "",
                 wayland: true,
                 size: [client.width || 0, client.height || 0],
                 at: [client.x || 0, client.y || 0]
-            });
+            };
+        };
+
+        // 2. Add new windows & update existing
+        for (let i = 0; i < winList.length; ++i) {
+            const client = winList[i];
+            let found = false;
+            for (let j = 0; j < currentItems.length; ++j) {
+                if (currentItems[j].address === client.address) {
+                    currentItems[j] = formatClient(client); // Update properties
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                currentItems.push(formatClient(client));
+            }
         }
-        items = windows;
+        
+        // 3. Move active window to index 0
+        if (activeAddress) {
+            for (let i = 0; i < currentItems.length; i++) {
+                if (currentItems[i].address === activeAddress) {
+                    const activeWin = currentItems.splice(i, 1)[0];
+                    currentItems.unshift(activeWin);
+                    break;
+                }
+            }
+        }
+        
+        items = currentItems;
     }
 
     function query(search: string): var {
@@ -44,5 +103,6 @@ QtObject {
     Component.onCompleted: {
         updateItems();
         KWinActiveWindowBridge.onWindowListChanged.connect(updateItems);
+        KWinActiveWindowBridge.onActiveWindowChanged.connect(updateItems);
     }
 }

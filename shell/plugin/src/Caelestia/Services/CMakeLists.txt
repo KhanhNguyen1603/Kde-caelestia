@@ -44,6 +44,8 @@ qml_module(caelestia-services
         kwinactivewindowbridge.hpp
         globalshortcut.cpp
         globalshortcut.hpp
+        windowscreencast.cpp
+        windowscreencast.hpp
     LIBRARIES
         Qt::DBus
         Qt::Gui
@@ -63,5 +65,13 @@ qt6_generate_wayland_protocol_client_sources(caelestia-services FILES
 )
 set_source_files_properties(
     ${CMAKE_CURRENT_BINARY_DIR}/wayland-org-kde-plasma-virtual-desktop-protocol.c
+    PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+)
+
+qt6_generate_wayland_protocol_client_sources(caelestia-services FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../protocols/zkde-screencast-unstable-v1.xml
+)
+set_source_files_properties(
+    ${CMAKE_CURRENT_BINARY_DIR}/wayland-zkde-screencast-unstable-v1-protocol.c
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )

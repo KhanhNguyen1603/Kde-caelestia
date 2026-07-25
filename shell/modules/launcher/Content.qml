@@ -208,6 +208,14 @@ Item {
 
             Keys.onEscapePressed: root.visibilities.launcher = false
 
+            Keys.onReleased: event => {
+                if (event.key === Qt.Key_Alt && text.startsWith(`${GlobalConfig.launcher.actionPrefix}windows `)) {
+                    Windows.focusSelectedWindow();
+                    root.visibilities.launcher = false;
+                    event.accepted = true;
+                }
+            }
+
             Keys.onPressed: event => {
                 if (!GlobalConfig.launcher.vimKeybinds)
                     return;
