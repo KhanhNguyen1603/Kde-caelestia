@@ -89,6 +89,16 @@ namespace UI {
         for (size_t i = 0; i < init_texts.size(); ++i) {
             if (loading_text(text_left, text_top + i + 1, init_texts[i], loading_color)) return;
         }
+
+        // Wait for user confirmation before proceeding to sudo prompt
+        int prompt_y = text_top + init_texts.size() + 2;
+        string enter_msg = "Press Enter to continue...";
+        cout << Draw::to(prompt_y, (g_term_width - enter_msg.length()) / 2)
+             << Draw::color("dim") << enter_msg << Draw::reset << flush;
+        while (true) {
+            string key = Input::wait_key();
+            if (key == "enter" || key == " " || key == "escape" || g_quit) break;
+        }
     }
 
     bool sudo_prompt() {
