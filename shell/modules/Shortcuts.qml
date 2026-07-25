@@ -225,10 +225,7 @@ Scope {
             const visibilities = Visibilities.getForActive();
             // Check if launcher is already open and in windows mode
             if (visibilities.launcher && root.lastAction === "windows") {
-                if (Windows.items.length > 0) {
-                    Windows.selectedIndex = (Windows.selectedIndex + 1) % Windows.items.length;
-                }
-                Windows.cycleNext();
+                Windows.triggerCycleNext();
             } else {
                 root.lastAction = "windows";
                 Windows.updateItems();
@@ -250,10 +247,7 @@ Scope {
                 return;
             const visibilities = Visibilities.getForActive();
             if (visibilities.launcher && root.lastAction === "windows") {
-                if (Windows.items.length > 0) {
-                    Windows.selectedIndex = (Windows.selectedIndex - 1 + Windows.items.length) % Windows.items.length;
-                }
-                Windows.cyclePrev();
+                Windows.triggerCyclePrev();
             } else {
                 root.lastAction = "windows";
                 Windows.updateItems();

@@ -10,8 +10,15 @@ QtObject {
     property var items: []
     property int selectedIndex: 0
 
-    signal cycleNext()
-    signal cyclePrev()
+    function triggerCycleNext(): void {
+        if (items.length === 0) return;
+        selectedIndex = (selectedIndex + 1) % items.length;
+    }
+
+    function triggerCyclePrev(): void {
+        if (items.length === 0) return;
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+    }
 
     function focusSelectedWindow(): void {
         if (selectedIndex >= 0 && selectedIndex < items.length) {

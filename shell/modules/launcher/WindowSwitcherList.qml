@@ -56,27 +56,22 @@ PathView {
             return Windows.query(search);
         }
         onValuesChanged: {
-            if (root.search.text.trim() === GlobalConfig.launcher.actionPrefix.trim() + "windows") {
-                root.currentIndex = (scriptModel.values.length > 1) ? 1 : 0;
-            } else {
+            if (scriptModel.search.trim() !== "") {
                 root.currentIndex = 0;
+            } else {
+                root.currentIndex = Qt.binding(() => Windows.selectedIndex);
             }
         }
     }
 
     Component.onCompleted: {
+        root.currentIndex = Qt.binding(() => Windows.selectedIndex);
         Windows.reload();
-        if (root.search.text.trim() === GlobalConfig.launcher.actionPrefix.trim() + "windows") {
-            root.currentIndex = Windows.selectedIndex;
-        } else {
-            root.currentIndex = 0;
-        }
     }
     Component.onDestruction: {}
 
-    onCurrentIndexChanged: {
-        Windows.selectedIndex = currentIndex;
-    }
+    function incrementCurrentIndex() { Windows.triggerCycleNext(); }
+    function decrementCurrentIndex() { Windows.triggerCyclePrev(); }
 
     implicitWidth: Math.min(numItems, count) * itemWidth
     pathItemCount: numItems
@@ -89,23 +84,10 @@ PathView {
 
     path: Path {
         startY: root.height / 2
-
-        PathAttribute {
-            name: "z"
-            value: 0
-        }
-        PathLine {
-            x: root.width / 2
-            relativeY: 0
-        }
-        PathAttribute {
-            name: "z"
-            value: 1
-        }
-        PathLine {
-            x: root.width
-            relativeY: 0
-        }
+        PathAttribute { name: "z"; value: 0 }
+        PathLine { x: root.width / 2; relativeY: 0 }
+        PathAttribute { name: "z"; value: 1 }
+        PathLine { x: root.width; relativeY: 0 }
     }
 
     delegate: WindowSwitcherItem {
@@ -124,13 +106,4 @@ PathView {
         }
     }
 
-    Connections {
-        target: Windows
-        function onCycleNext(): void {
-            root.incrementCurrentIndex();
-        }
-        function onCyclePrev(): void {
-            root.decrementCurrentIndex();
-        }
-    }
 }
