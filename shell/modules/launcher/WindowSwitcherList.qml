@@ -56,23 +56,26 @@ PathView {
             return Windows.query(search);
         }
         onValuesChanged: {
-            Qt.callLater(() => {
-                if (root.search.text.trim() === GlobalConfig.launcher.actionPrefix.trim() + "windows") {
-                    root.currentIndex = (scriptModel.values.length > 1) ? 1 : 0;
-                } else {
-                    root.currentIndex = 0;
-                }
-            });
+            if (root.search.text.trim() === GlobalConfig.launcher.actionPrefix.trim() + "windows") {
+                root.currentIndex = (scriptModel.values.length > 1) ? 1 : 0;
+            } else {
+                root.currentIndex = 0;
+            }
         }
     }
 
-    Component.onCompleted: Windows.reload()
+    Component.onCompleted: {
+        Windows.reload();
+        if (root.search.text.trim() === GlobalConfig.launcher.actionPrefix.trim() + "windows") {
+            root.currentIndex = Windows.selectedIndex;
+        } else {
+            root.currentIndex = 0;
+        }
+    }
     Component.onDestruction: {}
 
-    onCurrentItemChanged: {
-        if (currentItem && currentItem.modelData && currentItem.modelData.address) {
-            KWinActiveWindowBridge.focusWindow(currentItem.modelData.address);
-        }
+    onCurrentIndexChanged: {
+        Windows.selectedIndex = currentIndex;
     }
 
     implicitWidth: Math.min(numItems, count) * itemWidth

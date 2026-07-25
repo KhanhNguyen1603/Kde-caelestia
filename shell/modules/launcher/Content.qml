@@ -210,10 +210,8 @@ Item {
 
             Keys.onReleased: event => {
                 if (event.key === Qt.Key_Alt && text.startsWith(`${GlobalConfig.launcher.actionPrefix}windows `)) {
-                    const currentItem = list.currentList?.currentItem;
-                    if (currentItem && currentItem.clicked) {
-                        currentItem.clicked();
-                    }
+                    Windows.focusSelectedWindow();
+                    root.visibilities.launcher = false;
                     event.accepted = true;
                 }
             }

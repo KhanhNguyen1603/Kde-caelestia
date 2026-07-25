@@ -8,9 +8,16 @@ QtObject {
     id: root
 
     property var items: []
+    property int selectedIndex: 0
 
     signal cycleNext()
     signal cyclePrev()
+
+    function focusSelectedWindow(): void {
+        if (selectedIndex >= 0 && selectedIndex < items.length) {
+            focusWindow(items[selectedIndex].address);
+        }
+    }
 
     function reload(): void {
         updateItems();

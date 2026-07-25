@@ -225,9 +225,14 @@ Scope {
             const visibilities = Visibilities.getForActive();
             // Check if launcher is already open and in windows mode
             if (visibilities.launcher && root.lastAction === "windows") {
+                if (Windows.items.length > 0) {
+                    Windows.selectedIndex = (Windows.selectedIndex + 1) % Windows.items.length;
+                }
                 Windows.cycleNext();
             } else {
                 root.lastAction = "windows";
+                Windows.updateItems();
+                Windows.selectedIndex = (Windows.items.length > 1) ? 1 : 0;
                 Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
                 visibilities.launcher = true;
             }
@@ -245,9 +250,14 @@ Scope {
                 return;
             const visibilities = Visibilities.getForActive();
             if (visibilities.launcher && root.lastAction === "windows") {
+                if (Windows.items.length > 0) {
+                    Windows.selectedIndex = (Windows.selectedIndex - 1 + Windows.items.length) % Windows.items.length;
+                }
                 Windows.cyclePrev();
             } else {
                 root.lastAction = "windows";
+                Windows.updateItems();
+                Windows.selectedIndex = (Windows.items.length > 1) ? Windows.items.length - 1 : 0;
                 Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
                 visibilities.launcher = true;
             }
