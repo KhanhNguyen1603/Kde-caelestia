@@ -12,49 +12,73 @@ INSTALL_FISH="${INSTALL_FISH:-true}"
 INSTALL_PAPIRUS="${INSTALL_PAPIRUS:-true}"
 INSTALL_DARKLY="${INSTALL_DARKLY:-true}"
 
-# Core dependencies (minus hyprland-specific ones)
-PACKAGES=(
-    # build dependencies
+# Core dependencies split by group — controlled via PACKAGE_GROUP env var
+PACKAGE_GROUP="${PACKAGE_GROUP:-all}"
+
+CORE_PACKAGES=(
     cmake ninja-build ccache
-    # Core system tools
     wl-clipboard cliphist wl-clip-persist inotify-tools wireplumber trash-cli jq aubio lm_sensors lm_sensors-devel
-    # lib files
-    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel kf6-kpipewire kf6-kpipewire-devel
-    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel kf6-kwindowsystem-devel qt6-qtbase-private-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel
-    # Shells & terminal
-    foot eza fastfetch starship btop bash
-    # Themes & Fonts
-    adw-gtk3-theme google-rubik-fonts
-    # Utilities
-    fuzzel swappy brightnessctl ddcutil NetworkManager ImageMagick tesseract tesseract-langpack-eng spectacle gpu-screen-recorder slurp grim xdg-utils sassc
-    # playerctl
-    # Known to require manual build/copr on Fedora
-    app2unit libcava quickshell-git
+    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel kf6-kpipewire kf6-kpipewire-devel kf6-kwindowsystem-devel
 )
 
-if [[ "$INSTALL_FISH" == "true" ]]; then
-    PACKAGES+=(fish)
-else
-    log "Skipping Fish installation by user choice."
+SHELL_PACKAGES=(
+    foot eza fastfetch starship btop bash
+)
+
+THEME_PACKAGES=(
+    adw-gtk3-theme google-rubik-fonts
+)
+
+UTILITY_PACKAGES=(
+    fuzzel swappy brightnessctl ddcutil NetworkManager ImageMagick tesseract tesseract-langpack-eng spectacle gpu-screen-recorder slurp grim xdg-utils sassc
+)
+
+# Packages known to need copr or manual fallback
+COPR_CORE=(app2unit libcava)
+COPR_SHELL=(quickshell-git)
+COPR_UTILS=()
+
+# Build final package list based on selected group
+PACKAGES=()
+COPR_PKGS=()
+case "$PACKAGE_GROUP" in
+    core)   PACKAGES=("${CORE_PACKAGES[@]}");   COPR_PKGS=("${COPR_CORE[@]}") ;;
+    shell)  PACKAGES=("${SHELL_PACKAGES[@]}");  COPR_PKGS=("${COPR_SHELL[@]}") ;;
+    themes) PACKAGES=("${THEME_PACKAGES[@]}");  COPR_PKGS=() ;;
+    utils)  PACKAGES=("${UTILITY_PACKAGES[@]}"); COPR_PKGS=("${COPR_UTILS[@]}") ;;
+    all|*)  PACKAGES=("${CORE_PACKAGES[@]}" "${SHELL_PACKAGES[@]}" "${THEME_PACKAGES[@]}" "${UTILITY_PACKAGES[@]}")
+            COPR_PKGS=("quickshell-git" "gpu-screen-recorder" "app2unit" "starship" "libcava" "wl-clip-persist") ;;
+esac
+
+log "Installing packages (group: $PACKAGE_GROUP)..."
+
+# Optional packages only included for relevant groups (or "all")
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+    if [[ "$INSTALL_FISH" == "true" ]]; then
+        PACKAGES+=(fish)
+    else
+        log "Skipping Fish installation by user choice."
+    fi
 fi
 
-if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
-    PACKAGES+=(papirus-icon-theme)
-else
-    log "Skipping Papirus icon theme installation by user choice."
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "themes" ]]; then
+    if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
+        PACKAGES+=(papirus-icon-theme)
+    else
+        log "Skipping Papirus icon theme installation by user choice."
+    fi
 fi
 
 log "Enabling RPM Fusion for H264 hardware codecs..."
 sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
 sudo dnf swap -y ffmpeg-free ffmpeg --allowerasing || true
 
-PACKAGES+=(ffmpeg)
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "core" ]]; then
+    PACKAGES+=(ffmpeg)
+fi
 
 log "Installing packages via dnf (batch mode)..."
 sudo dnf upgrade -y || true
-
-# Packages known to need copr or manual fallback — handle individually
-COPR_PKGS=("quickshell-git" "gpu-screen-recorder" "app2unit" "starship" "libcava" "wl-clip-persist")
 
 # Build a batch list excluding copr-only packages
 BATCH_PKGS=()
@@ -209,6 +233,8 @@ if [ ${#FAILED_PKGS[@]} -ne 0 ]; then
 fi
 
 
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "themes" ]]; then
+
 log "Downloading and installing required custom fonts (parallel)..."
 mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 
@@ -242,6 +268,10 @@ else
     log "Skipping Darkly package installation by user choice."
 fi
 
+fi  # end of PACKAGE_GROUP themes/all block
+
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+
 log "Installing Caelestia CLI wrapper..."
 if ! command -v caelestia >/dev/null 2>&1; then
     sudo dnf install -y python3-pip python3-build python3-installer python3-hatchling python3-hatch-vcs || true
@@ -269,5 +299,7 @@ fi
 if command -v sassc >/dev/null 2>&1 && ! command -v sass >/dev/null 2>&1; then
     sudo ln -sf /usr/bin/sassc /usr/local/bin/sass || true
 fi
+
+fi  # end of PACKAGE_GROUP shell/all block
 
 log "Fedora package installation complete."

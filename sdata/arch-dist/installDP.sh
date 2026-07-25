@@ -25,44 +25,60 @@ if ! command -v yay >/dev/null 2>&1; then
     rm -rf "$tmpdir"
 fi
 
-# Core dependencies (minus hyprland-specific ones)
-PACKAGES=(
-    # build dependencies
+# Core dependencies split by group — controlled via PACKAGE_GROUP env var
+PACKAGE_GROUP="${PACKAGE_GROUP:-all}"
+
+CORE_PACKAGES=(
     cmake ninja ccache
-    # Core system tools
     wl-clipboard cliphist wl-clip-persist inotify-tools app2unit wireplumber trash-cli jq aubio lm_sensors
-    # lib files
     libpipewire glibc libcava qt6-declarative gcc-libs qt6-base qt6-declarative qt6-wayland libqalculate kpipewire kglobalaccel kglobalacceld
-    # Shell wrapper
-    caelestia-cli quickshell-git
-    # Shells & terminal
-    foot eza fastfetch starship btop bash
-    # Themes & Fonts
-    adw-gtk-theme ttf-jetbrains-mono-nerd ttf-material-symbols-variable ttf-rubik-vf ttf-cascadia-code-nerd
-    # Utilities
-    swappy brightnessctl ddcutil networkmanager imagemagick tesseract tesseract-data-eng satty spectacle xdg-utils sassc
-    #playerctl
 )
 
-if [[ "$INSTALL_FISH" == "true" ]]; then
-    PACKAGES+=(fish)
-else
-    log "Skipping Fish installation by user choice."
+SHELL_PACKAGES=(
+    caelestia-cli quickshell-git
+    foot eza fastfetch starship btop bash
+)
+
+THEME_PACKAGES=(
+    adw-gtk-theme ttf-jetbrains-mono-nerd ttf-material-symbols-variable ttf-rubik-vf ttf-cascadia-code-nerd
+)
+
+UTILITY_PACKAGES=(
+    swappy brightnessctl ddcutil networkmanager imagemagick tesseract tesseract-data-eng satty spectacle xdg-utils sassc
+)
+
+# Build final package list based on selected group
+PACKAGES=()
+case "$PACKAGE_GROUP" in
+    core)   PACKAGES=("${CORE_PACKAGES[@]}") ;;
+    shell)  PACKAGES=("${SHELL_PACKAGES[@]}") ;;
+    themes) PACKAGES=("${THEME_PACKAGES[@]}") ;;
+    utils)  PACKAGES=("${UTILITY_PACKAGES[@]}") ;;
+    all|*)  PACKAGES=("${CORE_PACKAGES[@]}" "${SHELL_PACKAGES[@]}" "${THEME_PACKAGES[@]}" "${UTILITY_PACKAGES[@]}") ;;
+esac
+
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+    if [[ "$INSTALL_FISH" == "true" ]]; then
+        PACKAGES+=(fish)
+    else
+        log "Skipping Fish installation by user choice."
+    fi
 fi
 
-if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
-    PACKAGES+=(papirus-icon-theme)
-else
-    log "Skipping Papirus icon theme installation by user choice."
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "themes" ]]; then
+    if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
+        PACKAGES+=(papirus-icon-theme)
+    else
+        log "Skipping Papirus icon theme installation by user choice."
+    fi
+    if [[ "$INSTALL_DARKLY" == "true" ]]; then
+        PACKAGES+=(darkly)
+    else
+        log "Skipping Darkly package installation by user choice."
+    fi
 fi
 
-if [[ "$INSTALL_DARKLY" == "true" ]]; then
-    PACKAGES+=(darkly)
-else
-    log "Skipping Darkly package installation by user choice."
-fi
-
-log "Installing packages (batch mode)..."
+log "Installing packages (group: $PACKAGE_GROUP)..."
 FAILED_PKGS=()
 
 # Batch install all packages at once — much faster than individual yay calls
