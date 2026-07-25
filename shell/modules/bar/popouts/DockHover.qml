@@ -122,7 +122,21 @@ StyledRect {
                     radius: Tokens.rounding.small
                     color: "transparent"
 
-                    Component.onCompleted: console.warn("DockHover DEBUG: card", index, "address =", JSON.stringify(modelData.address), "keys =", JSON.stringify(Object.keys(modelData)))
+                    // Match thumbnail height to the window's actual aspect ratio
+                    // (modelData.width/height come from KWin's frameGeometry via DBus),
+                    // clamped to a reasonable max height so tall windows don't explode
+                    // the popout.  Fall back to 16:10 if the geometry isn't available yet.
+                    readonly property real windowAspect: {
+                        const w = card.modelData.width;
+                        const h = card.modelData.height;
+                        return (w > 0 && h > 0) ? (w / h) : (16.0 / 10.0);
+                    }
+                    readonly property int thumbHeight: {
+                        const raw = Math.round(root.cardWidth / windowAspect);
+                        const max = Math.round(root.cardWidth * 1.6); // never taller than 1.6× width
+                        const min = Math.round(root.cardWidth * 0.4);
+                        return Math.max(min, Math.min(max, raw));
+                    }
 
                     HoverHandler {
                         id: cardHover
@@ -155,7 +169,7 @@ StyledRect {
                             id: thumb
 
                             Layout.preferredWidth: root.cardWidth
-                            Layout.preferredHeight: Math.round(root.cardWidth / 16 * 10)
+                            Layout.preferredHeight: card.thumbHeight
                             color: Colours.tPalette.m3surfaceContainerHighest
                             radius: Tokens.rounding.small
 
