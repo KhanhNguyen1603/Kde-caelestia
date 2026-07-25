@@ -26,6 +26,9 @@ StyledRect {
 
         const builtIn = [
             {
+                id: "restartShell"
+            },
+            {
                 id: "badapple"
             },
             {
@@ -191,6 +194,17 @@ StyledRect {
                             Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}wallpaper `;
                             const visibilities = Visibilities.getForActive();
                             visibilities.launcher = true;
+                        }
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "restartShell"
+                    delegate: Toggle {
+                        icon: "restart_alt"
+                        isToggle: false
+                        inactiveOnColour: Colours.palette.m3onSurfaceVariant
+                        onClicked: {
+                            Quickshell.execDetached(["bash", "-c", "nohup bash -c 'caelestia shell -k; sleep 2; caelestia shell -d;' >/dev/null 2>&1 & disown"]);
                         }
                     }
                 }
