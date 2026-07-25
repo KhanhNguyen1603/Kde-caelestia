@@ -17,14 +17,22 @@ QtObject {
     }
 
     function updateItems(): void {
-        const windows = [];
         const activeAddress = KWinActiveWindowBridge.activeWindow ? KWinActiveWindowBridge.activeWindow.address : "";
-        let activeWin = null;
-        
         const winList = KWinActiveWindowBridge.windowList;
-        for (let i = winList.length - 1; i >= 0; --i) {
-            const client = winList[i];
-            const win = {
+        
+        let currentItems = root.items.slice();
+        
+        // 1. Remove closed windows
+        currentItems = currentItems.filter(item => {
+            for (let i = 0; i < winList.length; i++) {
+                if (winList[i].address === item.address) return true;
+            }
+            return false;
+        });
+        
+        // Helper to format
+        const formatClient = (client) => {
+            return {
                 address: client.address,
                 title: client.title || "",
                 class: client.class || "",
@@ -35,19 +43,36 @@ QtObject {
                 size: [client.width || 0, client.height || 0],
                 at: [client.x || 0, client.y || 0]
             };
-            
-            if (win.address === activeAddress) {
-                activeWin = win;
-            } else {
-                windows.push(win);
+        };
+
+        // 2. Add new windows & update existing
+        for (let i = 0; i < winList.length; ++i) {
+            const client = winList[i];
+            let found = false;
+            for (let j = 0; j < currentItems.length; ++j) {
+                if (currentItems[j].address === client.address) {
+                    currentItems[j] = formatClient(client); // Update properties
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                currentItems.push(formatClient(client));
             }
         }
         
-        if (activeWin) {
-            windows.unshift(activeWin);
+        // 3. Move active window to index 0
+        if (activeAddress) {
+            for (let i = 0; i < currentItems.length; i++) {
+                if (currentItems[i].address === activeAddress) {
+                    const activeWin = currentItems.splice(i, 1)[0];
+                    currentItems.unshift(activeWin);
+                    break;
+                }
+            }
         }
         
-        items = windows;
+        items = currentItems;
     }
 
     function query(search: string): var {
@@ -64,5 +89,6 @@ QtObject {
     Component.onCompleted: {
         updateItems();
         KWinActiveWindowBridge.onWindowListChanged.connect(updateItems);
+        KWinActiveWindowBridge.onActiveWindowChanged.connect(updateItems);
     }
 }
