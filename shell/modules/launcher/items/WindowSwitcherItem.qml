@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
-import Quickshell.Wayland
+import Quickshell.Widgets
+import org.kde.pipewire as Pipewire
 import Caelestia.Services
 import Caelestia
 import Caelestia.Config
@@ -62,11 +63,23 @@ Item {
         implicitWidth: Tokens.sizes.launcher.windowSwitcherWidth
         implicitHeight: implicitWidth / 16 * 9
 
-        ScreencopyView {
+        WindowScreencastRequest {
+            id: screencastRequest
+            uuid: root.modelData?.address ?? ""
+        }
+
+        IconImage {
+            anchors.centerIn: parent
+            implicitSize: previewBox.height * 0.5
+            asynchronous: true
+            visible: screencastRequest.objectSerial === 0
+            source: root.modelData?.iconName ? Icons.getAppIcon(root.modelData.iconName, "image-missing") : ""
+        }
+
+        Pipewire.PipeWireSourceItem {
             anchors.fill: parent
-            captureSource: root.modelData?.wayland ?? null
-            live: true
-            smooth: !(root.PathView.view?.moving ?? false)
+            visible: screencastRequest.objectSerial !== 0
+            objectSerial: screencastRequest.objectSerial
         }
     }
 
