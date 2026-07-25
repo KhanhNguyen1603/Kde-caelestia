@@ -47,10 +47,10 @@ if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
     info "Installing qt6-wayland if missing..."
     if command -v pacman >/dev/null; then
         info "Installing via pacman..."
-        sudo pacman -S --needed qt6-wayland --noconfirm || warn "qt6-wayland install failed..."
+        sudo pacman -S --needed qt6-wayland kpipewire kglobalaccel kglobalacceld --noconfirm || warn "qt6-wayland install failed..."
     elif command -v dnf >/dev/null; then
         info "Installing via dnf..."
-        sudo dnf install qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel kf6-kwindowsystem-devel qt6-qtbase-private-devel -y || warn "qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel install failed..."
+        sudo dnf install qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel kf6-kwindowsystem-devel qt6-qtbase-private-devel kf6-kpipewire kf6-kpipewire-devel -y || warn "qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel install failed..."
     fi
     
     if [[ "${CAELESTIA_SKIP_DEPLOY:-0}" == "0" ]]; then
