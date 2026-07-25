@@ -161,7 +161,7 @@ PageBase {
             icon: parent.isTilingEnabled ? "refresh" : "logout"
             label: parent.isTilingEnabled ? qsTr("Restart shell to enable custom shortcuts") : qsTr("Log out to fully disable tiling")
             status: parent.isTilingEnabled ? qsTr("Meta+Arrows, Meta+Shift+Arrows, Meta+Q for complete experience.") : qsTr("KWin requires a restart to clear window tiling rules")
-            onClicked: parent.isTilingEnabled ? Quickshell.execDetached(["bash", "-c", "nohup bash -c 'caelestia shell -k; sleep 2; caleestia shell -d' >/dev/null 2>&1 & disown  || true"]) : Quickshell.execDetached(["sh", "-c", "qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null || true"])
+            onClicked: parent.isTilingEnabled ? Quickshell.execDetached(["bash", "-c", "nohup bash -c 'caelestia shell -k; sleep 2; caelestia shell -d' >/dev/null 2>&1 & disown  || true"]) : Quickshell.execDetached(["sh", "-c", "qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null || true"])
         }
 
         NavRow {
