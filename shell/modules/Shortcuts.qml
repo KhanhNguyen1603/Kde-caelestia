@@ -435,7 +435,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteFocusUp"
         description: "Focus the window above"
-        key: "Meta+Up"
+        key: Config.general.krohnkiteEnabled ? "Meta+Up" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteFocusUp"])
@@ -447,7 +447,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteFocusDown"
         description: "Focus the window below"
-        key: "Meta+Down"
+        key: Config.general.krohnkiteEnabled ? "Meta+Down" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteFocusDown"])
@@ -459,7 +459,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteFocusLeft"
         description: "Focus the window to the left"
-        key: "Meta+Left"
+        key: Config.general.krohnkiteEnabled ? "Meta+Left" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteFocusLeft"])
@@ -471,7 +471,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteFocusRight"
         description: "Focus the window to the right"
-        key: "Meta+Right"
+        key: Config.general.krohnkiteEnabled ? "Meta+Right" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteFocusRight"])
@@ -483,7 +483,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteShiftUp"
         description: "Move window up"
-        key: "Meta+Shift+Up"
+        key: Config.general.krohnkiteEnabled ? "Meta+Shift+Up" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteShiftUp"])
@@ -495,7 +495,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteShiftDown"
         description: "Move window down"
-        key: "Meta+Shift+Down"
+        key: Config.general.krohnkiteEnabled ? "Meta+Shift+Down" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteShiftDown"])
@@ -507,7 +507,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteShiftLeft"
         description: "Move window left"
-        key: "Meta+Shift+Left"
+        key: Config.general.krohnkiteEnabled ? "Meta+Shift+Left" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteShiftLeft"])
@@ -519,7 +519,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteShiftRight"
         description: "Move window right"
-        key: "Meta+Shift+Right"
+        key: Config.general.krohnkiteEnabled ? "Meta+Shift+Right" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "KrohnkiteShiftRight"])
@@ -531,7 +531,7 @@ Scope {
         // qmllint enable unresolved-type
         name: "krohnkiteCloseWindow"
         description: "Close current window"
-        key: "Meta+Q"
+        key: Config.general.krohnkiteEnabled ? "Meta+Q" : ""
         onPressed: {
             if (Config.general.krohnkiteEnabled)
                 Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", "Window Close"])

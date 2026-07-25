@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 04-deploy-kde.sh  Apply KDE Plasma settings: Darkly theme, Kvantum, krohnkite,
+# 04-deploy-kde.sh  Apply KDE Plasma settings: Darkly theme, Kvantum,
 #                    5 virtual desktops, disable KDE OSDs.
 #
 # Applies:
@@ -7,19 +7,17 @@
 #   - Application style: Darkly (via kvantum-dark as engine)
 #   - Window decoration: Darkly
 #   - Kvantum theme:     MaterialAdw (from repo-base .config/Kvantum)
-#   - Krohnkite:         disabled by default (or user-chosen at start)
 #   - 5 virtual desktops with Meta+1..0 / Meta+Shift+1..0 shortcuts
 #   - KDE OSD disabled (volume/brightness popups)
 
 BUNDLE_DIR="${BUNDLE_DIR:?BUNDLE_DIR not set}"
-KROHNKITE_ENABLED="${KROHNKITE_ENABLED:-false}"
 
 echo
 echo ""
 echo "  Step 4/11  KDE Settings"
 echo ""
 
-#  Darkly Theme & Bibata Cursor 
+#  Darkly Theme
 if [[ "${APPLY_DARKLY:-true}" == "true" ]]; then
     #  Darkly: Plasma style 
     echo "  Applying Darkly plasma style..."
@@ -39,72 +37,9 @@ if [[ "${APPLY_DARKLY:-true}" == "true" ]]; then
     kwriteconfig6 --file kwinrc --group "org.kde.kdecoration2" \
         --key "theme" "@darkly" 2>/dev/null || true
 
-    #  Bibata: Cursor theme 
-    # echo "  Applying Bibata cursor theme..."
-    # kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme "Bibata-Modern-Ice" 2>/dev/null || true
 else
-    echo "  [SKIP] Skipping Darkly theme & Bibata cursor application."
+    echo "  [SKIP] Skipping Darkly theme"
 fi
-
-#  Krohnkite: tiling window manager 
-echo "  Configuring Krohnkite (tiling)  enabled=$KROHNKITE_ENABLED ..."
-kwriteconfig6 --file kwinrc --group "Plugins" \
-    --key "krohnkiteEnabled" "$KROHNKITE_ENABLED" 2>/dev/null || true
-
-
-
-# echo "==> Configuring KDE virtual desktops..."
-
-# # ── 1. Set desktop count to 10 via kwriteconfig6 ─────────────────────────────
-# # KWin reads NumberOfDesktops from kwinrc on startup / reconfigure.
-# CURRENT_COUNT=$(kreadconfig6 --file kwinrc --group "Desktops" --key "Number" 2>/dev/null || echo "1")
-# echo "  Current desktop count: $CURRENT_COUNT"
-
-# if (( CURRENT_COUNT < 10 )); then
-#     echo "  Setting desktop count to 10..."
-#     kwriteconfig6 --file kwinrc --group "Desktops" --key "Number" "10"
-#     kwriteconfig6 --file kwinrc --group "Desktops" --key "Rows" "1"
-#     # Also name the desktops
-#     for i in $(seq 1 10); do
-#         kwriteconfig6 --file kwinrc --group "Desktops" --key "Name_$i" "Desktop $i"
-#     done
-# else
-#     echo "  Already have $CURRENT_COUNT desktops — skipping creation."
-# fi
-
-# Being handled by Shortcuts.qml
-# # ── 2. Bind Meta+1..9,0 to "Switch to Desktop N" ─────────────────────────────
-# echo "  Registering Meta+1..0 workspace switching shortcuts..."
-
-# # Meta+1 through Meta+9
-# for i in $(seq 1 9); do
-#     kwriteconfig6 \
-#         --file kglobalshortcutsrc \
-#         --group "kwin" \
-#         --key "Switch to Desktop $i" \
-#         "Meta+$i,none,Switch to Desktop $i"
-# done
-
-# # Meta+0 → Desktop 10
-# kwriteconfig6 \
-#     --file kglobalshortcutsrc \
-#     --group "kwin" \
-#     --key "Switch to Desktop 10" \
-#     "Meta+0,none,Switch to Desktop 10"
-
-# # Meta+Shift+1..9,0 → Move window to desktop N
-# for i in $(seq 1 9); do
-#     kwriteconfig6 \
-#         --file kglobalshortcutsrc \
-#         --group "kwin" \
-#         --key "Window to Desktop $i" \
-#         "Meta+Shift+$i,none,Move Window to Desktop $i"
-# done
-# kwriteconfig6 \
-#     --file kglobalshortcutsrc \
-#     --group "kwin" \
-#     --key "Window to Desktop 10" \
-#     "Meta+Shift+0,none,Move Window to Desktop 10"
 
 # ── 3. Reconfigure KWin to pick up new settings ───────────────────────────────
 echo "  Reloading KWin..."
