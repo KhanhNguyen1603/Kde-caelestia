@@ -142,60 +142,14 @@ PageBase {
                             fi
                         fi
                         kwriteconfig6 --file kwinrc --group "Plugins" --key "krohnkiteEnabled" "true" 2>/dev/null || true
-                        # Map meta+arrows to change focus to the app in respective direction
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusUp "Meta+Up,none,Krohnkite: Focus Up" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusDown "Meta+Down,none,Krohnkite: Focus Down" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusLeft "Meta+Left,none,Krohnkite: Focus Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusRight "Meta+Right,none,Krohnkite: Focus Right" 2>/dev/null || true
-                        # Unbind conflicting native shortcuts
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Top" "none,none,Window Quick Tile Top" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Bottom" "none,none,Window Quick Tile Bottom" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Left" "none,none,Window Quick Tile Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Right" "none,none,Window Quick Tile Right" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Up" "none,none,Tiling Focus Up" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Down" "none,none,Tiling Focus Down" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Left" "none,none,Tiling Focus Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Right" "none,none,Tiling Focus Right" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftUp "Meta+Shift+Up,none,Krohnkite: Move Up/Prev" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftDown "Meta+Shift+Down,none,Krohnkite: Move Down/Next" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftLeft "Meta+Shift+Left,none,Krohnkite: Move Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftRight "Meta+Shift+Right,none,Krohnkite: Move Right" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window to Next Screen" "none,none,Move Window to Next Screen" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window to Previous Screen" "none,none,Move Window to Previous Screen" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Move Window Next" "none,none,Tiling Move Window Next" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Move Window Previous" "none,none,Tiling Move Window Previous" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Close" "Meta+Q,Alt+F4,Close Window" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group plasmashell --key "manage activities" "none,Meta+Q,Show Activity Switcher" 2>/dev/null || true
+                        # Shortcuts are now managed by Quickshell CustomShortcuts in Shortcuts.qml
                         qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
                     else
                         qdbus6 org.kde.kglobalaccel /component/kwin org.kde.kglobalaccel.Component.invokeShortcut "KrohnkiteFloatAll" 2>/dev/null || true
                         sleep 0.1
                         qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript "krohnkite" 2>/dev/null || true
                         kwriteconfig6 --file kwinrc --group "Plugins" --key "krohnkiteEnabled" "false" 2>/dev/null || true
-                        # Unmap Krohnkite focus shortcuts
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusUp "none,none,Krohnkite: Focus Up" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusDown "none,none,Krohnkite: Focus Down" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusLeft "none,none,Krohnkite: Focus Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteFocusRight "none,none,Krohnkite: Focus Right" 2>/dev/null || true
-                        # Restore native shortcuts
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Top" "Meta+Up,Meta+Up,Quick Tile Window to the Top" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Bottom" "Meta+Down,Meta+Down,Quick Tile Window to the Bottom" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Left" "Meta+Left,Meta+Left,Quick Tile Window to the Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Quick Tile Right" "Meta+Right,Meta+Right,Quick Tile Window to the Right" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Up" "Meta+Up,Meta+Up,Tiling Focus Up" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Down" "Meta+Down,Meta+Down,Tiling Focus Down" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Left" "Meta+Left,Meta+Left,Tiling Focus Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Focus Right" "Meta+Right,Meta+Right,Tiling Focus Right" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftUp "none,none,Krohnkite: Move Up/Prev" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftDown "none,none,Krohnkite: Move Down/Next" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftLeft "none,none,Krohnkite: Move Left" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key KrohnkiteShiftRight "none,none,Krohnkite: Move Right" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window to Next Screen" "Meta+Shift+Right,Meta+Shift+Right,Move Window to Next Screen" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window to Previous Screen" "Meta+Shift+Left,Meta+Shift+Left,Move Window to Previous Screen" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Move Window Next" "Meta+Shift+Right,Meta+Shift+Right,Tiling Move Window Next" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Tiling Move Window Previous" "Meta+Shift+Left,Meta+Shift+Left,Tiling Move Window Previous" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group kwin --key "Window Close" "Alt+F4,Alt+F4,Close Window" 2>/dev/null || true
-                        kwriteconfig6 --file kglobalshortcutsrc --group plasmashell --key "manage activities" "Meta+Q,Meta+Q,Show Activity Switcher" 2>/dev/null || true
+                        # Shortcuts are now managed by Quickshell CustomShortcuts in Shortcuts.qml
                         qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
                     fi
                 `]);
@@ -204,10 +158,10 @@ PageBase {
 
         NavRow {
             visible: parent.showTilingLogout
-            icon: "logout"
-            label: parent.isTilingEnabled ? qsTr("Log out to enable custom shortcuts") : qsTr("Log out to fully disable tiling")
+            icon: parent.isTilingEnabled ? "refresh" : "logout"
+            label: parent.isTilingEnabled ? qsTr("Restart shell to enable custom shortcuts") : qsTr("Log out to fully disable tiling")
             status: parent.isTilingEnabled ? qsTr("Meta+Arrows, Meta+Shift+Arrows, Meta+Q for complete experience.") : qsTr("KWin requires a restart to clear window tiling rules")
-            onClicked: Quickshell.execDetached(["sh", "-c", "qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null || true"])
+            onClicked: parent.isTilingEnabled ? Quickshell.execDetached(["bash", "-c", "nohup bash -c 'caelestia shell -k; sleep 2; caleestia shell -d' >/dev/null 2>&1 & disown  || true"]) : Quickshell.execDetached(["sh", "-c", "qdbus6 org.kde.Shutdown /Shutdown org.kde.Shutdown.logout 2>/dev/null || true"])
         }
 
         NavRow {
