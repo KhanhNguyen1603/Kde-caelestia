@@ -11,6 +11,7 @@ import qs.services
 import Qt.labs.folderlistmodel
 import Quickshell.Io
 import qs.components.effects
+import qs.utils
 
 Item {
     id: root
@@ -174,7 +175,7 @@ Item {
                     }
                 }
 
-                Component.onCompleted: { console.log("DELEGATE CREATED FOR: " + fileName);
+                Component.onCompleted: { Logger.log("DELEGATE CREATED FOR: " + fileName);
                     if (root.layoutLoaded) {
                         initPosition();
                     }

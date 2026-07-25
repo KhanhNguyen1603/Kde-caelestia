@@ -22,7 +22,7 @@ if(NOT DEFINED VERSION)
 
     # Last resort hardcoded
     if("${VERSION}" STREQUAL "" OR "${VERSION}" STREQUAL "rolling")
-        set(VERSION "v2.1.5")
+        set(VERSION "v2.2.0")
     endif()
 endif()
 
@@ -61,7 +61,7 @@ endif()
 string(REGEX REPLACE "^v" "" VERSION "${VERSION}")
 string(REGEX REPLACE "^v" "" DISPLAY_VERSION "${DISPLAY_VERSION}")
 
-project(caelestia-shell VERSION ${VERSION} LANGUAGES CXX)
+project(caelestia-shell VERSION ${VERSION} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -99,11 +99,14 @@ if("shell" IN_LIST ENABLE_MODULES)
         install(DIRECTORY ${dir} DESTINATION "${INSTALL_QSCONFDIR}")
     endforeach()
 
+    install(PROGRAMS assets/wrap_term_launch.sh DESTINATION "${INSTALL_QSCONFDIR}/assets")
+
     file(READ shell.qml SHELL_QML)
     string(REPLACE "settings.watchFiles: true" "settings.watchFiles: false" SHELL_QML "${SHELL_QML}")
     file(WRITE "${CMAKE_BINARY_DIR}/qml/shell.qml" "${SHELL_QML}")
     install(FILES "${CMAKE_BINARY_DIR}/qml/shell.qml" DESTINATION "${INSTALL_QSCONFDIR}")
 
+    install(FILES lockscreen.qml DESTINATION "${INSTALL_QSCONFDIR}")
     install(FILES LICENSE DESTINATION "${INSTALL_QSCONFDIR}")
 endif()
 

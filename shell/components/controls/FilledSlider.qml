@@ -4,6 +4,7 @@ import QtQuick.Templates
 import Caelestia.Config
 import qs.components
 import qs.services
+import qs.utils
 
 Slider {
     id: root
@@ -71,7 +72,7 @@ Slider {
                 property bool moving
 
                 anchors.centerIn: parent
-                anchors.verticalCenterOffset: 1
+                anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
                 text: moving ? Math.round(root.value * 100) : root.icon
                 color: Colours.palette.m3inverseOnSurface
                 font: moving ? Tokens.font.body.small : Tokens.font.icon.medium

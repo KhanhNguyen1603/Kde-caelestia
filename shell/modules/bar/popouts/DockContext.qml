@@ -5,7 +5,9 @@ import QtQuick.Layouts
 import Quickshell
 import Caelestia
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
+import Caelestia.Services
 import qs.components.controls
 import qs.services
 import qs.utils
@@ -157,7 +159,13 @@ ColumnLayout {
 
         onClicked: {
             for (const toplevel of model.toplevels) {
-                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${toplevel.address}" })` : `closewindow address:0x${toplevel.address}`);
+                if (toplevel.pid) {
+                    Quickshell.execDetached({ command: ["kill", "-15", String(toplevel.pid)] });
+                } else if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+                    KWinActiveWindowBridge.closeWindow(toplevel.address);
+                } else {
+                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${toplevel.address}" })` : `closewindow address:0x${toplevel.address}`);
+                }
             }
             root.popouts.hasCurrent = false;
         }

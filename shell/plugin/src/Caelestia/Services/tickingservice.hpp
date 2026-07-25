@@ -1,6 +1,7 @@
 #pragma once
 
 #include "service.hpp"
+#include <QTimer>
 
 namespace caelestia::services {
 

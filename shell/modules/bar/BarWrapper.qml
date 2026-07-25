@@ -8,6 +8,7 @@ import qs.components
 import qs.components.controls
 import qs.utils
 import qs.modules.bar.popouts as BarPopouts
+import Quickshell.Wayland
 
 Item {
     id: root
@@ -40,6 +41,10 @@ Item {
 
     function checkPopout(y: real): void {
         (content.item as Bar)?.checkPopout(y);
+    }
+
+    function resetHover(): void {
+        (content.item as Bar)?.resetHover();
     }
 
     function handleWheel(y: real, angleDelta: point): void {

@@ -210,6 +210,7 @@ Singleton {
         if (!isPreview) {
             root.schemeLoaded = true;
             root.schemeRetryCount = 0;
+            Qt.callLater(root.syncKMYC);
         }
     }
 
@@ -226,14 +227,36 @@ Singleton {
         Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", mode]);
     }
 
+    function syncKMYC(): void {
+        const variantMap = {
+            "content": 0,
+            "expressive": 1,
+            "fidelity": 2,
+            "monochrome": 3,
+            "neutral": 4,
+            "tonal-spot": 5,
+            "vibrant": 6,
+            "rainbow": 7,
+            "fruit-salad": 8
+        };
+        const varNum = variantMap[root.variant] ?? 5;
+        const color = String(root.palette.m3primary_paletteKeyColor);
+        const lightMode = root.currentLight ? "True" : "False";
+        
+        const scriptPath = Quickshell.shellPath("scripts/sync-kmyc.sh");
+        Quickshell.execDetached(["bash", scriptPath, color, varNum, lightMode]);
+    }
+
     function reloadHyprRules(): void {
+        let rule, trEnabled;
         if (Hypr.usingLua) {
-            const rule = `eval hl.layer_rule({ match = { namespace = "caelestia-drawers" }, %1 })`;
-            Hypr.extras.batchMessage([rule.arg(`blur = ${transparency.enabled}`), rule.arg(`ignore_alpha = ${transparency.base - 0.03}`)]);
+            rule = `eval hl.layer_rule({ match = { namespace = "caelestia-drawers" }, %1 = %2 })`;
+            trEnabled = transparency.enabled;
         } else {
-            const str = "keyword layerrule %1 %2, match:namespace caelestia-drawers";
-            Hypr.extras.batchMessage([str.arg("blur").arg(transparency.enabled ? 1 : 0), str.arg("ignore_alpha").arg(transparency.base - 0.03)]);
+            rule = "keyword layerrule %1 %2, match:namespace caelestia-drawers";
+            trEnabled = transparency.enabled ? 1 : 0;
         }
+        Hypr.extras.batchMessage([rule.arg("blur").arg(trEnabled), rule.arg("ignore_alpha").arg(Math.max(0, transparency.base - 0.03))]);
     }
 
     function requestReloadHyprRules(): void {
@@ -348,7 +371,7 @@ Singleton {
     component Transparency: QtObject {
         readonly property bool enabled: Tokens.transparency.enabled && !(GameMode.enabled && GlobalConfig.utilities.gameMode.disableShellTransparency)
         readonly property real base: Math.max(0, Math.min(1, Tokens.transparency.base - (root.light ? 0.1 : 0)))
-        readonly property real layers: Tokens.transparency.layers
+        readonly property real layers: Math.max(0, Math.min(1, Tokens.transparency.layers))
 
         onEnabledChanged: {
             if (enabled)

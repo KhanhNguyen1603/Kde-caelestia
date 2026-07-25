@@ -164,12 +164,7 @@ GridLayout {
             MaterialShape {
                 id: wsShape
 
-                readonly property real circleCenterOffsetX: 2
-                readonly property real circleCenterOffsetY: 0.5
-
                 anchors.centerIn: parent
-                anchors.horizontalCenterOffset: circleCenterOffsetX
-                anchors.verticalCenterOffset: circleCenterOffsetY
                 implicitSize: iconRoot.width
                 width: implicitWidth
                 height: implicitHeight

@@ -53,6 +53,17 @@ StyledRect {
             placeholderTextColor: Colours.palette.m3onSurfaceVariant
             color: Colours.palette.m3onSurfaceVariant
             font: Tokens.font.body.large
+            onTextChanged: root.nState.searchQuery = text
+
+Keys.onReturnPressed: {
+    const query = text.trim();
+    if (!query)
+        return;
+
+    const results = PageRegistry.fuzzyPages(query);
+    if (results.length > 0)
+        root.nState.currentPageIdx = results[0].pageIdx;
+}
 
             Binding {
                 target: root.nState

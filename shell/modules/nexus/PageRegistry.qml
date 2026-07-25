@@ -6,6 +6,85 @@ import qs.utils
 QtObject {
     id: root
 
+    function normalizeText(v: var): string {
+        return (v ?? "").toString().toLowerCase().trim();
+    }
+
+    function fuzzyScore(haystackRaw: var, needleRaw: var): real {
+        const haystack = normalizeText(haystackRaw);
+        const needle = normalizeText(needleRaw);
+
+        if (!needle)
+            return 0;
+
+        if (!haystack)
+            return -1;
+
+        let score = 0;
+
+        if (haystack === needle)
+            score += 1200;
+
+        if (haystack.startsWith(needle))
+            score += 500;
+
+        const words = haystack.split(/[^a-z0-9]+/).filter(Boolean);
+        if (words.some(w => w.startsWith(needle)))
+            score += 280;
+
+        const containsAt = haystack.indexOf(needle);
+        if (containsAt >= 0)
+            score += 220 - Math.min(160, containsAt * 6);
+
+        let searchFrom = 0;
+        let firstMatch = -1;
+        let prevMatch = -1;
+        let totalGap = 0;
+
+        for (let i = 0; i < needle.length; i++) {
+            const at = haystack.indexOf(needle[i], searchFrom);
+            if (at < 0)
+                return -1;
+
+            if (firstMatch < 0)
+                firstMatch = at;
+            if (prevMatch >= 0)
+                totalGap += at - prevMatch - 1;
+
+            prevMatch = at;
+            searchFrom = at + 1;
+        }
+
+        score += Math.max(0, 240 - totalGap * 18);
+        score += Math.max(0, 120 - firstMatch * 5);
+        score -= Math.max(0, haystack.length - needle.length) * 1.5;
+
+        return score;
+    }
+
+    function fuzzyPages(query: string): list<var> {
+        const needle = normalizeText(query);
+        const indexed = pages.map((page, pageIdx) => ({
+            page,
+            pageIdx
+        }));
+
+        if (!needle)
+            return indexed;
+
+        return indexed.map(e => {
+            const labelScore = fuzzyScore(e.page.label, needle);
+            const descScore = fuzzyScore(e.page.description, needle);
+            const categoryScore = fuzzyScore(e.page.category, needle);
+            const score = Math.max(labelScore, descScore * 0.7, categoryScore * 0.4);
+            return {
+                page: e.page,
+                pageIdx: e.pageIdx,
+                score
+            };
+        }).filter(e => e.score >= 0).sort((a, b) => b.score - a.score || a.pageIdx - b.pageIdx);
+    }
+
     readonly property list<var> pages: [
         // Personalization
         {
@@ -17,7 +96,7 @@ QtObject {
         {
             label: qsTr("Desktop"),
             icon: "desktop_windows",
-            description: qsTr("Enable Kde Desktop, addons, right click menu"),
+            description: qsTr("Enable KDE Desktop, addons, right click menu"),
             category: "personalization"
         },
         {

@@ -11,6 +11,7 @@
 #include <qloggingcategory.h>
 #include <qqmlengine.h>
 #include <QStandardPaths>
+#include <KWindowEffects>
 
 Q_LOGGING_CATEGORY(lcCUtils, "caelestia.cutils", QtInfoMsg)
 
@@ -153,6 +154,12 @@ QString CUtils::sha256(const QString& path) {
     file.close();
 
     return hash.result().toHex();
+}
+
+void CUtils::enableBlurBehind(QQuickWindow* window, bool enable) {
+    if (window) {
+        KWindowEffects::enableBlurBehind(window, enable);
+    }
 }
 
 qreal CUtils::clamp(qreal value, qreal min, qreal max) {

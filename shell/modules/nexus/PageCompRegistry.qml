@@ -50,6 +50,9 @@ QtObject {
                 Component {
                     AppearancePage {}
                 }
+                Component {
+                    KMYCSettings {}
+                }
             }
         },
         Component {
@@ -83,6 +86,9 @@ QtObject {
                 }
                 Component {
                     SidebarPanel {}
+                }
+                Component {
+                    UtilitiesPanel {}
                 }
 
                 // Taskbar component sub-pages

@@ -14,6 +14,7 @@ ConnectedRect {
     property alias icon: icon.text
     property alias label: label.text
     property alias valueLabel: valueLabel.text
+    property string subtext
     property real value
 
     signal moved(value: real)
@@ -47,12 +48,26 @@ ConnectedRect {
                 Layout.fillWidth: true
                 spacing: Tokens.spacing.small
 
-                StyledText {
-                    id: label
-
+                ColumnLayout {
                     Layout.fillWidth: true
-                    font: Tokens.font.body.small
-                    elide: Text.ElideRight
+                    spacing: 0
+
+                    StyledText {
+                        id: label
+
+                        Layout.fillWidth: true
+                        font: Tokens.font.body.small
+                        elide: Text.ElideRight
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        visible: root.subtext !== ""
+                        text: root.subtext
+                        color: Colours.palette.m3outline
+                        font: Tokens.font.label.small
+                        elide: Text.ElideRight
+                    }
                 }
 
                 StyledText {

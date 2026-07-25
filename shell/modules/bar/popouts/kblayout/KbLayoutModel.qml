@@ -27,7 +27,7 @@ Item {
     }
 
     function switchTo(idx) {
-        switchProc.command = ["hyprctl", "switchxkblayout", "all", String(idx)];
+        switchProc.command = ["qdbus6", "org.kde.keyboard", "/Layouts", "org.kde.KeyboardLayouts.setLayout", String(idx)];
         switchProc.running = true;
     }
 
@@ -76,21 +76,14 @@ Item {
         return `${lang} (${code})`;
     }
 
-    function _setLayouts(raw) {
-        const parts = raw.split(",").map(s => s.trim()).filter(Boolean);
+    function _setLayouts(rawParts) {
         layoutsModel.clear();
-
-        const seen = new Set();
         let idx = 0;
-
-        for (const p of parts) {
-            if (seen.has(p))
-                continue;
-            seen.add(p);
+        for (const p of rawParts) {
             layoutsModel.append({
                 layoutIndex: idx,
                 token: p,
-                label: _pretty(p)
+                label: p // In KDE, the DBus gives us the full display name (e.g. "English (US)")
             });
             idx++;
         }
@@ -154,59 +147,42 @@ Item {
     Process {
         id: getKbLayoutOpt
 
-        command: ["hyprctl", "-j", "getoption", "input:kb_layout"]
+        command: ["qdbus6", "--literal", "org.kde.keyboard", "/Layouts", "org.kde.KeyboardLayouts.getLayoutsList"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const j = JSON.parse(text);
-                    const raw = (j?.str || j?.value || "").toString().trim();
-                    if (raw.length) {
-                        model._setLayouts(raw);
-                        fetchActiveLayouts.running = true;
-                        return;
+                    const re = /\[Argument: \(sss\) "[^"]*", "[^"]*", "([^"]+)"\]/g;
+                    let m;
+                    let rawList = [];
+                    while ((m = re.exec(text)) !== null) {
+                        rawList.push(m[1]);
                     }
-                } catch (e) {}
-                fetchLayoutsFromDevices.running = true;
-            }
-        }
-    }
-
-    Process {
-        id: fetchLayoutsFromDevices
-
-        command: ["hyprctl", "-j", "devices"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const dev = JSON.parse(text);
-                    const kb = dev?.keyboards?.find(k => k.main) || dev?.keyboards?.[0];
-                    const raw = (kb?.layout || "").trim();
-                    if (raw.length)
-                        model._setLayouts(raw);
+                    if (rawList.length) {
+                        model._setLayouts(rawList);
+                    }
                 } catch (e) {}
                 fetchActiveLayouts.running = true;
             }
         }
     }
 
+    // Unused in KDE
+    Process { id: fetchLayoutsFromDevices }
+
     Process {
         id: fetchActiveLayouts
 
-        command: ["hyprctl", "-j", "devices"]
+        command: ["qdbus6", "org.kde.keyboard", "/Layouts", "org.kde.KeyboardLayouts.getLayout"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    const dev = JSON.parse(text);
-                    const kb = dev?.keyboards?.find(k => k.main) || dev?.keyboards?.[0];
-                    const idx = kb?.active_layout_index ?? -1;
-
+                    const idx = parseInt(text.trim());
                     model.activeIndex = idx >= 0 ? idx : -1;
                     model.activeLabel = (idx >= 0 && idx < layoutsModel.count) ? layoutsModel.get(idx).label : "";
                 } catch (e) {
                     model.activeIndex = -1;
                     model.activeLabel = "";
                 }
-
                 model._rebuildVisible();
             }
         }

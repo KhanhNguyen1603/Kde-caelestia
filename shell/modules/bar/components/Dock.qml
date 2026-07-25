@@ -9,6 +9,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import Caelestia
 import Caelestia.Config
+import Caelestia.Services
 import qs.components
 import qs.components.effects
 import qs.components.controls
@@ -307,7 +308,61 @@ Item {
                                 }
                                 
                                 if (modelData.toplevels.length > 0) {
-                                    Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${modelData.toplevels[0].address}" })` : `focuswindow address:0x${modelData.toplevels[0].address}`);
+                                    let activeIdx = -1;
+                                    let activeAddr = "";
+                                    
+                                    if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeWindow) {
+                                        activeAddr = KWinActiveWindowBridge.activeWindow.address ? String(KWinActiveWindowBridge.activeWindow.address) : "";
+                                        Logger.log("Dock debug: KWin activeWindow address is:", activeAddr);
+                                    } else if (root.activeTop && root.activeTop.address) {
+                                        activeAddr = String(root.activeTop.address);
+                                        Logger.log("Dock debug: Hyprland activeTop address is:", activeAddr);
+                                    } else {
+                                        Logger.log("Dock debug: No active window detected!");
+                                    }
+
+                                    Logger.log("Dock debug: Checking", modelData.toplevels.length, "toplevels for app.");
+                                    for (let i = 0; i < modelData.toplevels.length; i++) {
+                                        let top = modelData.toplevels[i];
+                                        let topAddr = String(top.address);
+                                        let isMinimized = top.minimized || false;
+                                        Logger.log("Dock debug: Toplevel", i, "address:", topAddr, "focused:", top.focused, "minimized:", isMinimized);
+                                        if (!isMinimized && (top.focused || (activeAddr !== "" && activeAddr === topAddr))) {
+                                            activeIdx = i;
+                                            Logger.log("Dock debug: Match found at index", i);
+                                            break;
+                                        }
+                                    }
+                                    
+                                    Logger.log("Dock debug: Final activeIdx:", activeIdx);
+                                    
+                                    const isKWin = (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList);
+                                    
+                                    if (modelData.toplevels.length === 1) {
+                                        let addr = String(modelData.toplevels[0].address);
+                                        if (activeIdx === 0) {
+                                            Logger.log("Dock debug: Single window, currently focused. Minimizing.");
+                                            if (isKWin) {
+                                                KWinActiveWindowBridge.minimizeWindow(addr);
+                                            }
+                                        } else {
+                                            Logger.log("Dock debug: Single window, NOT focused. Focusing.");
+                                            if (isKWin) {
+                                                KWinActiveWindowBridge.focusWindow(addr);
+                                            } else {
+                                                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${addr}" })` : `focuswindow address:0x${addr}`);
+                                            }
+                                        }
+                                    } else {
+                                        let nextIdx = activeIdx !== -1 ? (activeIdx + 1) % modelData.toplevels.length : 0;
+                                        let addr = String(modelData.toplevels[nextIdx].address);
+                                        Logger.log("Dock debug: Multiple windows. Cycling to index", nextIdx);
+                                        if (isKWin) {
+                                            KWinActiveWindowBridge.focusWindow(addr);
+                                        } else {
+                                            Hypr.dispatch(Hypr.usingLua ? `hl.dsp.focus({ window = "address:0x${addr}" })` : `focuswindow address:0x${addr}`);
+                                        }
+                                    }
                                 } else if (modelData.entry) {
                                     // Mark as launching
                                     let newLaunching = Object.assign({}, root.launchingApps);
@@ -367,7 +422,7 @@ Item {
                         const dummy = root.modelUpdateTrigger;
                         if (!modelData) return false;
                         for (const top of modelData.toplevels) {
-                            if (top.focused) return true;
+                            if (top.focused || (root.activeTop && root.activeTop.address === top.address)) return true;
                         }
                         return false;
                     }
@@ -536,7 +591,7 @@ Item {
             }
         }
         
-        for (const toplevel of HyprlandData.windowList) {
+        for (const toplevel of root._toplevels) {
             const ipc = toplevel;
             if (!ipc) continue;
             const appClass = ipc.class || ipc.initialClass;
@@ -671,7 +726,12 @@ Item {
         root.modelUpdateTrigger += 1;
     }
 
-    property var _toplevels: HyprlandData.windowList
+    property var _toplevels: {
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList && KWinActiveWindowBridge.windowList.length > 0) {
+            return KWinActiveWindowBridge.windowList;
+        }
+        return HyprlandData.windowList;
+    }
 
     on_ToplevelsChanged: {
         root.rebuildModel()
@@ -686,7 +746,12 @@ Item {
         onTriggered: root.rebuildModel()
     }
 
-    property var activeTop: Hyprland.activeToplevel || HyprlandData.activeWindow
+    property var activeTop: {
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.activeWindow && KWinActiveWindowBridge.activeWindow.address) {
+            return KWinActiveWindowBridge.activeWindow;
+        }
+        return Hyprland.activeToplevel || HyprlandData.activeWindow;
+    }
 
     onActiveTopChanged: {
         root.rebuildModel()

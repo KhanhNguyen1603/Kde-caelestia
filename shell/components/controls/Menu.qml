@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Caelestia.Config
 import qs.components
@@ -34,6 +35,8 @@ MouseArea {
     property MenuItem active: dynamicModel[0] ?? null
     property bool expanded
     property real maxHeight: 320
+    readonly property alias backgroundItem: menu
+    property bool transparentBackground: false
 
     signal itemSelected(item: MenuItem)
 
@@ -60,6 +63,8 @@ MouseArea {
     onClicked: expanded = false
 
     opacity: expanded ? 1 : 0
+    visible: opacity > 0
+    onExpandedChanged: { console.log("Menu expanded:", expanded, "opacity:", opacity, "x:", menu.x, "y:", menu.y, "w:", menu.width, "h:", menu.height, "enabled:", enabled); }
 
     Behavior on opacity {
         Anim {
@@ -95,30 +100,45 @@ MouseArea {
         }
 
         radius: Tokens.rounding.large
-        level: 2
+        level: root.transparentBackground ? 0 : 2
+        
+        property string vAnchor: "none"
+        property string hAnchor: "none"
+        property real offsetScale: 1 - animScale
 
         implicitWidth: Math.max(200, column.implicitWidth + Tokens.padding.extraSmall * 2)
         implicitHeight: Math.min(root.maxHeight, column.implicitHeight + Tokens.padding.extraSmall * 2)
+        
+        width: implicitWidth
+        property real animScale: root.expanded ? 1 : 0.0
+        height: implicitHeight * animScale
 
-        transform: Scale {
-            yScale: root.expanded ? 1 : 0.1
-            origin.y: root.thisSideY === Menu.Bottom ? menu.height : 0
-
-            Behavior on yScale {
-                Anim {}
-            }
+        Behavior on animScale {
+            Anim {}
         }
 
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
             onWheel: e => e.accepted = true
+            onClicked: {}
         }
 
         StyledRect {
-            anchors.fill: parent
+            width: menu.implicitWidth
+            height: menu.implicitHeight
+            
+            transform: Scale {
+                yScale: menu.animScale
+                origin.y: root.thisSideY === Menu.Bottom ? menu.implicitHeight : 0
+            }
+            
             radius: parent.radius
-            color: Colours.palette.m3surfaceContainerLow
+            color: root.transparentBackground
+                ? "transparent"
+                : (GlobalConfig.appearance.transparency.enabled && GlobalConfig.appearance.blur)
+                    ? Colours.mix(Colours.palette.m3surfaceContainerLow, "transparent", GlobalConfig.appearance.transparency.base)
+                    : Colours.palette.m3surfaceContainerLow
 
             Flickable {
                 id: flickable
