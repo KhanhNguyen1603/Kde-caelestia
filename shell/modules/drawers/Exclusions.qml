@@ -14,32 +14,32 @@ Scope {
 
     ExclusionZone {
         anchors.left: true
-        exclusiveZone: Config.bar.position === "left" ? root.bar.exclusiveZone : contentItem.Config.border.thickness
+        exclusiveZone: Config.bar.position === "left" ? root.bar.exclusiveZone : Config.border.thickness
         Config.screen: root.screen.name
     }
 
     ExclusionZone {
         anchors.top: true
-        exclusiveZone: Config.bar.position === "top" ? root.bar.exclusiveZone : contentItem.Config.border.thickness
+        exclusiveZone: Config.bar.position === "top" ? root.bar.exclusiveZone : Config.border.thickness
         Config.screen: root.screen.name
     }
 
     ExclusionZone {
         anchors.right: true
-        exclusiveZone: Config.bar.position === "right" ? root.bar.exclusiveZone : contentItem.Config.border.thickness
+        exclusiveZone: Config.bar.position === "right" ? root.bar.exclusiveZone : Config.border.thickness
         Config.screen: root.screen.name
     }
 
     ExclusionZone {
         anchors.bottom: true
-        exclusiveZone: Config.bar.position === "bottom" ? root.bar.exclusiveZone : contentItem.Config.border.thickness
+        exclusiveZone: Config.bar.position === "bottom" ? root.bar.exclusiveZone : Config.border.thickness
         Config.screen: root.screen.name
     }
 
     component ExclusionZone: StyledWindow {
         screen: root.screen
         name: "border-exclusion"
-        exclusiveZone: contentItem.Config.border.thickness
+        exclusiveZone: Config.border.thickness
         mask: Region {}
         implicitWidth: 1
         implicitHeight: 1

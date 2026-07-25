@@ -84,19 +84,28 @@ StyledRect {
                         icon: "fullscreen"
                         text: qsTr("Start Recording")
                         activeText: qsTr("Start")
-                        onClicked: Recorder.start()
+                        onClicked: {
+                            root.visibilities.utilities = false;
+                            Recorder.start();
+                        }
                     },
                     MenuItem {
                         icon: "select_to_speak"
                         text: qsTr("Start Recording with sound")
                         activeText: qsTr("Start")
-                        onClicked: Recorder.start(["-s"])
+                        onClicked: {
+                            root.visibilities.utilities = false;
+                            Recorder.start(["-s"]);
+                        }
                     },
                     MenuItem {
                         icon: "screenshot_region"
                         text: qsTr("Use Spectacle")
                         activeText: qsTr("Spectacle")
-                        onClicked: Recorder.launchSpectacle()
+                        onClicked: {
+                            root.visibilities.utilities = false;
+                            Recorder.launchSpectacle();
+                        }
                     }
                 ]
             }

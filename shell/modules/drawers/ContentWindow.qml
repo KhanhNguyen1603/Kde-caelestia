@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtCore
 import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell
@@ -27,8 +28,84 @@ StyledWindow {
 
     Config.screen: screen.name
 
+    Settings {
+        id: borderBlurSettings
+        category: "Blur"
+        property int blurQuality: 20
+    }
+
     BackgroundEffect.blurRegion: Region {
         Region { x: -10; y: -10; width: 1; height: 1 } // Prevent fallback to full-window blur when empty
+        
+        // Border Blur Masks
+        Region {
+            x: 0; y: 0
+            width: !GlobalConfig.appearance.islands && Config.bar.position !== "left" ? root.borderThickness : 0
+            height: root.height
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: root.width - root.borderThickness; y: 0
+            width: !GlobalConfig.appearance.islands && Config.bar.position !== "right" ? root.borderThickness : 0
+            height: root.height
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: 0; y: 0
+            width: root.width
+            height: !GlobalConfig.appearance.islands && Config.bar.position !== "top" ? root.borderThickness : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: 0; y: root.height - root.borderThickness
+            width: root.width
+            height: !GlobalConfig.appearance.islands && Config.bar.position !== "bottom" ? root.borderThickness : 0
+            intersection: Intersection.Combine
+        }
+        // Corner squares for inverted corners
+        Region {
+            x: Config.bar.position === "left" ? bar.implicitWidth : root.borderThickness
+            y: Config.bar.position === "top" ? bar.implicitHeight : root.borderThickness
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: root.width - (Config.bar.position === "right" ? bar.implicitWidth : root.borderThickness) - root.borderRounding
+            y: Config.bar.position === "top" ? bar.implicitHeight : root.borderThickness
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: Config.bar.position === "left" ? bar.implicitWidth : root.borderThickness
+            y: root.height - (Config.bar.position === "bottom" ? bar.implicitHeight : root.borderThickness) - root.borderRounding
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+        Region {
+            x: root.width - (Config.bar.position === "right" ? bar.implicitWidth : root.borderThickness) - root.borderRounding
+            y: root.height - (Config.bar.position === "bottom" ? bar.implicitHeight : root.borderThickness) - root.borderRounding
+            width: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            height: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            intersection: Intersection.Combine
+        }
+
+        BlurCorners {
+            intersection: Intersection.Subtract
+            vAnchor: "none"
+            hAnchor: "none"
+            blurQuality: borderBlurSettings.blurQuality
+            inLeft: (Config.bar.position === "left" ? bar.implicitWidth : root.borderThickness) + root.borderRounding
+            inRight: root.width - (Config.bar.position === "right" ? bar.implicitWidth : root.borderThickness) - root.borderRounding
+            inTop: (Config.bar.position === "top" ? bar.implicitHeight : root.borderThickness) + root.borderRounding
+            inBottom: root.height - (Config.bar.position === "bottom" ? bar.implicitHeight : root.borderThickness) - root.borderRounding
+            rTop: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            rBottom: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            rLeft: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+            rRight: !GlobalConfig.appearance.islands ? root.borderRounding : 0
+        }
         
         BlurMask { 
             target: bar
@@ -179,10 +256,10 @@ StyledWindow {
 
     property real fsTransitionProg: hasFullscreen ? 1 : 0
     readonly property real sdfBorderOffset: 2 * fsTransitionProg // SDFs joins are not exact, so offset by 2px to ensure nothing shows
-    readonly property real borderThickness: contentItem.Config.border.thickness * (1 - fsTransitionProg)
-    readonly property real borderRounding: contentItem.Config.border.rounding * (1 - fsTransitionProg)
+    readonly property real borderThickness: Config.border.thickness * (1 - fsTransitionProg)
+    readonly property real borderRounding: Config.border.rounding * (1 - fsTransitionProg)
     readonly property real shadowOpacity: 0.7 * (1 - fsTransitionProg)
-    readonly property real borderLayoutThickness: hasFullscreen ? 0 : contentItem.Config.border.thickness
+    readonly property real borderLayoutThickness: hasFullscreen ? 0 : Config.border.thickness
 
     property color surfaceColour: Colours.tPalette.m3surface
 
@@ -195,8 +272,8 @@ StyledWindow {
 
         const thresholds = [];
         for (const panel of ["dashboard", "launcher", "session", "sidebar"])
-            if (contentItem.Config[panel].enabled)
-                thresholds.push(contentItem.Config[panel].dragThreshold);
+            if (Config[panel].enabled)
+                thresholds.push(Config[panel].dragThreshold);
         return Math.max(...thresholds);
     }
 
@@ -209,7 +286,7 @@ StyledWindow {
 
     name: "drawers"
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: (fsTransitionProg > 0 && contentItem.Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
+    WlrLayershell.layer: (fsTransitionProg > 0 && Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.session || visibilities.dashboard || visibilities.sidebar || panels.popouts.hasCurrent ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     mask: {
@@ -268,7 +345,7 @@ StyledWindow {
     QtObject {
         id: focusGrabState
 
-        property bool active: (visibilities.launcher && root.contentItem.Config.launcher.enabled) || (visibilities.session && root.contentItem.Config.session.enabled) || (visibilities.sidebar && root.contentItem.Config.sidebar.enabled) || (!root.contentItem.Config.dashboard.showOnHover && visibilities.dashboard && root.contentItem.Config.dashboard.enabled) || (!root.contentItem.Config.utilities.showOnHover && visibilities.utilities && root.contentItem.Config.utilities.enabled) || (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
+        property bool active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.session && Config.session.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (!Config.utilities.showOnHover && visibilities.utilities && Config.utilities.enabled) || (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
         
         onActiveChanged: {
         }
@@ -339,7 +416,7 @@ StyledWindow {
             id: blobGroup
 
             color: GlobalConfig.appearance.pitchBlack ? "#000000" : root.surfaceColour
-            smoothing: root.contentItem.Config.border.smoothing
+            smoothing: Config.border.smoothing
         }
 
         BlobInvertedRect {

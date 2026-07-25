@@ -55,8 +55,8 @@ Singleton {
             implicitWidth: nexus.implicitWidth
             implicitHeight: nexus.implicitHeight
 
-            minimumSize.width: contentItem.Tokens.sizes.nexus.minWidth
-            minimumSize.height: contentItem.Tokens.sizes.nexus.minHeight
+            minimumSize.width: Tokens.sizes.nexus.minWidth
+            minimumSize.height: Tokens.sizes.nexus.minHeight
 
             contentItem.Config.screen: screen.name
             contentItem.Tokens.screen: screen.name

@@ -50,7 +50,7 @@ if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
         sudo pacman -S --needed qt6-wayland --noconfirm || warn "qt6-wayland install failed..."
     elif command -v dnf >/dev/null; then
         info "Installing via dnf..."
-        sudo dnf install qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel -y || warn "qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel install failed..."
+        sudo dnf install qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel kf6-kwindowsystem-devel qt6-qtbase-private-devel -y || warn "qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel install failed..."
     fi
     
     if [[ "${CAELESTIA_SKIP_DEPLOY:-0}" == "0" ]]; then
@@ -84,6 +84,11 @@ if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
             warn "Failed to delete yet-another-monochrome-icon-set."
             return 1 2>/dev/null || exit 1
         fi
+    fi
+
+    info "Updating autostart environment variables"
+    if [[ -f "$BUNDLE_DIR/scripts/10-autostart.sh" ]]; then
+        bash "$BUNDLE_DIR/scripts/10-autostart.sh" || warn "10-autostart.sh failed"
     fi
 fi
 
@@ -211,6 +216,7 @@ try:
 
         notif = notify("-p", "Recording started", "Recording...")"""
     launch_new = """        recording_path.unlink(missing_ok=True)
+        subprocess.run(["sh", "-c", "if ! systemctl --user is-active --quiet plasma-xdg-desktop-portal-kde; then systemctl --user restart plasma-xdg-desktop-portal-kde; systemctl --user restart xdg-desktop-portal; sleep 1; fi"])
         proc = subprocess.Popen([RECORDER, *args, "-o", str(recording_path)], start_new_session=True)
         while proc.poll() is None and not recording_path.exists():
             time.sleep(0.1)
