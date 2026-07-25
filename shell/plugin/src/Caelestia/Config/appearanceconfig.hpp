@@ -295,7 +295,7 @@ class AppearanceTransparency : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
 
-    CONFIG_GLOBAL_PROPERTY(bool, enabled, false)
+    CONFIG_GLOBAL_PROPERTY(bool, enabled, true)
     CONFIG_GLOBAL_PROPERTY(qreal, base, 0.85)
     CONFIG_GLOBAL_PROPERTY(qreal, layers, 0.4)
 
@@ -318,7 +318,7 @@ class AppearanceConfig : public ConfigObject {
 
     CONFIG_GLOBAL_PROPERTY(bool, pitchBlack, false)
     CONFIG_GLOBAL_PROPERTY(bool, islands, false)
-    CONFIG_GLOBAL_PROPERTY(bool, blur, false)
+    CONFIG_GLOBAL_PROPERTY(bool, blur, true)
 
 public:
     explicit AppearanceConfig(QObject* parent = nullptr)
