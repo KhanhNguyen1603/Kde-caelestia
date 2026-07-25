@@ -15,7 +15,7 @@ INSTALL_DARKLY="${INSTALL_DARKLY:-true}"
 # Core dependencies (minus hyprland-specific ones)
 PACKAGES=(
     # build dependencies
-    cmake ninja-build
+    cmake ninja-build ccache
     # Core system tools
     wl-clipboard cliphist wl-clip-persist inotify-tools wireplumber trash-cli jq aubio lm_sensors lm_sensors-devel
     # lib files
@@ -50,12 +50,48 @@ sudo dnf swap -y ffmpeg-free ffmpeg --allowerasing || true
 
 PACKAGES+=(ffmpeg)
 
-log "Installing packages via dnf..."
+log "Installing packages via dnf (batch mode)..."
 sudo dnf upgrade -y || true
 
-FAILED_PKGS=()
+# Packages known to need copr or manual fallback — handle individually
+COPR_PKGS=("quickshell-git" "gpu-screen-recorder" "app2unit" "starship" "libcava" "wl-clip-persist")
+
+# Build a batch list excluding copr-only packages
+BATCH_PKGS=()
 for pkg in "${PACKAGES[@]}"; do
-    if sudo dnf install -y "$pkg"; then
+    _is_copr="no"
+    for cp in "${COPR_PKGS[@]}"; do
+        if [[ "$pkg" == "$cp" ]]; then _is_copr="yes"; break; fi
+    done
+    if [[ "$_is_copr" == "no" ]]; then
+        BATCH_PKGS+=("$pkg")
+    fi
+done
+
+FAILED_PKGS=()
+
+# Batch install standard packages
+if [[ ${#BATCH_PKGS[@]} -gt 0 ]]; then
+    if ! sudo dnf install -y "${BATCH_PKGS[@]}"; then
+        log "Batch install had failures. Retrying standard packages individually..."
+        for pkg in "${BATCH_PKGS[@]}"; do
+            if ! rpm -q "$pkg" >/dev/null 2>&1; then
+                sudo dnf install -y "$pkg" || true
+            fi
+        done
+    fi
+fi
+
+# Handle copr/manual-fallback packages individually
+for pkg in "${COPR_PKGS[@]}"; do
+    # Skip if not in the original PACKAGES list
+    _needed="no"
+    for op in "${PACKAGES[@]}"; do
+        if [[ "$op" == "$pkg" ]]; then _needed="yes"; break; fi
+    done
+    if [[ "$_needed" == "no" ]]; then continue; fi
+
+    if sudo dnf install -y "$pkg" 2>/dev/null; then
         continue
     fi
 
@@ -92,7 +128,6 @@ for pkg in "${PACKAGES[@]}"; do
                 COPR_FAILED="no"
             fi
             ;;
-
     esac
 
     if [ "$COPR_FAILED" = "no" ]; then
@@ -174,11 +209,28 @@ if [ ${#FAILED_PKGS[@]} -ne 0 ]; then
 fi
 
 
-log "Downloading and installing required custom fonts (Material Symbols Rounded, Jet Brain Mono & CaskaydiaCove NF)..."
+log "Downloading and installing required custom fonts (parallel)..."
 mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
-curl -sL "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf" -o "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MaterialSymbolsRounded.ttf" || { err "Failed to download Material Symbols font."; echo "Material Symbols font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
-curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/CascadiaCode.zip" -o "/tmp/CascadiaCode.zip" && unzip -qo "/tmp/CascadiaCode.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" && rm "/tmp/CascadiaCode.zip" || { err "Failed to download CascadiaCode font."; echo "CascadiaCode font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
-curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip" -o "/tmp/JetBrainsMono.zip" && unzip -qo "/tmp/JetBrainsMono.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" && rm -f "/tmp/JetBrainsMono.zip" || { err "Failed to download JetBrains Mono Nerd Font."; echo "JetBrains Mono Nerd Font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+
+# Download all fonts in parallel
+curl -sL "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf" -o "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MaterialSymbolsRounded.ttf" &
+_pid_ms=$!
+
+curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/CascadiaCode.zip" -o "/tmp/CascadiaCode.zip" &
+_pid_cc=$!
+
+curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip" -o "/tmp/JetBrainsMono.zip" &
+_pid_jb=$!
+
+# Wait for all downloads to finish
+wait $_pid_ms $_pid_cc $_pid_jb
+
+# Extract zip files
+unzip -qo "/tmp/CascadiaCode.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" 2>/dev/null && rm -f "/tmp/CascadiaCode.zip" || { err "Failed to extract CascadiaCode font."; echo "CascadiaCode font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+unzip -qo "/tmp/JetBrainsMono.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" 2>/dev/null && rm -f "/tmp/JetBrainsMono.zip" || { err "Failed to extract JetBrains Mono Nerd Font."; echo "JetBrains Mono Nerd Font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+# Material Symbols is a single .ttf, no extraction needed
+[[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MaterialSymbolsRounded.ttf" ]] || { err "Failed to download Material Symbols font."; echo "Material Symbols font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+
 fc-cache -f
 
 log "Building and Installing Darkly KDE Theme..."

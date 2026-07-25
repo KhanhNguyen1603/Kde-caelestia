@@ -18,19 +18,12 @@ std::map<std::string, std::string> g_answers;
 
 namespace UI {
     bool loading_text(int x, int y, const string& text, const string& color_name) {
-        cout << Draw::to(y, x) << Draw::color(color_name) << text << "   " << flush;
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 20; ++j) {
-                if (!Input::get().empty()) return true;
-                this_thread::sleep_for(chrono::milliseconds(10));
-            }
-            cout << Draw::to(y, x + text.length() + i) << "." << flush;
-        }
-        for (int j = 0; j < 30; ++j) {
+        cout << Draw::to(y, x) << Draw::color(color_name) << text << "..." << flush;
+        // Brief check for key press to allow skipping
+        for (int j = 0; j < 10; ++j) {
             if (!Input::get().empty()) return true;
             this_thread::sleep_for(chrono::milliseconds(10));
         }
-        cout << Draw::to(y, x + text.length()) << "..." << flush;
         return false;
     }
 
@@ -67,17 +60,10 @@ namespace UI {
         cout << Draw::color(art_color_name) << Draw::bold;
         for (size_t i = 0; i < art.size(); ++i) {
             cout << Draw::to(top + i, left);
-            for (char c : art[i]) {
-                if (!Input::get().empty()) return;
-                cout << c << flush;
-                this_thread::sleep_for(chrono::milliseconds(speed_ms));
-            }
+            cout << art[i] << flush;
+            if (!Input::get().empty()) return;
         }
         cout << Draw::reset;
-        for (int j = 0; j < 20; ++j) {
-            if (!Input::get().empty()) return;
-            this_thread::sleep_for(chrono::milliseconds(10));
-        }
 
         int text_top = top + art_height + 2;
         int text_left = left + 4;
@@ -102,11 +88,6 @@ namespace UI {
         
         for (size_t i = 0; i < init_texts.size(); ++i) {
             if (loading_text(text_left, text_top + i + 1, init_texts[i], loading_color)) return;
-        }
-        
-        for (int j = 0; j < 50; ++j) {
-            if (!Input::get().empty()) return;
-            this_thread::sleep_for(chrono::milliseconds(10));
         }
     }
 

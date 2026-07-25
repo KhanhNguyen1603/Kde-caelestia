@@ -396,6 +396,7 @@ void execute() {
       // Continuously check for status or terminal resizes
       int exit_code = -1;
       int status_fd = open("/tmp/caelestia_status", O_RDWR | O_NONBLOCK);
+      int poll_iterations = 0;
       while (true) {
         if (g_resized)
           draw_progress_ui(i);
@@ -421,7 +422,12 @@ void execute() {
           close(test_fd);
         }
 
-        this_thread::sleep_for(chrono::milliseconds(100));
+        // Adaptive polling: start at 100ms, ramp up to 500ms for long-running scripts
+        int sleep_ms = 100;
+        if (poll_iterations > 60) sleep_ms = 500;
+        else if (poll_iterations > 20) sleep_ms = 250;
+        poll_iterations++;
+        this_thread::sleep_for(chrono::milliseconds(sleep_ms));
 
         // Handle Ctrl+C gracefully
         fd_set fds;

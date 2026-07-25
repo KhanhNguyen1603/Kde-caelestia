@@ -28,7 +28,7 @@ fi
 # Core dependencies (minus hyprland-specific ones)
 PACKAGES=(
     # build dependencies
-    cmake ninja
+    cmake ninja ccache
     # Core system tools
     wl-clipboard cliphist wl-clip-persist inotify-tools app2unit wireplumber trash-cli jq aubio lm_sensors
     # lib files
@@ -62,29 +62,36 @@ else
     log "Skipping Darkly package installation by user choice."
 fi
 
-log "Syncing package databases and installing packages..."
+log "Installing packages (batch mode)..."
 FAILED_PKGS=()
-yay -Syu --noconfirm || true
 
-for pkg in "${PACKAGES[@]}"; do
-    if ! yay -S --needed --noconfirm "$pkg"; then
-        log "yay failed to install $pkg. Attempting manual build from AUR..."
-        tmpdir="$(mktemp -d)"
-        if git clone "https://aur.archlinux.org/${pkg}.git" "$tmpdir"; then
-            (
-                cd "$tmpdir" || exit 1
-                makepkg -si --noconfirm
-            ) || {
-                err "Manual build for $pkg failed."
-                FAILED_PKGS+=("$pkg")
-            }
-        else
-            err "Could not find AUR repository for $pkg."
-            FAILED_PKGS+=("$pkg")
+# Batch install all packages at once — much faster than individual yay calls
+if ! yay -S --needed --noconfirm "${PACKAGES[@]}"; then
+    log "Batch install had failures. Retrying individually..."
+    for pkg in "${PACKAGES[@]}"; do
+        # Skip packages already installed by the batch attempt
+        if pacman -Q "$pkg" >/dev/null 2>&1; then
+            continue
         fi
-        rm -rf "$tmpdir"
-    fi
-done
+        if ! yay -S --needed --noconfirm "$pkg"; then
+            log "yay failed to install $pkg. Attempting manual build from AUR..."
+            tmpdir="$(mktemp -d)"
+            if git clone "https://aur.archlinux.org/${pkg}.git" "$tmpdir"; then
+                (
+                    cd "$tmpdir" || exit 1
+                    makepkg -si --noconfirm
+                ) || {
+                    err "Manual build for $pkg failed."
+                    FAILED_PKGS+=("$pkg")
+                }
+            else
+                err "Could not find AUR repository for $pkg."
+                FAILED_PKGS+=("$pkg")
+            fi
+            rm -rf "$tmpdir"
+        fi
+    done
+fi
 
 if [ ${#FAILED_PKGS[@]} -ne 0 ]; then
     mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde"

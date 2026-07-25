@@ -106,11 +106,4 @@ if [[ -f "${BUNDLE_DIR:-$(dirname "$(dirname "$0")")}/src/systemd/ydotoold.servi
     echo "  [OK]  ydotoold service configured."
 fi
 
-#  Reload KWin and KGlobalAccel 
-echo "  Reloading KWin..."
-qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
-
-echo "  Restarting plasma-kglobalaccel..."
-systemctl --user restart plasma-kglobalaccel.service 2>/dev/null || true
-
 echo "[OK]  Services configured."

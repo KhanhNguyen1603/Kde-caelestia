@@ -130,7 +130,6 @@ tweak_reload_kde() {
     info "Reloading KWin and plasma-kglobalaccel..."
     qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
     systemctl --user restart plasma-kglobalaccel.service 2>/dev/null || true
-    kbuildsycoca6 --noincremental 2>/dev/null || true
     ok "KDE daemons reloaded."
 }
 
@@ -250,7 +249,6 @@ if [[ "${1:-}" == "--list" ]]; then
 fi
 
 tweak_disable_kde_osd
-tweak_five_desktops
 tweak_workspace_shortcuts
 tweak_default_shell
 tweak_patch_caelestia_cli
