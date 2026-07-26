@@ -32,6 +32,7 @@ CORE_PACKAGES=(
     cmake ninja ccache
     wl-clipboard cliphist wl-clip-persist inotify-tools app2unit wireplumber trash-cli jq aubio lm_sensors
     libpipewire glibc libcava qt6-declarative gcc-libs qt6-base qt6-declarative qt6-wayland libqalculate kpipewire kglobalaccel kglobalacceld
+    ffmpeg
 )
 
 SHELL_PACKAGES=(
