@@ -86,10 +86,311 @@ Item {
 
     Component.onCompleted: {
         fetchOllamaModels();
+        fetchClaudeCodeModels();
         loadHistory();
     }
 
     property var ollamaModelsList: []
+
+    property var claudeCodeModelsList: ["default"]
+    readonly property var claudeCodeEffortOptions: {
+        var lv = effortLevelsFor(activeModel());
+        return lv.length > 0 ? ["default"].concat(lv) : [];
+    }
+    property var claudeCodeSessions: ({})
+
+    function claudeCodeBinPath() {
+        var b = (GlobalConfig.ai.claudeCodeBin || "claude").trim();
+        if (b === "" || b === "claude") {
+            var home = Quickshell.env("HOME") || "";
+            if (home !== "")
+                return home + "/.local/bin/claude";
+            return "claude";
+        }
+        return b;
+    }
+
+    function claudeAccounts() {
+        var list = [{ "id": "", "name": "Default", "dir": "" }];
+        try {
+            var parsed = JSON.parse(GlobalConfig.ai.claudeAccountsJson || "[]");
+            if (Array.isArray(parsed)) {
+                var home = Quickshell.env("HOME") || "";
+                for (var i = 0; i < parsed.length; i++) {
+                    var a = parsed[i];
+                    if (a && a.id)
+                        list.push({
+                            "id": String(a.id),
+                            "name": String(a.name || a.id),
+                            "dir": home + "/.config/caelestia/claude/" + String(a.id)
+                        });
+                }
+            }
+        } catch (e) {}
+        return list;
+    }
+
+    function activeClaudeConfigDir() {
+        return activeClaudeAccountObj().dir || "";
+    }
+
+    function claudeCodeEnvSnippet() {
+        var dir = activeClaudeConfigDir();
+        if (dir && dir !== "")
+            return "    environment: ({ \"CLAUDE_CONFIG_DIR\": " + JSON.stringify(dir) + " })\n";
+        return "";
+    }
+
+    function claudeCodeTranscript() {
+        var lines = [];
+        var count = 0;
+        for (var i = 0; i < chatHistory.count; i++) {
+            var m = chatHistory.get(i);
+            if (!m.isUser && !m.isFinished)
+                continue;
+            var t = (m.text || "").trim();
+            if (t === "")
+                continue;
+            lines.push((m.isUser ? "User: " : "Assistant: ") + t);
+            count++;
+        }
+        if (count <= 1)
+            return "";
+        return "Continue this conversation. Conversation so far:\n\n" + lines.join("\n\n") + "\n\nReply to the last user message.";
+    }
+
+    function isClaudeCodeAuthError(text) {
+        if (!text)
+            return false;
+        var t = String(text).toLowerCase();
+        return t.indexOf("login") !== -1
+            || t.indexOf("log in") !== -1
+            || t.indexOf("logged in") !== -1
+            || t.indexOf("not authenticated") !== -1
+            || t.indexOf("unauthorized") !== -1
+            || t.indexOf("authentication") !== -1
+            || t.indexOf("oauth") !== -1
+            || t.indexOf("invalid api key") !== -1
+            || t.indexOf("api key") !== -1
+            || t.indexOf("expired") !== -1
+            || t.indexOf("sign in") !== -1
+            || t.indexOf("credentials") !== -1;
+    }
+
+    function effortLevelsFor(model) {
+        var m = String(model || "default").toLowerCase();
+        if (m === "haiku")
+            return [];
+        if (m === "default" || m === "opus" || m === "sonnet" || m === "fable")
+            return ["low", "medium", "high", "xhigh", "max"];
+
+        var fam = m.indexOf("opus") !== -1 ? "opus"
+                : m.indexOf("sonnet") !== -1 ? "sonnet"
+                : m.indexOf("haiku") !== -1 ? "haiku"
+                : m.indexOf("fable") !== -1 ? "fable" : "";
+        var nums = (m.match(/\d+/g) || []).map(Number);
+        var major = nums.length >= 1 ? nums[0] : 0;
+        var minor = nums.length >= 2 ? nums[1] : 0;
+
+        if (fam === "haiku")
+            return [];
+        if (fam === "fable")
+            return ["low", "medium", "high", "xhigh", "max"];
+        if (fam === "opus") {
+            if (major > 4 || (major === 4 && minor >= 7))
+                return ["low", "medium", "high", "xhigh", "max"];
+            if (major === 4 && minor === 6)
+                return ["low", "medium", "high", "max"];
+            if (major === 4 && minor === 5)
+                return ["low", "medium", "high"];
+            return [];
+        }
+        if (fam === "sonnet") {
+            if (major >= 5)
+                return ["low", "medium", "high", "xhigh", "max"];
+            if (major === 4 && minor === 6)
+                return ["low", "medium", "high", "max"];
+            return [];
+        }
+        return [];
+    }
+
+    function fetchClaudeCodeModels() {
+        var bin = claudeCodeBinPath();
+        var script =
+            "t=\"$(readlink -f " + JSON.stringify(bin) + " 2>/dev/null)\"; [ -z \"$t\" ] && t=" + JSON.stringify(bin) + "; " +
+            "strings \"$t\" 2>/dev/null | grep -oE 'claude-(opus|sonnet|haiku|fable)-[0-9]+(-[0-9]+)?' | sort -u";
+        var commandStr = JSON.stringify(["sh", "-c", script]);
+        var qml =
+            "import QtQuick\n" +
+            "import Quickshell.Io\n" +
+            "Process {\n" +
+            "    id: mp\n" +
+            "    command: " + commandStr + "\n" +
+            "    stdout: StdioCollector { onStreamFinished: root.applyClaudeCodeModels(text || \"\"); }\n" +
+            "    onExited: code => mp.destroy()\n" +
+            "}";
+        try {
+            var o = Qt.createQmlObject(qml, root, "ccModelsProc");
+            o.running = true;
+        } catch (e) {
+            Logger.log("[AI] claude-code model fetch error: " + e.message);
+        }
+    }
+
+    function applyClaudeCodeModels(text) {
+        // The binary also embeds unrelated strings that merely start with "claude-"
+        // and long-dead models, so only ids shaped like <family>-<version> survive,
+        // minus dated snapshots (…-20250514) and the ".0" aliases of a base version.
+        var ids = [];
+        var seen = {};
+        const lines = (text || "").split("\n");
+        for (var i = 0; i < lines.length; i++) {
+            const id = lines[i].trim();
+            if (id === "" || seen[id])
+                continue;
+            if (/-\d{5,}$/.test(id) || /-0$/.test(id))
+                continue;
+            seen[id] = true;
+            ids.push(id);
+        }
+
+        // A family's bare major ("claude-opus-4") is just a stub for its newest
+        // minor, so drop it when a more specific id for the same major exists.
+        ids = ids.filter(id => !ids.some(other => other !== id && other.indexOf(id + "-") === 0));
+
+        // Newest first: sort by family version, descending.
+        ids.sort((a, b) => {
+            const va = (a.match(/\d+/g) || []).map(Number);
+            const vb = (b.match(/\d+/g) || []).map(Number);
+            for (var k = 0; k < Math.max(va.length, vb.length); k++) {
+                const d = (vb[k] || 0) - (va[k] || 0);
+                if (d !== 0)
+                    return d;
+            }
+            return a.localeCompare(b);
+        });
+
+        claudeCodeModelsList = ["default"].concat(ids);
+    }
+
+    function sendClaudeCode(promptText) {
+        // Drop any stale empty assistant placeholder, then add a fresh bubble to stream into.
+        for (var i = chatHistory.count - 1; i >= 0; i--) {
+            var m = chatHistory.get(i);
+            if (!m.isUser && !m.isFinished && m.text === "")
+                chatHistory.remove(i);
+        }
+        chatHistory.append({
+            "isUser": false,
+            "text": "",
+            "isFinished": false,
+            "thoughtText": ""
+        });
+        listView.positionViewAtEnd();
+
+        var bin = claudeCodeBinPath();
+        var sid = claudeCodeSessionFor(currentChatId);
+
+        // Fresh session (new chat, or the active account changed) → seed it with the
+        // prior transcript so the new account continues the same conversation.
+        var promptToSend = promptText;
+        if (sid === "") {
+            var transcript = claudeCodeTranscript();
+            if (transcript !== "")
+                promptToSend = transcript;
+        }
+
+        var cmd = [bin, "-p", promptToSend, "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--dangerously-skip-permissions"];
+
+        var mdl = GlobalConfig.ai.defaultClaudeCodeModel || "default";
+        if (mdl && mdl !== "default") {
+            cmd.push("--model");
+            cmd.push(mdl);
+        }
+
+        var eff = GlobalConfig.ai.claudeCodeEffort || "default";
+        if (eff && eff !== "default" && effortLevelsFor(mdl).indexOf(eff) !== -1) {
+            cmd.push("--effort");
+            cmd.push(eff);
+        }
+
+        if (sid !== "") {
+            cmd.push("--resume");
+            cmd.push(sid);
+        }
+
+        var commandStr = JSON.stringify(cmd);
+        var cwdStr = JSON.stringify(claudeCodeCwd());
+        var processQml =
+            "import QtQuick\n" +
+            "import Quickshell.Io\n" +
+            "Process {\n" +
+            "    id: proc\n" +
+            "    command: " + commandStr + "\n" +
+            "    workingDirectory: " + cwdStr + "\n" +
+            claudeCodeEnvSnippet() +
+            "    property string acc: \"\"\n" +
+            "    property string thought: \"\"\n" +
+            "    property string sess: \"\"\n" +
+            "    property string errAcc: \"\"\n" +
+            "    property bool done: false\n" +
+            "    stdout: SplitParser { onRead: line => root.onClaudeCodeLine(proc, line) }\n" +
+            "    stderr: SplitParser { onRead: line => root.logClaudeCodeStderr(proc, line) }\n" +
+            "    onExited: code => root.onClaudeCodeExit(proc, code)\n" +
+            "}";
+        try {
+            var obj = Qt.createQmlObject(processQml, root, "claudeCodeProc");
+            root.currentClaudeCodeProc = obj;
+            obj.running = true;
+        } catch (e) {
+            console.error("CLAUDE CODE PROCESS ERROR: " + e.message);
+            chatHistory.setProperty(chatHistory.count - 1, "text", "⚠️ Failed to launch Claude Code: " + e.message);
+            chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
+            isTyping = false;
+            isThinking = false;
+            inAgentLoop = false;
+            saveHistory();
+        }
+    }
+
+    function stopClaudeCode() {
+        if (root.currentClaudeCodeProc) {
+            try {
+                root.currentClaudeCodeProc.running = false;
+            } catch (e) {}
+            root.currentClaudeCodeProc = null;
+        }
+    }
+
+    function generateClaudeCodeTitleAsync(chatId, firstMessage) {
+        if (!firstMessage)
+            return;
+        var safeMsg = firstMessage.substring(0, 200);
+        var prompt = "Output ONLY a concise 2-4 word title for the following message. No quotes, no trailing punctuation, no explanation.\n\nMessage: " + safeMsg;
+
+        var cmd = [claudeCodeBinPath(), "-p", prompt, "--output-format", "json", "--dangerously-skip-permissions"];
+        var commandStr = JSON.stringify(cmd);
+        var cwdStr = JSON.stringify(claudeCodeCwd());
+        var chatIdStr = JSON.stringify(chatId);
+        var qml =
+            "import QtQuick\n" +
+            "import Quickshell.Io\n" +
+            "Process {\n" +
+            "    id: tproc\n" +
+            "    command: " + commandStr + "\n" +
+            "    workingDirectory: " + cwdStr + "\n" +
+            claudeCodeEnvSnippet() +
+            "    stdout: StdioCollector { onStreamFinished: root.handleClaudeCodeTitle(" + chatIdStr + ", text || \"\", tproc); }\n" +
+            "    onExited: code => { if (code !== 0) tproc.destroy(); }\n" +
+            "}";
+        try {
+            var obj = Qt.createQmlObject(qml, root, "claudeCodeTitleProc");
+            obj.running = true;
+        } catch (e) {
+            Logger.log("[AI] claude-code title process error: " + e.message);
+        }
+    }
 
     // Which backend the chat talks to. Only Ollama exists today; this is the seam
     // the others slot into, so the chat never has to know which one is active.
@@ -101,17 +402,24 @@ Item {
         const l = [];
         if (GlobalConfig.ai.enableOllama)
             l.push("ollama");
+        if (GlobalConfig.ai.enableClaudeCode)
+            l.push("claude-code");
         if (l.length === 0)
             l.push("ollama");
         return l;
     }
 
     function providerLabel(p: string): string {
-        return "Ollama";
+        return p === "claude-code" ? "Claude Code" : "Ollama";
     }
+
+    // The `claude` CLI, not an HTTP endpoint — it drives a subprocess instead.
+    readonly property bool isClaudeCode: provider === "claude-code"
 
     // The model to send for the active provider.
     function activeModel(): string {
+        if (isClaudeCode)
+            return GlobalConfig.ai.defaultClaudeCodeModel || "default";
         return GlobalConfig.ai.defaultOllamaModel || root.ollamaModelsList[0] || "";
     }
     property bool isTyping: false
@@ -546,6 +854,13 @@ Item {
         } else {
             currentActionText = "Thinking...";
         }
+
+        // Claude Code drives a subprocess, not an HTTP request.
+        if (root.isClaudeCode) {
+            root.sendClaudeCode(promptText);
+            return;
+        }
+
         var xhr = new XMLHttpRequest();
         root.currentRequest = xhr;
 
@@ -966,7 +1281,12 @@ Item {
 
                  active: menuItems.find(m => m.modelData === root.activeModel()) ?? menuItems[0] ?? null
                  menu.onItemSelected: item => {
-                     GlobalConfig.ai.defaultOllamaModel = item.modelData;
+                     if (root.isClaudeCode) {
+                         GlobalConfig.ai.defaultClaudeCodeModel = item.modelData;
+                         // Effort levels differ per model — reset when it changes.
+                         GlobalConfig.ai.claudeCodeEffort = "default";
+                     } else
+                         GlobalConfig.ai.defaultOllamaModel = item.modelData;
                  }
 
                  menuItems: modelVariants.instances
@@ -977,7 +1297,37 @@ Item {
 
                  Variants {
                      id: modelVariants
-                     model: root.ollamaModelsList
+                     model: root.isClaudeCode ? root.claudeCodeModelsList : root.ollamaModelsList
+
+                     delegate: MenuItem {
+                         required property string modelData
+                         text: modelData
+                     }
+                 }
+             }
+
+             // Effort / thinking level. Which levels a model supports varies, and
+             // several support none — the selector hides itself in that case.
+             SplitButton {
+                 id: effortSelector
+                 type: SplitButton.Tonal
+                 verticalPadding: 4
+                 visible: root.isClaudeCode && root.claudeCodeEffortOptions.length > 0
+
+                 active: menuItems.find(m => m.modelData === (GlobalConfig.ai.claudeCodeEffort || "default")) ?? menuItems[0] ?? null
+                 menu.onItemSelected: item => {
+                     GlobalConfig.ai.claudeCodeEffort = item.modelData;
+                 }
+
+                 menuItems: effortVariants.instances
+
+                 fallbackIcon: "psychology"
+                 fallbackText: qsTr("Effort")
+                 stateLayer.disabled: true
+
+                 Variants {
+                     id: effortVariants
+                     model: root.claudeCodeEffortOptions
 
                      delegate: MenuItem {
                          required property string modelData
@@ -1551,6 +1901,7 @@ Item {
                                          if (root.isTyping) {
                                              if (root.currentRequest) {
                                                  root.currentRequest.abort();
+                                             root.stopClaudeCode();
                                              }
                                              root.isTyping = false;
                                              root.isThinking = false;
