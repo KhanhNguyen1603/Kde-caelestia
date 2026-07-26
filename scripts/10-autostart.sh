@@ -2,6 +2,10 @@
 # 06-autostart.sh  Set up autostart entries for Quickshell and kde-material-you-colors.
 # Idempotent: overwrites .desktop files with correct content each run.
 
+# Resolve the bundle root the same way the build script does, so this works
+# whether the installer exports it or the script is run directly.
+BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
 AUTOSTART_DIR="$HOME/.config/autostart"
 mkdir -p "$AUTOSTART_DIR"
 mkdir -p "$HOME/.local/bin"
@@ -139,6 +143,29 @@ EOF
     echo "  [OK]  kde-material-you-colors systemd service enabled."
 else
     echo "  [SKIP] Skipping kde-material-you-colors systemd service."
+fi
+
+# Live window thumbnails.
+#
+# KWin only advertises its privileged Wayland interfaces to clients whose
+# desktop file requests them: it resolves the client's /proc/<pid>/exe, then
+# looks for an installed .desktop whose Exec resolves to that same binary and
+# reads X-KDE-Wayland-Interfaces from it. Quickshell's packaged entry has no
+# Exec line at all, so the shell matches nothing and zkde_screencast_unstable_v1
+# is never offered — the dock hover popup and window switcher then fall back to
+# drawing the app icon instead of a live preview.
+#
+# Note this cannot live on the autostart entry above: KWin matches on the
+# resolved executable, and that entry's Exec is the wrapper script rather than
+# the quickshell binary, so it never matches.
+if [[ -f "$BUNDLE_DIR/assets/org.quickshell.desktop" ]]; then
+    echo "  Requesting KWin screencast interface for window previews..."
+    mkdir -p "$HOME/.local/share/applications"
+    cp --remove-destination "$BUNDLE_DIR/assets/org.quickshell.desktop" \
+        "$HOME/.local/share/applications/org.quickshell.desktop" 2>/dev/null || true
+    # KWin reads this through KService, which needs its cache rebuilt.
+    kbuildsycoca6 >/dev/null 2>&1 || true
+    echo "  [OK]  Window preview interface requested."
 fi
 
 echo "[OK]  Autostart entries configured."

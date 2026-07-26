@@ -76,19 +76,6 @@ Item {
         }
     }
 
-    onStateChanged: {
-        if (state === "keybinds") {
-            keybindsList.active = true;
-        } else {
-            keybindsList.active = false;
-        }
-        if (state === "animations") {
-            animationsList.active = true;
-        } else {
-            animationsList.active = false;
-        }
-    }
-
     states: [
         State {
             name: "apps"
@@ -97,10 +84,6 @@ Item {
                 target: root
                 implicitWidth: root.Tokens.sizes.launcher.itemWidth
                 implicitHeight: Math.min(root.maxHeight, appList.implicitHeight > 0 ? appList.implicitHeight : empty.implicitHeight)
-            }
-            PropertyChanges {
-                target: appList
-                active: true
             }
 
         },
@@ -112,10 +95,6 @@ Item {
                 implicitWidth: Math.max(root.Tokens.sizes.launcher.itemWidth * 1.2, wallpaperList.implicitWidth)
                 implicitHeight: root.Tokens.sizes.launcher.wallpaperHeight + 56 // Extra space for color buttons
             }
-            PropertyChanges {
-                target: wallpaperList
-                active: true
-            }
         },
         State {
             name: "windowSwitcher"
@@ -124,10 +103,6 @@ Item {
                 target: root
                 implicitWidth: Math.max(root.Tokens.sizes.launcher.itemWidth * 1.2, windowSwitcherList.implicitWidth)
                 implicitHeight: root.Tokens.sizes.launcher.windowSwitcherHeight
-            }
-            PropertyChanges {
-                target: windowSwitcherList
-                active: true
             }
         },
         State {
@@ -138,10 +113,6 @@ Item {
                 implicitWidth: root.Tokens.sizes.launcher.itemWidth
                 implicitHeight: Math.min(root.maxHeight, root.Tokens.sizes.launcher.itemHeight * 7)
             }
-            PropertyChanges {
-                target: keybindsList
-                active: true
-            }
 
         },
         State {
@@ -151,10 +122,6 @@ Item {
                 target: root
                 implicitWidth: root.Tokens.sizes.launcher.itemWidth
                 implicitHeight: Math.min(root.maxHeight, root.Tokens.sizes.launcher.itemHeight * 7)
-            }
-            PropertyChanges {
-                target: animationsList
-                active: true
             }
 
         }
@@ -171,10 +138,18 @@ Item {
         }
     }
 
+    // Each list owns its own `active`, derived from the state it belongs to.
+    // It used to be set from two places at once — `PropertyChanges` in the states
+    // and an imperative onStateChanged handler — which broke state restoration:
+    // entering a state captured the value the imperative write had just set, so
+    // leaving it "restored" active back to true and the old list stayed loaded,
+    // drawing on top of the new one. Binding to root.state (rather than the
+    // show* flags) keeps the existing cross-fade timing, since the state change
+    // itself is deferred by the Behavior below.
     Loader {
         id: appList
 
-        active: false
+        active: root.state === "apps"
 
         anchors.fill: parent
 
@@ -188,7 +163,7 @@ Item {
         id: wallpaperList
 
         asynchronous: true
-        active: false
+        active: root.state === "wallpapers"
 
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
@@ -328,7 +303,7 @@ Item {
         id: windowSwitcherList
 
         asynchronous: true
-        active: false
+        active: root.state === "windowSwitcher"
 
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -345,7 +320,7 @@ Item {
     Loader {
         id: keybindsList
 
-        active: false
+        active: root.state === "keybinds"
 
         anchors.fill: parent
 
@@ -358,7 +333,7 @@ Item {
     Loader {
         id: animationsList
 
-        active: false
+        active: root.state === "animations"
 
         anchors.fill: parent
 

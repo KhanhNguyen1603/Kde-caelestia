@@ -164,6 +164,11 @@ Item {
 
         function update(): void {
             this.screen = root.screen;
+            // Ask about the source being switched to, not the isVideoImage binding:
+            // that binding can still hold the previous source's answer when this
+            // runs, which routed a video into the image loader. The image cannot
+            // decode it, so the wallpaper just went white.
+            const isVideoImage = root.isVideo(root.source);
             if (isVideoImage) {
                 if (videoPath === root.source)
                     root.current = this;
@@ -182,6 +187,7 @@ Item {
         }
 
         function updateContent(): void {
+            const isVideoImage = root.isVideo(root.source);
             if (isVideoImage) {
                 imagePath = "";
                 videoPath = root.source;
@@ -283,6 +289,8 @@ Item {
 
 
             CachingAnimatedImage {
+                id: wallpaperImage
+
                 anchors.fill: parent
                 path: img.imagePath
                 visible: !img.isVideoImage && img.imagePath !== ""
@@ -290,6 +298,19 @@ Item {
                 fillMode: AnimatedImage.PreserveAspectCrop
                 source: img.imagePath || ""
                 playing: true
+
+                // Decode at the size actually being drawn. Without this the full
+                // image is decoded whatever its resolution: an 8K wallpaper costs
+                // ~132MB of pixels and a slow decode, twice over while the old and
+                // new ones overlap during the reveal — a visible hitch on every
+                // change. JPEG can scale during decode, so asking for the screen
+                // size makes it both quicker and far smaller. Every other wallpaper
+                // view already does this; only the one drawing the biggest image
+                // did not.
+                sourceSize: {
+                    const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
+                    return Qt.size(wallpaperImage.width * dpr, wallpaperImage.height * dpr);
+                }
 
                 onStatusChanged: {
                     if (status === Image.Ready && !img.isVideoImage)
