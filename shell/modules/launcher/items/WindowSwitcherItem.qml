@@ -73,27 +73,17 @@ Item {
         implicitWidth: Tokens.sizes.launcher.windowSwitcherWidth
         implicitHeight: implicitWidth / 16 * 9
 
-        // Asking KWin for a live PipeWire feed is the expensive part of showing the
-        // switcher, and it used to happen for every window at once, 20ms after the
-        // list was built — which is exactly when the machine is busiest, and the
-        // reason the switcher stutters on first open while a game is running.
-        // Only previews actually on the path ask for a feed, and only once they
-        // have settled, so cycling quickly past a window no longer starts a stream
-        // that is dropped a frame later.
-        readonly property bool previewWanted: root.PathView.onPath
-
         Timer {
-            id: settleTimer
-            property bool settled: false
-            interval: 120
-            running: previewBox.previewWanted && !settled
+            id: debounceTimer
+            interval: 20
+            running: true
             repeat: false
-            onTriggered: settled = true
+            onTriggered: screencastLoader.active = true
         }
 
         Loader {
             id: screencastLoader
-            active: previewBox.previewWanted && settleTimer.settled
+            active: false
             sourceComponent: WindowScreencastRequest {
                 uuid: root.modelData?.address ?? ""
             }
