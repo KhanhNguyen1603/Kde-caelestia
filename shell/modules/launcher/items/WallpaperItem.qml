@@ -71,14 +71,16 @@ Item {
             text: "videocam"
             color: Colours.tPalette.m3outline
             fontStyle: Tokens.font.icon.builders.extraLarge.scale(2).weight(Font.DemiBold).build()
-            visible: Images.isVideo(root.modelData.name)
+            visible: Images.isVideo(root.modelData.name) && Wallpapers.thumbFor(root.modelData.path) === ""
         }
 
         CachingImage {
             anchors.fill: parent
-            path: root.modelData.path
+            // Videos get an extracted frame; until it exists this is empty and the
+            // videocam icon above shows through.
+            path: Images.isVideo(root.modelData.name) ? Wallpapers.thumbFor(root.modelData.path) : root.modelData.path
             smooth: !root.PathView.view.moving
-            visible: !Images.isVideo(root.modelData.name)
+            visible: path !== ""
             sourceSize: {
                 const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
                 return Qt.size(image.implicitWidth * dpr, image.implicitHeight * dpr);
