@@ -126,17 +126,6 @@ cmake --install build || {
     exit 1
 }
 
-# Live window thumbnails: KWin hands out zkde_screencast_unstable_v1 only to
-# clients whose desktop file requests it, and Quickshell's packaged entry has no
-# Exec line to match on. Override it per-user, then refresh the KService cache
-# KWin reads. Without this the dock hover popup and window switcher fall back to
-# showing the app icon instead of a live preview.
-if [ -f "$BUNDLE_DIR/assets/org.quickshell.desktop" ]; then
-    mkdir -p ~/.local/share/applications
-    cp --remove-destination "$BUNDLE_DIR/assets/org.quickshell.desktop" ~/.local/share/applications/org.quickshell.desktop 2>/dev/null || true
-    kbuildsycoca6 >/dev/null 2>&1 || true
-fi
-
 # Validate critical QML module presence before declaring success.
 CONFIG_MODULE_DIR="$HOME/.local/lib/qt6/qml/Caelestia/Config"
 if [[ ! -f "$CONFIG_MODULE_DIR/qmldir" ]]; then
