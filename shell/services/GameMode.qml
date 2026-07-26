@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Caelestia
 import Caelestia.Config
+import Caelestia.Services
 import qs.services
 
 Singleton {
@@ -21,6 +22,58 @@ Singleton {
     // Video wallpapers keep a decoder and a GPU upload running for as long as
     // they play, which is exactly what game mode is trying to free up.
     property bool restoreVideoWallpaper: false
+
+    // ---- Auto-enable rules ----
+    // The rules were editable in settings but nothing ever evaluated them, so
+    // launching a listed game did nothing. Watch the open windows and match them.
+    // Only a run that switched itself on switches itself back off, so a manual
+    // toggle is never undone by a game closing.
+    property bool autoEnabled: false
+
+    readonly property var _windows: {
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList && KWinActiveWindowBridge.windowList.length > 0)
+            return KWinActiveWindowBridge.windowList;
+        return HyprlandData.windowList;
+    }
+
+    function _matchesRule(w): bool {
+        const rules = GlobalConfig.utilities.gameMode.autoEnableRegexes || [];
+        if (rules.length === 0 || !w)
+            return false;
+        const fields = [w.class || "", w.initialClass || "", w.title || ""];
+        for (let i = 0; i < rules.length; i++) {
+            const rule = String(rules[i] || "");
+            if (rule === "")
+                continue;
+            for (let f = 0; f < fields.length; f++) {
+                if (fields[f] === rule)
+                    return true;          // plain name, the common case
+                try {
+                    if (new RegExp(rule).test(fields[f]))
+                        return true;
+                } catch (e) {
+                    // A rule like "Minecraft* 1.21.11" is a window title, not a
+                    // valid regex — the exact match above already covers it.
+                }
+            }
+        }
+        return false;
+    }
+
+    on_WindowsChanged: {
+        const wins = root._windows || [];
+        let matched = false;
+        for (let i = 0; i < wins.length; i++)
+            if (root._matchesRule(wins[i])) { matched = true; break; }
+
+        if (matched && !root.enabled) {
+            root.autoEnabled = true;
+            root.enabled = true;
+        } else if (!matched && root.enabled && root.autoEnabled) {
+            root.autoEnabled = false;
+            root.enabled = false;
+        }
+    }
 
     function setDynamicConfs(): void {
         Hypr.extras.applyOptions({
@@ -56,6 +109,9 @@ Singleton {
     }
 
     onEnabledChanged: {
+        if (!enabled)
+            root.autoEnabled = false;
+
         if (enabled) {
             // Pause a playing video wallpaper, remembering whether it was paused
             // already so ending game mode does not start one the user had stopped.
