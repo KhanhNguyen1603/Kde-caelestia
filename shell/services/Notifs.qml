@@ -39,9 +39,19 @@ Singleton {
     }
 
     function clear(): void {
-        const toClose = [];
-        for (let i = 0; i < root.list.length; i++)
-            toClose.push(root.list[i]);
+        // Detach everything in one assignment before closing any of it.
+        //
+        // Closing a notification rebuilds this list (filter + reassign), and the
+        // reassignment re-runs every derived binding: notClosed, popups, the
+        // unread counters in the bar, and the per-app filters in both notification
+        // docks — each of them a full pass over the list. Closing one at a time
+        // therefore costs O(n) work per notification plus a full view rebuild, so
+        // with a couple of thousand stored it hangs the shell outright.
+        //
+        // Emptying the list first drops those dependencies, so the views update
+        // once and each close() below is just a dismiss and a destroy.
+        const toClose = root.list;
+        root.list = [];
         for (let i = 0; i < toClose.length; i++)
             toClose[i].close();
     }

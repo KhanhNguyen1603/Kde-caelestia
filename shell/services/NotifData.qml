@@ -209,11 +209,17 @@ QtObject {
 
     function close(): void {
         closed = true;
-        if (locks.size === 0 && Notifs.list.includes(this)) {
+        if (locks.size > 0)
+            return; // a view is still animating this one; unlock() closes it later
+
+        // Removing it from the list is separate from dismissing it, so a caller
+        // that has already detached this notification (Notifs.clear(), which
+        // empties the list in one go) still gets it dismissed and destroyed
+        // rather than leaked.
+        if (Notifs.list.includes(this))
             Notifs.list = Notifs.list.filter(n => n !== this);
-            notification?.dismiss();
-            destroy();
-        }
+        notification?.dismiss();
+        destroy();
     }
 
     Component.onCompleted: {
