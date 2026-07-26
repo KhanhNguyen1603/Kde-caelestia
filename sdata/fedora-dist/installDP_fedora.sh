@@ -50,6 +50,14 @@ case "$PACKAGE_GROUP" in
             COPR_PKGS=("quickshell-git" "gpu-screen-recorder" "app2unit" "starship" "libcava" "wl-clip-persist") ;;
 esac
 
+# Ensure COPR-only packages are actually requested for the relevant groups
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "core" ]]; then
+    PACKAGES+=("${COPR_CORE[@]}")
+fi
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+    PACKAGES+=("${COPR_SHELL[@]}")
+fi
+
 log "Installing packages (group: $PACKAGE_GROUP)..."
 
 # Optional packages only included for relevant groups (or "all")

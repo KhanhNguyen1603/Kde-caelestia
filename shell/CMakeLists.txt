@@ -70,6 +70,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Use ccache if available for dramatically faster rebuilds
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
     message(STATUS "ccache found — compiler caching enabled")
 endif()
