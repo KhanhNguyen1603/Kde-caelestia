@@ -12,6 +12,7 @@ import qs.components.effects
 import qs.services
 import qs.utils
 import Quickshell
+import Quickshell.Io
 import M3Shapes
 import Caelestia.Blobs
 
@@ -63,9 +64,19 @@ Item {
     
     property real savedContentY: -1
 
+    // Refresh the model list when switching to an OpenAI-compatible provider, so a
+    // key added after startup takes effect without a reload.
+    onProviderChanged: {
+        cancelRateLimitRetry();
+        if (isOpenaiCompat)
+            fetchOpenaiCompatModels(provider);
+        else if (isClaude)
+            fetchClaudeModels();
+    }
+
     onVisibleChanged: {
         if (visible) {
-            fetchOllamaModels();
+            refreshAllModels();
             if (savedContentY >= 0) {
                 Qt.callLater(function() { listView.contentY = savedContentY; });
             }
@@ -84,99 +95,79 @@ Item {
         listView.positionViewAtEnd();
     }
 
-    Component.onCompleted: {
+    // Ask every enabled provider what it offers, rather than shipping lists that
+    // go stale each time a vendor releases a model.
+    function refreshAllModels() {
         fetchOllamaModels();
         fetchClaudeCodeModels();
+        fetchClaudeModels();
+        const compat = ["openai", "gemini", "openrouter"];
+        for (var i = 0; i < compat.length; i++) {
+            if (providerList.indexOf(compat[i]) !== -1)
+                fetchOpenaiCompatModels(compat[i]);
+        }
+    }
+
+    Component.onCompleted: {
+        loadAllKeys();
+        refreshAllModels();
         loadHistory();
     }
 
     property var ollamaModelsList: []
 
-    property var claudeCodeModelsList: ["default"]
-    readonly property var claudeCodeEffortOptions: {
-        var lv = effortLevelsFor(activeModel());
-        return lv.length > 0 ? ["default"].concat(lv) : [];
-    }
-    property var claudeCodeSessions: ({})
+    // Every provider's model list is discovered from that provider, so none of
+    // them need editing here when a vendor ships a new model. Anthropic's list
+    // comes from GET /v1/models (needs the API key the provider requires anyway).
+    property var claudeModelsList: []
 
-    function claudeCodeBinPath() {
-        var b = (GlobalConfig.ai.claudeCodeBin || "claude").trim();
-        if (b === "" || b === "claude") {
-            var home = Quickshell.env("HOME") || "";
-            if (home !== "")
-                return home + "/.local/bin/claude";
-            return "claude";
-        }
-        return b;
-    }
-
-    function claudeAccounts() {
-        var list = [{ "id": "", "name": "Default", "dir": "" }];
-        try {
-            var parsed = JSON.parse(GlobalConfig.ai.claudeAccountsJson || "[]");
-            if (Array.isArray(parsed)) {
-                var home = Quickshell.env("HOME") || "";
-                for (var i = 0; i < parsed.length; i++) {
-                    var a = parsed[i];
-                    if (a && a.id)
-                        list.push({
-                            "id": String(a.id),
-                            "name": String(a.name || a.id),
-                            "dir": home + "/.config/caelestia/claude/" + String(a.id)
-                        });
-                }
+    function fetchClaudeModels() {
+        const key = root.getApiKeyFor("claude");
+        if (key === "")
+            return;
+        const base = GlobalConfig.ai.anthropicUrl || "https://api.anthropic.com";
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", base + "/v1/models?limit=100", true);
+        xhr.setRequestHeader("x-api-key", key);
+        xhr.setRequestHeader("anthropic-version", "2023-06-01");
+        xhr.setRequestHeader("anthropic-dangerous-direct-browser-access", "true");
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState !== XMLHttpRequest.DONE)
+                return;
+            if (xhr.status !== 200) {
+                Logger.log("[AI] Claude model list failed (status " + xhr.status + ")");
+                return;
             }
-        } catch (e) {}
-        return list;
+            try {
+                const parsed = JSON.parse(xhr.responseText);
+                var list = [];
+                for (var i = 0; i < (parsed.data || []).length; i++) {
+                    if (parsed.data[i].id)
+                        list.push(parsed.data[i].id);
+                }
+                if (list.length === 0)
+                    return;
+                // Newest first — the API returns them in creation order.
+                list.reverse();
+                root.claudeModelsList = list;
+                if (list.indexOf(GlobalConfig.ai.defaultClaudeModel) === -1)
+                    GlobalConfig.ai.defaultClaudeModel = list[0];
+            } catch (e) {
+                Logger.log("[AI] Error parsing Claude models: " + e.message);
+            }
+        };
+        xhr.send();
     }
 
-    function activeClaudeConfigDir() {
-        return activeClaudeAccountObj().dir || "";
-    }
+    // Model choices for the Claude Code (subscription CLI) provider. "default"
+    // means: don't pass --model at all and let the CLI use whatever the
+    // subscription defaults to. The concrete ids are read out of the installed
+    // binary by fetchClaudeCodeModels(), so they track the CLI as it updates.
+    property var claudeCodeModelsList: ["default"]
 
-    function claudeCodeEnvSnippet() {
-        var dir = activeClaudeConfigDir();
-        if (dir && dir !== "")
-            return "    environment: ({ \"CLAUDE_CONFIG_DIR\": " + JSON.stringify(dir) + " })\n";
-        return "";
-    }
-
-    function claudeCodeTranscript() {
-        var lines = [];
-        var count = 0;
-        for (var i = 0; i < chatHistory.count; i++) {
-            var m = chatHistory.get(i);
-            if (!m.isUser && !m.isFinished)
-                continue;
-            var t = (m.text || "").trim();
-            if (t === "")
-                continue;
-            lines.push((m.isUser ? "User: " : "Assistant: ") + t);
-            count++;
-        }
-        if (count <= 1)
-            return "";
-        return "Continue this conversation. Conversation so far:\n\n" + lines.join("\n\n") + "\n\nReply to the last user message.";
-    }
-
-    function isClaudeCodeAuthError(text) {
-        if (!text)
-            return false;
-        var t = String(text).toLowerCase();
-        return t.indexOf("login") !== -1
-            || t.indexOf("log in") !== -1
-            || t.indexOf("logged in") !== -1
-            || t.indexOf("not authenticated") !== -1
-            || t.indexOf("unauthorized") !== -1
-            || t.indexOf("authentication") !== -1
-            || t.indexOf("oauth") !== -1
-            || t.indexOf("invalid api key") !== -1
-            || t.indexOf("api key") !== -1
-            || t.indexOf("expired") !== -1
-            || t.indexOf("sign in") !== -1
-            || t.indexOf("credentials") !== -1;
-    }
-
+    // Effort/thinking levels vary per model: recent models add xhigh/max, some support
+    // fewer, and several (haiku, older sonnet, opus ≤4.1) support none at all. Returns
+    // the valid levels for a given model ("" when the model has no effort control).
     function effortLevelsFor(model) {
         var m = String(model || "default").toLowerCase();
         if (m === "haiku")
@@ -215,6 +206,14 @@ Item {
         return [];
     }
 
+    // Effort choices for the currently-selected Claude Code model (empty = unsupported).
+    readonly property var claudeCodeEffortOptions: {
+        var lv = effortLevelsFor(activeModel());
+        return lv.length > 0 ? ["default"].concat(lv) : [];
+    }
+
+    // Extract the model IDs the installed `claude` binary knows about (a real
+    // "fetch" of what this CLI version supports), merged with the handy aliases.
     function fetchClaudeCodeModels() {
         var bin = claudeCodeBinPath();
         var script =
@@ -274,154 +273,338 @@ Item {
         claudeCodeModelsList = ["default"].concat(ids);
     }
 
-    function sendClaudeCode(promptText) {
-        // Drop any stale empty assistant placeholder, then add a fresh bubble to stream into.
-        for (var i = chatHistory.count - 1; i >= 0; i--) {
-            var m = chatHistory.get(i);
-            if (!m.isUser && !m.isFinished && m.text === "")
-                chatHistory.remove(i);
-        }
-        chatHistory.append({
-            "isUser": false,
-            "text": "",
-            "isFinished": false,
-            "thoughtText": ""
-        });
-        listView.positionViewAtEnd();
+    // Currently selected provider ("ollama" | "claude-code" | "claude"), persisted in config.
+    readonly property string provider: GlobalConfig.ai.defaultProvider || "ollama"
+    readonly property bool isClaude: provider === "claude"       // Anthropic HTTP API (API key)
+    readonly property bool isClaudeCode: provider === "claude-code" // `claude` CLI (subscription)
 
-        var bin = claudeCodeBinPath();
-        var sid = claudeCodeSessionFor(currentChatId);
+    // Runtime cache of Claude Code CLI session ids, keyed by chat id (also persisted
+    // into allChatSessions so --resume works across shell restarts).
+    property var claudeCodeSessions: ({})
+    property var currentClaudeCodeProc: null
 
-        // Fresh session (new chat, or the active account changed) → seed it with the
-        // prior transcript so the new account continues the same conversation.
-        var promptToSend = promptText;
-        if (sid === "") {
-            var transcript = claudeCodeTranscript();
-            if (transcript !== "")
-                promptToSend = transcript;
-        }
+    // Prompt suggestions (Claude Code): starter prompts generated on demand.
+    property var promptSuggestions: []
+    property bool loadingSuggestions: false
 
-        var cmd = [bin, "-p", promptToSend, "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--dangerously-skip-permissions"];
-
-        var mdl = GlobalConfig.ai.defaultClaudeCodeModel || "default";
-        if (mdl && mdl !== "default") {
-            cmd.push("--model");
-            cmd.push(mdl);
-        }
-
-        var eff = GlobalConfig.ai.claudeCodeEffort || "default";
-        if (eff && eff !== "default" && effortLevelsFor(mdl).indexOf(eff) !== -1) {
-            cmd.push("--effort");
-            cmd.push(eff);
-        }
-
-        if (sid !== "") {
-            cmd.push("--resume");
-            cmd.push(sid);
-        }
-
-        var commandStr = JSON.stringify(cmd);
-        var cwdStr = JSON.stringify(claudeCodeCwd());
-        var processQml =
-            "import QtQuick\n" +
-            "import Quickshell.Io\n" +
-            "Process {\n" +
-            "    id: proc\n" +
-            "    command: " + commandStr + "\n" +
-            "    workingDirectory: " + cwdStr + "\n" +
-            claudeCodeEnvSnippet() +
-            "    property string acc: \"\"\n" +
-            "    property string thought: \"\"\n" +
-            "    property string sess: \"\"\n" +
-            "    property string errAcc: \"\"\n" +
-            "    property bool done: false\n" +
-            "    stdout: SplitParser { onRead: line => root.onClaudeCodeLine(proc, line) }\n" +
-            "    stderr: SplitParser { onRead: line => root.logClaudeCodeStderr(proc, line) }\n" +
-            "    onExited: code => root.onClaudeCodeExit(proc, code)\n" +
-            "}";
-        try {
-            var obj = Qt.createQmlObject(processQml, root, "claudeCodeProc");
-            root.currentClaudeCodeProc = obj;
-            obj.running = true;
-        } catch (e) {
-            console.error("CLAUDE CODE PROCESS ERROR: " + e.message);
-            chatHistory.setProperty(chatHistory.count - 1, "text", "⚠️ Failed to launch Claude Code: " + e.message);
-            chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
-            isTyping = false;
-            isThinking = false;
-            inAgentLoop = false;
-            saveHistory();
-        }
-    }
-
-    function stopClaudeCode() {
-        if (root.currentClaudeCodeProc) {
-            try {
-                root.currentClaudeCodeProc.running = false;
-            } catch (e) {}
-            root.currentClaudeCodeProc = null;
-        }
-    }
-
-    function generateClaudeCodeTitleAsync(chatId, firstMessage) {
-        if (!firstMessage)
+    function fetchPromptSuggestions() {
+        if (!isClaudeCode || loadingSuggestions)
             return;
-        var safeMsg = firstMessage.substring(0, 200);
-        var prompt = "Output ONLY a concise 2-4 word title for the following message. No quotes, no trailing punctuation, no explanation.\n\nMessage: " + safeMsg;
+        loadingSuggestions = true;
+        promptSuggestions = [];
+
+        // Gather recent conversation context + the current input draft so suggestions
+        // are relevant to what the user is doing (not generic starters).
+        var lines = [];
+        for (var li = 0; li < chatHistory.count; li++) {
+            var lm = chatHistory.get(li);
+            if (!lm.isUser && !lm.isFinished)
+                continue;
+            var lt = (lm.text || "").trim();
+            if (lt === "")
+                continue;
+            lines.push((lm.isUser ? "User" : "Assistant") + ": " + lt);
+        }
+        if (lines.length > 6)
+            lines = lines.slice(lines.length - 6);
+        var context = lines.join("\n");
+        var draft = "";
+        try {
+            draft = (inputArea.text || "").trim();
+        } catch (e) {}
+
+        var prompt;
+        if (context === "" && draft === "") {
+            prompt = "Suggest exactly 4 short, varied example prompts a user might ask a helpful AI desktop assistant. Reply with ONLY a JSON array of 4 short strings, nothing else.";
+        } else {
+            prompt = "You are suggesting what the user might type NEXT in this chat. Based only on the context below, propose exactly 4 short, specific follow-up prompts they are likely to want to send next. Reply with ONLY a JSON array of 4 short strings, nothing else.\n\n";
+            if (context !== "")
+                prompt += "Conversation so far:\n" + context + "\n\n";
+            if (draft !== "")
+                prompt += "The user has started typing: \"" + draft + "\"\n\n";
+        }
 
         var cmd = [claudeCodeBinPath(), "-p", prompt, "--output-format", "json", "--dangerously-skip-permissions"];
-        var commandStr = JSON.stringify(cmd);
-        var cwdStr = JSON.stringify(claudeCodeCwd());
-        var chatIdStr = JSON.stringify(chatId);
         var qml =
             "import QtQuick\n" +
             "import Quickshell.Io\n" +
             "Process {\n" +
-            "    id: tproc\n" +
-            "    command: " + commandStr + "\n" +
-            "    workingDirectory: " + cwdStr + "\n" +
+            "    id: sp\n" +
+            "    command: " + JSON.stringify(cmd) + "\n" +
+            "    workingDirectory: " + JSON.stringify(claudeCodeCwd()) + "\n" +
             claudeCodeEnvSnippet() +
-            "    stdout: StdioCollector { onStreamFinished: root.handleClaudeCodeTitle(" + chatIdStr + ", text || \"\", tproc); }\n" +
-            "    onExited: code => { if (code !== 0) tproc.destroy(); }\n" +
+            "    stdout: StdioCollector { onStreamFinished: root.applyPromptSuggestions(text || \"\"); }\n" +
+            "    onExited: code => { root.loadingSuggestions = false; sp.destroy(); }\n" +
             "}";
         try {
-            var obj = Qt.createQmlObject(qml, root, "claudeCodeTitleProc");
-            obj.running = true;
+            var o = Qt.createQmlObject(qml, root, "promptSugProc");
+            o.running = true;
         } catch (e) {
-            Logger.log("[AI] claude-code title process error: " + e.message);
+            loadingSuggestions = false;
+            Logger.log("[AI] suggestion process error: " + e.message);
         }
     }
 
-    // Which backend the chat talks to. Only Ollama exists today; this is the seam
-    // the others slot into, so the chat never has to know which one is active.
-    readonly property string provider: GlobalConfig.ai.defaultProvider || "ollama"
+    function applyPromptSuggestions(text) {
+        loadingSuggestions = false;
+        var resultStr = "";
+        try {
+            resultStr = JSON.parse(text).result || "";
+        } catch (e) {
+            return;
+        }
+        var arr = null;
+        try {
+            arr = JSON.parse(resultStr);
+        } catch (e) {
+            var m = resultStr.match(/\[[\s\S]*\]/);
+            if (m)
+                try { arr = JSON.parse(m[0]); } catch (e2) {}
+        }
+        if (Array.isArray(arr)) {
+            var list = [];
+            for (var i = 0; i < arr.length && i < 6; i++)
+                list.push(String(arr[i]));
+            promptSuggestions = list;
+        }
+    }
 
-    // Providers offered in the selector, respecting their enable toggles. Never
-    // empty — falling back to Ollama beats presenting no choice at all.
+    // A stored CLI session id only applies to the account that created it (session
+    // ids live under that account's CLAUDE_CONFIG_DIR). If the active account differs,
+    // return "" so we start a fresh session under the new account instead of a
+    // --resume that would fail with "no conversation found".
+    function claudeCodeSessionFor(chatId) {
+        var active = GlobalConfig.ai.activeClaudeAccount || "";
+        var c = claudeCodeSessions[chatId];
+        if (c && c.acc === active)
+            return c.sid;
+        for (var i = 0; i < allChatSessions.length; i++)
+            if (allChatSessions[i].id === chatId) {
+                if ((allChatSessions[i].claudeCodeSessionAccount || "") === active)
+                    return allChatSessions[i].claudeCodeSessionId || "";
+                return "";
+            }
+        return "";
+    }
+
+    function setClaudeCodeSession(chatId, sid) {
+        if (!sid)
+            return;
+        var active = GlobalConfig.ai.activeClaudeAccount || "";
+        claudeCodeSessions[chatId] = { sid: sid, acc: active };
+        for (var i = 0; i < allChatSessions.length; i++) {
+            if (allChatSessions[i].id === chatId) {
+                allChatSessions[i].claudeCodeSessionId = sid;
+                allChatSessions[i].claudeCodeSessionAccount = active;
+                break;
+            }
+        }
+    }
+
+    // Plain-text transcript of the conversation so far, used to seed a *fresh* CLI
+    // session (new chat, or after switching account) with prior context. Includes the
+    // latest user message and skips the streaming placeholder. Returns "" when there
+    // is only the single latest message (nothing to carry over).
+    function claudeCodeTranscript() {
+        var lines = [];
+        var count = 0;
+        for (var i = 0; i < chatHistory.count; i++) {
+            var m = chatHistory.get(i);
+            if (!m.isUser && !m.isFinished)
+                continue;
+            var t = (m.text || "").trim();
+            if (t === "")
+                continue;
+            lines.push((m.isUser ? "User: " : "Assistant: ") + t);
+            count++;
+        }
+        if (count <= 1)
+            return "";
+        return "Continue this conversation. Conversation so far:\n\n" + lines.join("\n\n") + "\n\nReply to the last user message.";
+    }
+
+    // Resolve the Anthropic API key: ANTHROPIC_API_KEY env var wins, config field is the fallback.
+    // OpenAI, Gemini and OpenRouter all expose the same /chat/completions and
+    // /models API, so they share one request/parse path and differ only in the
+    // three values below.
+    readonly property bool isOpenaiCompat: provider === "openai" || provider === "gemini" || provider === "openrouter"
+
+    function openaiCompatBase(p) {
+        const which = p || provider;
+        if (which === "gemini")
+            return GlobalConfig.ai.geminiUrl || "https://generativelanguage.googleapis.com/v1beta/openai";
+        if (which === "openrouter")
+            return GlobalConfig.ai.openrouterUrl || "https://openrouter.ai/api/v1";
+        return GlobalConfig.ai.openaiUrl || "https://api.openai.com/v1";
+    }
+
+    // The API key for a provider. The environment variable wins over the config
+    // field, so a key exported in the session is never overridden by a stale one
+    // saved in settings.
+    // API keys live in the session keyring (Secret Service — KWallet on KDE,
+    // gnome-keyring elsewhere), not in shell.json. A config file is world-readable
+    // by anything running as the user and ends up in dotfile backups and git
+    // repos; a key is not the kind of thing to leave sitting there.
+    //
+    // The config fields are kept only so an existing plaintext key can be moved
+    // across once and then cleared.
+    property var keyringKeys: ({})
+
+    function keyringAttr(p) {
+        return "caelestia-ai-" + (p || provider);
+    }
+
+    function loadKeyring(p) {
+        const which = p || provider;
+        const cmd = ["secret-tool", "lookup", "service", "caelestia", "key", root.keyringAttr(which)];
+        const qml = 'import QtQuick\nimport Quickshell.Io\n' +
+            'Process {\n    id: kp\n    command: ' + JSON.stringify(cmd) + '\n' +
+            '    stdout: StdioCollector { onStreamFinished: root.onKeyringKey(' + JSON.stringify(which) + ', (text || "").trim(), kp); }\n' +
+            '    onExited: code => { if (code !== 0) kp.destroy(); }\n}';
+        try {
+            const o = Qt.createQmlObject(qml, root, "keyringProc");
+            o.running = true;
+        } catch (e) {}
+    }
+
+    function onKeyringKey(p, key, proc) {
+        if (key !== "") {
+            const m = root.keyringKeys;
+            m[p] = key;
+            root.keyringKeys = Object.assign({}, m);
+        }
+        if (proc)
+            proc.destroy();
+    }
+
+    function storeKeyring(p, key) {
+        const which = p || provider;
+        const m = root.keyringKeys;
+        m[which] = key;
+        root.keyringKeys = Object.assign({}, m);
+
+        const attr = root.keyringAttr(which);
+        // The key goes in on stdin so it never appears in the process list.
+        const script = key === ""
+            ? "secret-tool clear service caelestia key " + JSON.stringify(attr)
+            : "printf %s \"$1\" | secret-tool store --label=" + JSON.stringify("Caelestia " + which + " API key") +
+              " service caelestia key " + JSON.stringify(attr);
+        const cmd = key === "" ? ["sh", "-c", script] : ["sh", "-c", script, "--", key];
+        try {
+            const o = Qt.createQmlObject('import QtQuick\nimport Quickshell.Io\nProcess { id: sp; command: ' +
+                JSON.stringify(cmd) + '\n onExited: code => sp.destroy() }', root, "keyringStore");
+            o.running = true;
+        } catch (e) {}
+    }
+
+    // Move a key that predates keyring storage out of the config, once.
+    function migratePlaintextKey(p, configKey) {
+        const existing = (GlobalConfig.ai[configKey] || "").trim();
+        if (existing === "")
+            return;
+        root.storeKeyring(p, existing);
+        GlobalConfig.ai[configKey] = "";
+        Logger.log("[AI] moved " + p + " API key from shell.json into the keyring");
+    }
+
+    function getApiKeyFor(p) {
+        const which = p || provider;
+        var envName = "ANTHROPIC_API_KEY";
+        var configured = GlobalConfig.ai.anthropicApiKey;
+        if (which === "openai") {
+            envName = "OPENAI_API_KEY";
+            configured = GlobalConfig.ai.openaiApiKey;
+        } else if (which === "gemini") {
+            envName = "GEMINI_API_KEY";
+            configured = GlobalConfig.ai.geminiApiKey;
+        } else if (which === "openrouter") {
+            envName = "OPENROUTER_API_KEY";
+            configured = GlobalConfig.ai.openrouterApiKey;
+        }
+        const envKey = Quickshell.env(envName);
+        if (envKey && envKey.trim() !== "")
+            return envKey.trim();
+
+        // Keyring next. A value still sitting in the config is a leftover from
+        // before keyring storage — hand it back this once, migrateKeys() moves it.
+        const stored = root.keyringKeys[which];
+        if (stored && stored !== "")
+            return stored;
+        return (configured || "").trim();
+    }
+
+    // Config field backing each provider, used only for the one-time migration.
+    readonly property var legacyKeyFields: ({
+        "claude": "anthropicApiKey",
+        "openai": "openaiApiKey",
+        "gemini": "geminiApiKey",
+        "openrouter": "openrouterApiKey"
+    })
+
+    function loadAllKeys() {
+        for (const p in root.legacyKeyFields) {
+            root.loadKeyring(p);
+            root.migratePlaintextKey(p, root.legacyKeyFields[p]);
+        }
+    }
+
+    function getApiKey() {
+        return root.getApiKeyFor(root.provider);
+    }
+
+    // Providers that need a key before they can send anything.
+    readonly property bool needsApiKey: isClaude || isOpenaiCompat
+
+    // The model to send for the active provider. Nothing is hardcoded: until a
+    // provider's list has been fetched the saved choice is used as-is, and when
+    // there is no saved choice the first model the provider offered wins.
+    function activeModel() {
+        if (isClaudeCode)
+            return GlobalConfig.ai.defaultClaudeCodeModel || "default";
+        if (isClaude)
+            return GlobalConfig.ai.defaultClaudeModel || root.claudeModelsList[0] || "";
+        if (isOpenaiCompat) {
+            const cfgKey = provider === "openai" ? "defaultOpenaiModel"
+                         : provider === "gemini" ? "defaultGeminiModel" : "defaultOpenrouterModel";
+            return GlobalConfig.ai[cfgKey] || root.openaiCompatModelList()[0] || "";
+        }
+        return GlobalConfig.ai.defaultOllamaModel || root.ollamaModelsList[0] || "";
+    }
+
+    // Providers exposed in the provider selector (respecting the enable toggles).
     readonly property var providerList: {
-        const l = [];
+        var l = [];
         if (GlobalConfig.ai.enableOllama)
             l.push("ollama");
         if (GlobalConfig.ai.enableClaudeCode)
             l.push("claude-code");
+        if (GlobalConfig.ai.enableClaude)
+            l.push("claude");
+        if (GlobalConfig.ai.enableOpenai)
+            l.push("openai");
+        if (GlobalConfig.ai.enableGemini)
+            l.push("gemini");
+        if (GlobalConfig.ai.enableOpenrouter)
+            l.push("openrouter");
         if (l.length === 0)
             l.push("ollama");
         return l;
     }
 
-    function providerLabel(p: string): string {
-        return p === "claude-code" ? "Claude Code" : "Ollama";
+    function providerLabel(p) {
+        if (p === "claude-code")
+            return "Claude Code";
+        if (p === "claude")
+            return "Claude API";
+        if (p === "openai")
+            return "ChatGPT";
+        if (p === "gemini")
+            return "Gemini";
+        if (p === "openrouter")
+            return "OpenRouter";
+        return "Ollama";
     }
 
-    // The `claude` CLI, not an HTTP endpoint — it drives a subprocess instead.
-    readonly property bool isClaudeCode: provider === "claude-code"
-
-    // The model to send for the active provider.
-    function activeModel(): string {
-        if (isClaudeCode)
-            return GlobalConfig.ai.defaultClaudeCodeModel || "default";
-        return GlobalConfig.ai.defaultOllamaModel || root.ollamaModelsList[0] || "";
-    }
     property bool isTyping: false
     property bool isThinking: false
     property string currentThoughtText: ""
@@ -430,6 +613,66 @@ Item {
         if (isTyping) listView.positionViewAtEnd();
     }
     property bool inAgentLoop: false
+
+    // Rate limiting. Providers answer a 429 with how long to wait, so honour that
+    // instead of surfacing an error the user can only respond to by waiting anyway.
+    property int rateLimitRetries: 0
+    readonly property int maxRateLimitRetries: 3
+    property bool onFreeTier: false   // learned from the quota metric name in a 429
+
+    // Ticks once a second so the status line counts down rather than showing a
+    // number frozen at whatever the wait started as.
+    property int rateLimitSecondsLeft: 0
+
+    // A pending retry belongs to the conversation and model it was scheduled for.
+    // Without this a wait left over from a cancelled chat fires later and answers
+    // a prompt the user has already moved on from — on whatever model is selected
+    // by then — and those stray requests go on to trigger fresh rate limits.
+    function cancelRateLimitRetry(): void {
+        rateLimitRetryTimer.stop();
+        rateLimitRetryTimer.retryFn = null;
+        rateLimitSecondsLeft = 0;
+        rateLimitRetries = 0;
+    }
+
+    Timer {
+        id: rateLimitRetryTimer
+        interval: 1000
+        repeat: true
+        property var retryFn: null
+        property string forChat: ""
+        property string forModel: ""
+        onTriggered: {
+            root.rateLimitSecondsLeft--;
+            if (root.rateLimitSecondsLeft > 0) {
+                root.currentActionText = qsTr("Rate limited — retrying in %1s…").arg(root.rateLimitSecondsLeft);
+                return;
+            }
+            stop();
+            if (forChat !== root.currentChatId || forModel !== root.activeModel()) {
+                retryFn = null;          // the user moved on; the answer is no longer wanted
+                root.currentActionText = "";
+                root.isTyping = false;
+                root.isThinking = false;
+                root.inAgentLoop = false;
+                return;
+            }
+            if (retryFn) { const f = retryFn; retryFn = null; f(); }
+        }
+    }
+
+    // Seconds to wait, from the provider's own answer: the Retry-After header if
+    // present, else the "retry in 12.3s" the message spells out. Falls back to a
+    // short pause when neither is given.
+    function rateLimitDelayMs(xhr) {
+        const header = xhr.getResponseHeader("Retry-After");
+        if (header && !isNaN(parseFloat(header)))
+            return Math.ceil(parseFloat(header) * 1000) + 500;
+        const m = /retry in ([0-9.]+)\s*s/i.exec(xhr.responseText || "");
+        if (m)
+            return Math.ceil(parseFloat(m[1]) * 1000) + 500;
+        return 15000;
+    }
 
     function shellQuote(str) {
         if (str === null || str === undefined) return "''";
@@ -520,7 +763,7 @@ Item {
         } else if (type === "screenshot_encode") {
             var b64 = stdout.replace(/\n/g, "").trim();
             accumulatedToolImage = b64;
-            accumulatedToolResults += "Tool: take_screenshot\nResult: Screenshot taken. Analyze the attached image.\n\n";
+            accumulatedToolResults += "Result of take_screenshot:\nScreenshot taken. Analyse the attached image.\n\n";
             runningToolsCount--;
             checkToolsFinished();
         } else if (type.startsWith("exec_")) {
@@ -530,7 +773,13 @@ Item {
             if (!outText && !errText) {
                 outText = "(Command completed with no output. If it was a background task, it has been launched successfully.)";
             }
-            accumulatedToolResults += "Tool: " + toolName + "\nCommand executed: " + cmd + "\nOutput: " + outText + "\nError: " + errText + "\n\n";
+            // Plain prose, not a pseudo-protocol dump. The old "Tool:/Command
+            // executed:/Output:/Error:" framing made Gemini either imitate the
+            // format back (answering with fake tool output) or refuse outright with
+            // finish_reason function_call_filter: MALFORMED_FUNCTION_CALL and an
+            // empty response, which looked like generation stopping dead. Echoing
+            // the raw command array back at the model never helped it either.
+            accumulatedToolResults += "Result of " + toolName + ":\n" + outText + (errText ? "\n\nErrors reported:\n" + errText : "") + "\n\n";
             runningToolsCount--;
             checkToolsFinished();
         }
@@ -541,6 +790,390 @@ Item {
             var b64 = accumulatedToolImage ? accumulatedToolImage : null;
             sendPrompt(accumulatedToolResults.trim(), true, b64, "multi_tool");
         }
+    }
+
+    // ---- Claude Code provider (subscription `claude` CLI, no API key) ----
+
+    function claudeCodeCwd() {
+        return Quickshell.env("HOME") || ".";
+    }
+
+    // Resolve the `claude` binary without depending on the shell PATH (Quickshell may
+    // not inherit ~/.local/bin). If the config value is left at the default "claude",
+    // point at the official installer location; a custom value is used verbatim.
+    function claudeCodeBinPath() {
+        var b = (GlobalConfig.ai.claudeCodeBin || "claude").trim();
+        if (b === "" || b === "claude") {
+            var home = Quickshell.env("HOME") || "";
+            if (home !== "")
+                return home + "/.local/bin/claude";
+            return "claude";
+        }
+        return b;
+    }
+
+    // ---- Claude accounts (multi-login via CLAUDE_CONFIG_DIR) ----
+    // The default ~/.claude login is always present as an implicit "Default" (id "").
+    // Additional accounts each get their own config dir under ~/.config/caelestia/claude/<id>.
+    function claudeAccounts() {
+        var list = [{ "id": "", "name": "Default", "dir": "" }];
+        try {
+            var parsed = JSON.parse(GlobalConfig.ai.claudeAccountsJson || "[]");
+            if (Array.isArray(parsed)) {
+                var home = Quickshell.env("HOME") || "";
+                for (var i = 0; i < parsed.length; i++) {
+                    var a = parsed[i];
+                    if (a && a.id)
+                        list.push({
+                            "id": String(a.id),
+                            "name": String(a.name || a.id),
+                            "dir": home + "/.config/caelestia/claude/" + String(a.id)
+                        });
+                }
+            }
+        } catch (e) {}
+        return list;
+    }
+
+    function activeClaudeAccountObj() {
+        var id = GlobalConfig.ai.activeClaudeAccount || "";
+        var list = claudeAccounts();
+        for (var i = 0; i < list.length; i++)
+            if (list[i].id === id)
+                return list[i];
+        return list[0];
+    }
+
+    function activeClaudeConfigDir() {
+        return activeClaudeAccountObj().dir || "";
+    }
+
+    // Real display names (login email / name) read from each account's .claude.json.
+    property var resolvedAccountNames: ({})
+
+    function accountJsonPath(id) {
+        var home = Quickshell.env("HOME") || "";
+        if (!id || id === "")
+            return home + "/.claude.json";
+        return home + "/.config/caelestia/claude/" + id + "/.claude.json";
+    }
+
+    function accountLabel(id) {
+        if (resolvedAccountNames[id])
+            return resolvedAccountNames[id];
+        var list = claudeAccounts();
+        for (var i = 0; i < list.length; i++)
+            if (list[i].id === id)
+                return list[i].name;
+        return "Default";
+    }
+
+    // One FileView per account resolves its login name from .claude.json.
+    Instantiator {
+        model: root.claudeAccountIds
+        delegate: FileView {
+            required property string modelData
+            path: root.accountJsonPath(modelData)
+            printErrors: false
+            watchChanges: false
+            onLoaded: {
+                try {
+                    var d = JSON.parse(text());
+                    var oa = d.oauthAccount || {};
+                    var nm = oa.displayName || oa.emailAddress || "";
+                    if (nm) {
+                        var map = root.resolvedAccountNames;
+                        map[modelData] = nm;
+                        root.resolvedAccountNames = Object.assign({}, map);
+                    }
+                } catch (e) {}
+            }
+        }
+    }
+
+    readonly property var claudeAccountIds: {
+        var l = [];
+        var a = claudeAccounts();
+        for (var i = 0; i < a.length; i++)
+            l.push(a[i].id);
+        return l;
+    }
+
+    // Env-var line injected into the dynamically-built Process (empty for Default).
+    function claudeCodeEnvSnippet() {
+        var dir = activeClaudeConfigDir();
+        if (dir && dir !== "")
+            return "    environment: ({ \"CLAUDE_CONFIG_DIR\": " + JSON.stringify(dir) + " })\n";
+        return "";
+    }
+
+    function logClaudeCodeStderr(proc, line) {
+        if (!line)
+            return;
+        var t = line.trim();
+        if (t === "")
+            return;
+        proc.errAcc = (proc.errAcc || "") + t + "\n";
+        Logger.log("[ClaudeCode] " + t);
+    }
+
+    // Heuristic: does this CLI output indicate the Claude account isn't logged in?
+    function isClaudeCodeAuthError(text) {
+        if (!text)
+            return false;
+        var t = String(text).toLowerCase();
+        return t.indexOf("login") !== -1
+            || t.indexOf("log in") !== -1
+            || t.indexOf("logged in") !== -1
+            || t.indexOf("not authenticated") !== -1
+            || t.indexOf("unauthorized") !== -1
+            || t.indexOf("authentication") !== -1
+            || t.indexOf("oauth") !== -1
+            || t.indexOf("invalid api key") !== -1
+            || t.indexOf("api key") !== -1
+            || t.indexOf("expired") !== -1
+            || t.indexOf("sign in") !== -1
+            || t.indexOf("credentials") !== -1;
+    }
+
+    function claudeCodeAuthHint() {
+        return "⚠️ Claude hesabınıza giriş yapılmamış görünüyor.\n\nBir terminal açıp `claude` komutunu çalıştırın ve aboneliğinizle giriş yapın (login), ardından burada tekrar deneyin.";
+    }
+
+    // Generate a short chat title via a one-shot `claude -p ... --output-format json`.
+    function generateClaudeCodeTitleAsync(chatId, firstMessage) {
+        if (!firstMessage)
+            return;
+        var safeMsg = firstMessage.substring(0, 200);
+        var prompt = "Output ONLY a concise 2-4 word title for the following message. No quotes, no trailing punctuation, no explanation.\n\nMessage: " + safeMsg;
+
+        var cmd = [claudeCodeBinPath(), "-p", prompt, "--output-format", "json", "--dangerously-skip-permissions"];
+        var commandStr = JSON.stringify(cmd);
+        var cwdStr = JSON.stringify(claudeCodeCwd());
+        var chatIdStr = JSON.stringify(chatId);
+        var qml =
+            "import QtQuick\n" +
+            "import Quickshell.Io\n" +
+            "Process {\n" +
+            "    id: tproc\n" +
+            "    command: " + commandStr + "\n" +
+            "    workingDirectory: " + cwdStr + "\n" +
+            claudeCodeEnvSnippet() +
+            "    stdout: StdioCollector { onStreamFinished: root.handleClaudeCodeTitle(" + chatIdStr + ", text || \"\", tproc); }\n" +
+            "    onExited: code => { if (code !== 0) tproc.destroy(); }\n" +
+            "}";
+        try {
+            var obj = Qt.createQmlObject(qml, root, "claudeCodeTitleProc");
+            obj.running = true;
+        } catch (e) {
+            Logger.log("[AI] claude-code title process error: " + e.message);
+        }
+    }
+
+    function handleClaudeCodeTitle(chatId, text, proc) {
+        try {
+            var parsed = JSON.parse(text);
+            if (parsed && parsed.result && !parsed.is_error)
+                applyGeneratedTitle(chatId, String(parsed.result));
+        } catch (e) {}
+        if (proc)
+            proc.destroy();
+    }
+
+    function stopClaudeCode() {
+        if (root.currentClaudeCodeProc) {
+            try {
+                root.currentClaudeCodeProc.running = false;
+            } catch (e) {}
+            root.currentClaudeCodeProc = null;
+        }
+    }
+
+    function sendClaudeCode(promptText) {
+        // Drop any stale empty assistant placeholder, then add a fresh bubble to stream into.
+        for (var i = chatHistory.count - 1; i >= 0; i--) {
+            var m = chatHistory.get(i);
+            if (!m.isUser && !m.isFinished && m.text === "")
+                chatHistory.remove(i);
+        }
+        chatHistory.append({
+            "isUser": false,
+            "text": "",
+            "isFinished": false,
+            "thoughtText": ""
+        });
+        listView.positionViewAtEnd();
+
+        var bin = claudeCodeBinPath();
+        var sid = claudeCodeSessionFor(currentChatId);
+
+        // Fresh session (new chat, or the active account changed) → seed it with the
+        // prior transcript so the new account continues the same conversation.
+        var promptToSend = promptText;
+        if (sid === "") {
+            var transcript = claudeCodeTranscript();
+            if (transcript !== "")
+                promptToSend = transcript;
+        }
+
+        var cmd = [bin, "-p", promptToSend, "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--dangerously-skip-permissions"];
+
+        var mdl = GlobalConfig.ai.defaultClaudeCodeModel || "default";
+        if (mdl && mdl !== "default") {
+            cmd.push("--model");
+            cmd.push(mdl);
+        }
+
+        var eff = GlobalConfig.ai.claudeCodeEffort || "default";
+        if (eff && eff !== "default" && effortLevelsFor(mdl).indexOf(eff) !== -1) {
+            cmd.push("--effort");
+            cmd.push(eff);
+        }
+
+        if (sid !== "") {
+            cmd.push("--resume");
+            cmd.push(sid);
+        }
+
+        var commandStr = JSON.stringify(cmd);
+        var cwdStr = JSON.stringify(claudeCodeCwd());
+        var processQml =
+            "import QtQuick\n" +
+            "import Quickshell.Io\n" +
+            "Process {\n" +
+            "    id: proc\n" +
+            "    command: " + commandStr + "\n" +
+            "    workingDirectory: " + cwdStr + "\n" +
+            claudeCodeEnvSnippet() +
+            "    property string acc: \"\"\n" +
+            "    property string thought: \"\"\n" +
+            "    property string sess: \"\"\n" +
+            "    property string errAcc: \"\"\n" +
+            "    property bool done: false\n" +
+            "    stdout: SplitParser { onRead: line => root.onClaudeCodeLine(proc, line) }\n" +
+            "    stderr: SplitParser { onRead: line => root.logClaudeCodeStderr(proc, line) }\n" +
+            "    onExited: code => root.onClaudeCodeExit(proc, code)\n" +
+            "}";
+        try {
+            var obj = Qt.createQmlObject(processQml, root, "claudeCodeProc");
+            root.currentClaudeCodeProc = obj;
+            obj.running = true;
+        } catch (e) {
+            console.error("CLAUDE CODE PROCESS ERROR: " + e.message);
+            chatHistory.setProperty(chatHistory.count - 1, "text", "⚠️ Failed to launch Claude Code: " + e.message);
+            chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
+            isTyping = false;
+            isThinking = false;
+            inAgentLoop = false;
+            saveHistory();
+        }
+    }
+
+    function onClaudeCodeLine(proc, line) {
+        line = (line || "").trim();
+        if (line === "")
+            return;
+
+        var evt;
+        try {
+            evt = JSON.parse(line);
+        } catch (e) {
+            return; // non-JSON diagnostic output
+        }
+
+        if (evt.session_id)
+            proc.sess = evt.session_id;
+
+        if (evt.type === "system")
+            return;
+
+        // Token-level streaming (when the CLI emits partial messages).
+        if (evt.type === "stream_event" && evt.event) {
+            var ev = evt.event;
+            if (ev.type === "content_block_delta" && ev.delta) {
+                if (ev.delta.type === "text_delta") {
+                    proc.acc += ev.delta.text || "";
+                    if (isThinking) isThinking = false;
+                } else if (ev.delta.type === "thinking_delta") {
+                    proc.thought += ev.delta.thinking || "";
+                }
+                root.currentThoughtText = proc.thought.trim();
+                chatHistory.setProperty(chatHistory.count - 1, "thoughtText", proc.thought.trim());
+                chatHistory.setProperty(chatHistory.count - 1, "text", proc.acc.trim());
+                listView.positionViewAtEnd();
+            }
+            return;
+        }
+
+        // Whole assistant messages (also carry tool_use blocks). Used as the fallback
+        // when token-level partials aren't emitted, and to surface tool activity.
+        if (evt.type === "assistant" && evt.message && evt.message.content) {
+            var hasTool = false;
+            var textPart = "";
+            for (var i = 0; i < evt.message.content.length; i++) {
+                var b = evt.message.content[i];
+                if (b.type === "tool_use") {
+                    hasTool = true;
+                    if (b.name)
+                        currentActionText = "Running " + b.name + "...";
+                } else if (b.type === "text") {
+                    textPart += b.text || "";
+                }
+            }
+            if (textPart.trim() !== "" && proc.acc.indexOf(textPart) === -1) {
+                proc.acc = (proc.acc ? proc.acc + "\n\n" : "") + textPart;
+                if (isThinking) isThinking = false;
+                chatHistory.setProperty(chatHistory.count - 1, "text", proc.acc.trim());
+                listView.positionViewAtEnd();
+            }
+            if (hasTool && textPart.trim() === "")
+                isThinking = true;
+            return;
+        }
+
+        if (evt.type === "result") {
+            var resText = (evt.result !== undefined && evt.result !== null) ? String(evt.result) : "";
+            var errored = (evt.is_error === true) || (evt.subtype && String(evt.subtype).indexOf("error") !== -1);
+            if (errored && (isClaudeCodeAuthError(resText) || isClaudeCodeAuthError(proc.errAcc))) {
+                proc.acc = claudeCodeAuthHint();
+            } else if (proc.acc.trim() === "" && resText !== "") {
+                proc.acc = resText;
+            }
+            finalizeClaudeCode(proc);
+            return;
+        }
+    }
+
+    function finalizeClaudeCode(proc) {
+        if (proc.done)
+            return;
+        proc.done = true;
+        var finalText = (proc.acc || "").trim();
+        chatHistory.setProperty(chatHistory.count - 1, "text", finalText !== "" ? finalText : "(no output)");
+        chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
+        setClaudeCodeSession(currentChatId, proc.sess);
+        isTyping = false;
+        isThinking = false;
+        inAgentLoop = false;
+        currentActionText = "Thinking...";
+        saveHistory();
+        listView.positionViewAtEnd();
+    }
+
+    function onClaudeCodeExit(proc, code) {
+        if (!proc.done) {
+            if ((proc.acc || "").trim() === "") {
+                if (isClaudeCodeAuthError(proc.errAcc))
+                    chatHistory.setProperty(chatHistory.count - 1, "text", claudeCodeAuthHint());
+                else if (code !== 0)
+                    chatHistory.setProperty(chatHistory.count - 1, "text",
+                        "⚠️ Claude Code çalıştırılamadı (çıkış kodu " + code + "). `claude` CLI kurulu ve giriş yapılmış mı? Bir terminalde `claude` çalıştırıp giriş yapmayı deneyin.");
+            }
+            finalizeClaudeCode(proc);
+        }
+        if (root.currentClaudeCodeProc === proc)
+            root.currentClaudeCodeProc = null;
+        proc.destroy();
     }
 
     property string currentActionText: "Thinking..."
@@ -560,22 +1193,88 @@ Item {
                                 list.push(response.models[i].name);
                             }
                         }
-                        if (list.length > 0) {
-                            // Only what this instance actually has pulled — a guessed
-                            // list just offers models that are not installed.
-                            ollamaModelsList = list;
-                            if (list.indexOf(GlobalConfig.ai.defaultOllamaModel) === -1) {
-                                GlobalConfig.ai.defaultOllamaModel = list[0];
-                            }
-                        }
+                        // Only what this Ollama instance actually has pulled — a
+                        // guessed list would just offer models that aren't installed.
+                        ollamaModelsList = list;
+                        if (list.length > 0 && list.indexOf(GlobalConfig.ai.defaultOllamaModel) === -1)
+                            GlobalConfig.ai.defaultOllamaModel = list[0];
                     } catch (e) {
                         Logger.log("Error parsing Ollama models: " + e.message);
-                        ollamaModelsList = ["llama3", "mistral", "phi3", "gemma"];
                     }
                 } else {
                     Logger.log("Ollama tags request failed (status " + xhr.status + ")");
-                    ollamaModelsList = ["llama3", "mistral", "phi3", "gemma"];
                 }
+            }
+        };
+        xhr.send();
+    }
+
+    // Models offered by the OpenAI-compatible providers, keyed by provider id.
+    // Fetched from /models on demand; the fallbacks below are used until a fetch
+    // succeeds (and when it can't, e.g. no key yet).
+    property var openaiCompatModels: ({})
+
+    function openaiCompatModelList(p) {
+        return root.openaiCompatModels[p || provider] || [];
+    }
+
+    // Providers charge a request for their model list too, and on a free tier that
+    // is quota the user would rather spend on answers — so fetch each provider's
+    // list once per session instead of every time the sidebar opens.
+    property var modelsFetched: ({})
+
+    function fetchOpenaiCompatModels(p, force = false) {
+        const which = p || provider;
+        if (!force && root.modelsFetched[which])
+            return;
+        const key = root.getApiKeyFor(which);
+        // OpenRouter publishes its catalogue without auth; the other two need the key.
+        if (key === "" && which !== "openrouter")
+            return;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", root.openaiCompatBase(which) + "/models", true);
+        if (key !== "")
+            xhr.setRequestHeader("Authorization", "Bearer " + key);
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState !== XMLHttpRequest.DONE)
+                return;
+            if (xhr.status !== 200) {
+                Logger.log("[AI] " + root.providerLabel(which) + " model list failed (status " + xhr.status + ")");
+                return;
+            }
+            try {
+                const parsed = JSON.parse(xhr.responseText);
+                var list = [];
+                for (var i = 0; i < (parsed.data || []).length; i++) {
+                    const id = parsed.data[i].id;
+                    if (!id)
+                        continue;
+                    // Gemini prefixes ids with "models/"; the chat endpoint accepts either,
+                    // but the bare id is what users recognise.
+                    list.push(id.indexOf("models/") === 0 ? id.substring(7) : id);
+                }
+                // Only chat-capable models are useful here — drop embedding/audio/image ones.
+                list = list.filter(m => !/embed|whisper|tts|audio|image|vision-preview|moderation|rerank|dall-e/i.test(m));
+                list.sort();
+                if (list.length === 0)
+                    return;
+                var next = {};
+                for (var k in root.openaiCompatModels)
+                    next[k] = root.openaiCompatModels[k];
+                next[which] = list;
+                root.openaiCompatModels = next;
+
+                const seen = root.modelsFetched;
+                seen[which] = true;
+                root.modelsFetched = seen;
+
+                // Keep the saved default honest: if it isn't offered, fall back to the first.
+                const cfgKey = which === "openai" ? "defaultOpenaiModel" : (which === "gemini" ? "defaultGeminiModel" : "defaultOpenrouterModel");
+                if (list.indexOf(GlobalConfig.ai[cfgKey]) === -1)
+                    GlobalConfig.ai[cfgKey] = list[0];
+            } catch (e) {
+                Logger.log("[AI] Error parsing " + root.providerLabel(which) + " models: " + e.message);
             }
         };
         xhr.send();
@@ -584,7 +1283,9 @@ Item {
     property var allChatSessions: []
 
     function createNewChat() {
+        cancelRateLimitRetry();
         typingTimer.stop();
+        stopClaudeCode();
         isTyping = false;
         isThinking = false;
         inAgentLoop = false;
@@ -594,7 +1295,9 @@ Item {
     }
 
     function loadChat(id) {
+        cancelRateLimitRetry();
         typingTimer.stop();
+        stopClaudeCode();
         isTyping = false;
         isThinking = false;
         inAgentLoop = false;
@@ -713,6 +1416,7 @@ Item {
     }
 
     function deleteChat(id) {
+        cancelRateLimitRetry();
         var idx = -1;
         for (var i = 0; i < allChatSessions.length; i++) {
             if (allChatSessions[i].id === id) {
@@ -743,16 +1447,88 @@ Item {
     }
 
     function clearAllHistory() {
+        cancelRateLimitRetry();
         allChatSessions = [];
         historySessionsModel.clear();
         GlobalConfig.ai.ollamaHistoryJson = "[]";
         createNewChat();
     }
 
+    function applyGeneratedTitle(chatId, raw) {
+        if (!raw)
+            return;
+        var title = raw.trim().replace(/^"|"$/g, '').replace(/\n/g, ' ');
+        if (title.length > 40)
+            title = title.substring(0, 40) + "...";
+        if (title.length > 0)
+            updateChatTitle(chatId, title);
+    }
+
     function generateChatTitleAsync(chatId, firstMessage) {
         if (!firstMessage) return;
-        
+
+        if (root.isClaudeCode) {
+            root.generateClaudeCodeTitleAsync(chatId, firstMessage);
+            return;
+        }
+
+        var safeMsg = firstMessage.substring(0, 200);
+        var titleSystem = "You are a title generator. Output ONLY a 2-4 word title representing the user's message. NO quotes, NO explanation.";
         var xhr = new XMLHttpRequest();
+
+        if (root.isClaude) {
+            if (root.getApiKey() === "")
+                return;
+            var claudeBase = GlobalConfig.ai.anthropicUrl || "https://api.anthropic.com";
+            xhr.open("POST", claudeBase + "/v1/messages", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("x-api-key", root.getApiKey());
+            xhr.setRequestHeader("anthropic-version", "2023-06-01");
+            xhr.setRequestHeader("anthropic-dangerous-direct-browser-access", "true");
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                    try {
+                        var parsed = JSON.parse(xhr.responseText);
+                        if (parsed.content && parsed.content.length > 0 && parsed.content[0].text)
+                            root.applyGeneratedTitle(chatId, parsed.content[0].text);
+                    } catch (e) {}
+                }
+            };
+            xhr.send(JSON.stringify({
+                model: root.activeModel(),
+                max_tokens: 32,
+                system: titleSystem,
+                messages: [{ role: "user", content: "Message: " + safeMsg + "\nTitle:" }]
+            }));
+            return;
+        }
+
+        if (root.isOpenaiCompat) {
+            if (root.getApiKey() === "")
+                return;
+            xhr.open("POST", root.openaiCompatBase() + "/chat/completions", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Authorization", "Bearer " + root.getApiKey());
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                    try {
+                        var oaiParsed = JSON.parse(xhr.responseText);
+                        if (oaiParsed.choices && oaiParsed.choices.length > 0 && oaiParsed.choices[0].message)
+                            root.applyGeneratedTitle(chatId, oaiParsed.choices[0].message.content || "");
+                    } catch (e) {}
+                }
+            };
+            xhr.send(JSON.stringify({
+                model: root.activeModel(),
+                messages: [
+                    { role: "system", content: titleSystem },
+                    { role: "user", content: "Message: " + safeMsg + "\nTitle:" }
+                ],
+                stream: false
+            }));
+            return;
+        }
+
         var url = (GlobalConfig.ai.ollamaUrl || "http://localhost:11434") + "/api/generate";
         xhr.open("POST", url, true);
         xhr.setRequestHeader("Content-Type", "application/json");
@@ -760,22 +1536,14 @@ Item {
             if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
                 try {
                     var parsed = JSON.parse(xhr.responseText);
-                    if (parsed.response) {
-                        var title = parsed.response.trim().replace(/^"|"$/g, '').replace(/\n/g, ' ');
-                        if (title.length > 40) title = title.substring(0, 40) + "...";
-                        if (title.length > 0) {
-                            updateChatTitle(chatId, title);
-                        }
-                        return;
-                    }
+                    if (parsed.response)
+                        root.applyGeneratedTitle(chatId, parsed.response);
                 } catch (e) {}
             }
         };
-        
-        var safeMsg = firstMessage.substring(0, 200);
         xhr.send(JSON.stringify({
             model: GlobalConfig.ai.defaultOllamaModel || "llama3",
-            system: "You are a title generator. Output ONLY a 2-4 word title representing the user's message. NO quotes, NO explanation.",
+            system: titleSystem,
             prompt: "Message: " + safeMsg + "\nTitle:",
             stream: false
         }));
@@ -821,10 +1589,16 @@ Item {
         saveHistory();
     }
 
-    function sendPrompt(promptText, isSystemToolResult = false, base64Image = null, toolName = "") {
+    function sendPrompt(promptText, isSystemToolResult = false, base64Image = null, toolName = "", isRetry = false) {
         if (!promptText.trim() && !base64Image) return;
 
-        if (!isSystemToolResult) {
+        // Sending a message dismisses any open prompt suggestions.
+        promptSuggestions = [];
+
+        if (!isRetry)
+            cancelRateLimitRetry();   // a new send supersedes any wait still pending
+
+        if (!isSystemToolResult && !isRetry) {
             chatHistory.append({
                 "isUser": true,
                 "text": promptText || "",
@@ -833,6 +1607,18 @@ Item {
             });
             listView.positionViewAtEnd();
             saveHistory();
+        }
+
+        if (root.needsApiKey && root.getApiKey() === "") {
+            const envNames = {
+                "claude": "ANTHROPIC_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "gemini": "GEMINI_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY"
+            };
+            addAiMessage("⚠️ No " + root.providerLabel(root.provider) + " API key configured. Set the "
+                + (envNames[root.provider] || "API") + " environment variable, or add a key in the AI settings.");
+            return;
         }
 
         isTyping = true;
@@ -855,7 +1641,7 @@ Item {
             currentActionText = "Thinking...";
         }
 
-        // Claude Code drives a subprocess, not an HTTP request.
+        // Claude Code (subscription CLI) uses a Process, not XMLHttpRequest.
         if (root.isClaudeCode) {
             root.sendClaudeCode(promptText);
             return;
@@ -864,11 +1650,29 @@ Item {
         var xhr = new XMLHttpRequest();
         root.currentRequest = xhr;
 
-        var ollamaModel = GlobalConfig.ai.defaultOllamaModel || "llama3";
-        var ollamaUrl = GlobalConfig.ai.ollamaUrl || "http://localhost:11434";
-        var url = ollamaUrl + "/api/chat";
-        xhr.open("POST", url, true);
-        xhr.setRequestHeader("Content-Type", "application/json");
+        var model = root.activeModel();
+        if (root.isClaude) {
+            var claudeBase = GlobalConfig.ai.anthropicUrl || "https://api.anthropic.com";
+            xhr.open("POST", claudeBase + "/v1/messages", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("x-api-key", root.getApiKey());
+            xhr.setRequestHeader("anthropic-version", "2023-06-01");
+            // QML's XMLHttpRequest presents a browser-like origin; this header opts into direct access.
+            xhr.setRequestHeader("anthropic-dangerous-direct-browser-access", "true");
+        } else if (root.isOpenaiCompat) {
+            xhr.open("POST", root.openaiCompatBase() + "/chat/completions", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Authorization", "Bearer " + root.getApiKey());
+            if (root.provider === "openrouter") {
+                // OpenRouter attributes requests to an app via these; harmless elsewhere.
+                xhr.setRequestHeader("HTTP-Referer", "https://github.com/ladybug-me/caelestia-dots-kde");
+                xhr.setRequestHeader("X-Title", "Caelestia Shell");
+            }
+        } else {
+            var ollamaUrl = GlobalConfig.ai.ollamaUrl || "http://localhost:11434";
+            xhr.open("POST", ollamaUrl + "/api/chat", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+        }
         
         var processedTextLength = 0;
         var accumulatedThoughtText = "";
@@ -902,64 +1706,128 @@ Item {
                     var linesToProcess = (xhr.readyState === XMLHttpRequest.DONE) ? lines.length : lines.length - 1;
                     
                     for (var i = 0; i < linesToProcess; i++) {
-                        var line = lines[i].trim();
+                        var rawLine = lines[i];
+                        var line = rawLine.trim();
                         if (line === "") {
-                            processedTextLength += lines[i].length + 1;
+                            processedTextLength += rawLine.length + 1;
                             continue;
                         }
-                        
-                        try {
-                            var parsed = JSON.parse(line);
-                            processedTextLength += lines[i].length + 1;
-                            
-                            if (parsed.message) {
-                                var chunkReasoning = parsed.message.thinking || parsed.message.reasoning || parsed.message.reasoning_content || "";
-                                if (chunkReasoning) {
-                                    accumulatedThoughtText += chunkReasoning;
-                                }
-                                
-                                var chunkContent = parsed.message.content || "";
-                                if (chunkContent) {
-                                    rawAccumulatedContentText += chunkContent;
-                                }
-                                
-                                var displayContent = stripToolCalls(rawAccumulatedContentText);
-                                var displayThought = accumulatedThoughtText;
-                                
-                                if (accumulatedThoughtText === "") {
-                                    var openThinkIdx = displayContent.indexOf("<think>");
-                                    var closeThinkIdx = displayContent.indexOf("</think>");
-                                    
-                                    if (openThinkIdx !== -1) {
-                                        if (closeThinkIdx !== -1) {
-                                            displayThought = displayContent.substring(openThinkIdx + 7, closeThinkIdx).trim();
-                                            displayContent = displayContent.substring(0, openThinkIdx) + displayContent.substring(closeThinkIdx + 8);
-                                        } else {
-                                            displayThought = displayContent.substring(openThinkIdx + 7).trim();
-                                            displayContent = displayContent.substring(0, openThinkIdx);
-                                        }
-                                    }
-                                }
-                                
-                                root.currentThoughtText = displayThought.trim();
-                                
-                                if (displayContent.trim() !== "") {
-                                    if (isThinking) isThinking = false;
-                                }
-                                
-                                chatHistory.setProperty(chatHistory.count - 1, "thoughtText", displayThought.trim());
-                                chatHistory.setProperty(chatHistory.count - 1, "text", displayContent.trim());
-                                listView.positionViewAtEnd();
+
+                        var chunkContent = "";
+                        var chunkReasoning = "";
+
+                        if (root.isClaude) {
+                            // Anthropic streams Server-Sent Events; only "data:" lines carry JSON.
+                            if (line.indexOf("event:") === 0) {
+                                processedTextLength += rawLine.length + 1;
+                                continue;
                             }
-                        } catch (e) {
-                            break;
+                            if (line.indexOf("data:") !== 0) {
+                                processedTextLength += rawLine.length + 1;
+                                continue;
+                            }
+                            var jsonStr = line.substring(5).trim();
+                            if (jsonStr === "" || jsonStr === "[DONE]") {
+                                processedTextLength += rawLine.length + 1;
+                                continue;
+                            }
+                            try {
+                                var evt = JSON.parse(jsonStr);
+                                processedTextLength += rawLine.length + 1;
+                                if (evt.type === "content_block_delta" && evt.delta) {
+                                    if (evt.delta.type === "text_delta")
+                                        chunkContent = evt.delta.text || "";
+                                    else if (evt.delta.type === "thinking_delta")
+                                        chunkReasoning = evt.delta.thinking || "";
+                                } else if (evt.type === "error") {
+                                    Logger.log("[AI] Claude stream error: " + JSON.stringify(evt.error || {}));
+                                }
+                            } catch (e) {
+                                break;
+                            }
+                        } else if (root.isOpenaiCompat) {
+                            // OpenAI-compatible streaming: SSE where each "data:" line is a
+                            // chunk holding choices[0].delta. "[DONE]" ends the stream.
+                            if (line.indexOf("data:") !== 0) {
+                                processedTextLength += rawLine.length + 1;
+                                continue;
+                            }
+                            var oaiJson = line.substring(5).trim();
+                            if (oaiJson === "" || oaiJson === "[DONE]") {
+                                processedTextLength += rawLine.length + 1;
+                                continue;
+                            }
+                            try {
+                                var oaiEvt = JSON.parse(oaiJson);
+                                processedTextLength += rawLine.length + 1;
+                                if (oaiEvt.error) {
+                                    Logger.log("[AI] " + root.providerLabel(root.provider) + " stream error: " + JSON.stringify(oaiEvt.error));
+                                } else if (oaiEvt.choices && oaiEvt.choices.length > 0) {
+                                    var delta = oaiEvt.choices[0].delta || {};
+                                    chunkContent = delta.content || "";
+                                    // Reasoning models expose their thinking under different
+                                    // keys depending on the provider.
+                                    chunkReasoning = delta.reasoning_content || delta.reasoning || "";
+                                }
+                            } catch (e) {
+                                break;
+                            }
+                        } else {
+                            // Ollama streams newline-delimited JSON objects.
+                            try {
+                                var parsed = JSON.parse(line);
+                                processedTextLength += rawLine.length + 1;
+                                if (parsed.message) {
+                                    chunkReasoning = parsed.message.thinking || parsed.message.reasoning || parsed.message.reasoning_content || "";
+                                    chunkContent = parsed.message.content || "";
+                                }
+                            } catch (e) {
+                                break;
+                            }
                         }
+
+                        if (chunkReasoning)
+                            accumulatedThoughtText += chunkReasoning;
+                        if (chunkContent)
+                            rawAccumulatedContentText += chunkContent;
+
+                        if (chunkContent === "" && chunkReasoning === "")
+                            continue;
+
+                        var displayContent = stripToolCalls(rawAccumulatedContentText);
+                        var displayThought = accumulatedThoughtText;
+
+                        if (accumulatedThoughtText === "") {
+                            var openThinkIdx = displayContent.indexOf("<think>");
+                            var closeThinkIdx = displayContent.indexOf("</think>");
+
+                            if (openThinkIdx !== -1) {
+                                if (closeThinkIdx !== -1) {
+                                    displayThought = displayContent.substring(openThinkIdx + 7, closeThinkIdx).trim();
+                                    displayContent = displayContent.substring(0, openThinkIdx) + displayContent.substring(closeThinkIdx + 8);
+                                } else {
+                                    displayThought = displayContent.substring(openThinkIdx + 7).trim();
+                                    displayContent = displayContent.substring(0, openThinkIdx);
+                                }
+                            }
+                        }
+
+                        root.currentThoughtText = displayThought.trim();
+
+                        if (displayContent.trim() !== "") {
+                            if (isThinking) isThinking = false;
+                        }
+
+                        chatHistory.setProperty(chatHistory.count - 1, "thoughtText", displayThought.trim());
+                        chatHistory.setProperty(chatHistory.count - 1, "text", displayContent.trim());
+                        listView.positionViewAtEnd();
                     }
                 }
                 
                 if (xhr.readyState === XMLHttpRequest.DONE) {
                     if (xhr.status === 200) {
-                        chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
+                            root.rateLimitRetries = 0;
+                    chatHistory.setProperty(chatHistory.count - 1, "isFinished", true);
                         saveHistory();
                         
                         var enableTools = GlobalConfig.ai.enableCelestialMode;
@@ -1055,7 +1923,61 @@ Item {
                             inAgentLoop = false;
                         }
                     } else {
-                        var errMsg = (xhr.status === 0) ? "Generation cancelled" : "Ollama request failed (status " + xhr.status + ").";
+                        var providerName = root.providerLabel(root.provider);
+                        // Providers explain themselves in the error body — a rate limit
+                        // even says how long to wait. Surfacing that beats a bare status
+                        // code the user can do nothing with.
+                        var apiDetail = "";
+                        try {
+                            const errBody = JSON.parse(xhr.responseText);
+                            const e = Array.isArray(errBody) ? (errBody[0] || {}).error : errBody.error;
+                            if (e) {
+                                // OpenRouter wraps the upstream provider's error: its own
+                                // message is just "Provider returned error", and the part
+                                // worth reading (which model, which provider, what to do)
+                                // sits in metadata.raw.
+                                const raw = e.metadata && e.metadata.raw ? String(e.metadata.raw) : "";
+                                const provider = e.metadata && e.metadata.provider_name ? String(e.metadata.provider_name) : "";
+                                if (raw)
+                                    apiDetail = " " + (provider ? provider + ": " : "") + raw.split("\n")[0];
+                                else if (e.message)
+                                    apiDetail = " " + String(e.message).split("\n")[0];
+                            }
+                        } catch (e) {}
+                        // A rate limit is not really a failure — the provider told us
+                        // when it will accept the next request, so wait that long and
+                        // finish the answer instead of dropping it on the user.
+                        // A daily quota does not come back in the seconds the provider
+                        // suggests retrying after, so retrying just spends more of the
+                        // very allowance that ran out. Only wait out short-term limits.
+                        const perDayQuota = /PerDay|per day/i.test(xhr.responseText || "");
+                        if (xhr.status === 429 && perDayQuota)
+                            root.cancelRateLimitRetry();
+
+                        if (xhr.status === 429 && !perDayQuota && root.rateLimitRetries < root.maxRateLimitRetries) {
+                            if ((xhr.responseText || "").indexOf("free_tier") !== -1)
+                                root.onFreeTier = true;
+                            const waitMs = root.rateLimitDelayMs(xhr);
+                            root.rateLimitRetries++;
+                            root.rateLimitSecondsLeft = Math.max(1, Math.round(waitMs / 1000));
+                            root.currentActionText = qsTr("Rate limited — retrying in %1s…").arg(root.rateLimitSecondsLeft);
+                            root.isTyping = true;
+                            root.isThinking = true;
+                            rateLimitRetryTimer.forChat = root.currentChatId;
+                            rateLimitRetryTimer.forModel = root.activeModel();
+                            rateLimitRetryTimer.retryFn = () => root.sendPrompt(promptText, isSystemToolResult, base64Image, toolName, true);
+                            rateLimitRetryTimer.restart();
+                            return;
+                        }
+
+                        var hint = "";
+                        if (xhr.status === 429 && perDayQuota)
+                            hint = " This model's daily free quota is used up — it resets tomorrow. Pick another model, or use Claude Code, which is not on this quota.";
+                        else if (xhr.status === 429)
+                            hint = " Rate limit reached and still limited after " + root.maxRateLimitRetries + " retries — wait a minute and try again.";
+                        else if (root.needsApiKey && (xhr.status === 401 || xhr.status === 403))
+                            hint = " Check your API key.";
+                        var errMsg = (xhr.status === 0) ? "Generation cancelled" : (providerName + " request failed (status " + xhr.status + ")." + hint + apiDetail);
                         var currentText = chatHistory.get(chatHistory.count - 1).text;
                         if (currentText.trim() === "") {
                             chatHistory.setProperty(chatHistory.count - 1, "text", errMsg);
@@ -1072,46 +1994,93 @@ Item {
             }
         };
 
-        var messages = [];
         var enableTools = GlobalConfig.ai.enableCelestialMode;
         var sysPrompt = "You are a helpful AI assistant integrated into the user's desktop OS shell (Caelestia, running on KDE Plasma/Wayland).";
         if (enableTools) {
             sysPrompt += "\n\nYou have access to the following tools. To call a tool, output a <tool_call> block containing ONLY valid JSON. Do not output any text inside the block other than the JSON object.\n\nFORMAT:\n<tool_call>\n{\"name\": \"TOOL_NAME\", \"args\": {ARGUMENTS}}\n</tool_call>\n\nAVAILABLE TOOLS:\n- take_screenshot: Captures the user's screen for visual analysis. Args: none.\n  Example: <tool_call>\n{\"name\": \"take_screenshot\", \"args\": {}}\n</tool_call>\n\n- web_search: Searches the web. Args: query (string, required), page (number, optional).\n  Example: <tool_call>\n{\"name\": \"web_search\", \"args\": {\"query\": \"latest news\"}}\n</tool_call>\n\n- read_webpage: Fetches and reads the text of a URL. Args: url (string, required).\n  Example: <tool_call>\n{\"name\": \"read_webpage\", \"args\": {\"url\": \"https://example.com\"}}\n</tool_call>\n\n- open_app: Launches an installed desktop application. Args: app_name (string, required).\n  Example: <tool_call>\n{\"name\": \"open_app\", \"args\": {\"app_name\": \"dolphin\"}}\n</tool_call>\n\n- set_timer: Sets a countdown timer that fires a desktop notification. Args: seconds (number, required), message (string, required).\n  Example: <tool_call>\n{\"name\": \"set_timer\", \"args\": {\"seconds\": 300, \"message\": \"Break time!\"}}\n</tool_call>\n\n- get_weather: Gets the current local weather from the system dashboard. Args: none.\n  Example: <tool_call>\n{\"name\": \"get_weather\", \"args\": {}}\n</tool_call>\n\n- caelestia_command: Runs a caelestia CLI command. Valid subcommands: shell, toggle, scheme, search, screenshot, record, clipboard, emoji, wallpaper, resizer, install, update. Args: subcommand (string, required), args (string, optional extra flags).\n  Example: <tool_call>\n{\"name\": \"caelestia_command\", \"args\": {\"subcommand\": \"wallpaper\", \"args\": \"--random\"}}\n</tool_call>\n\nCRITICAL RULES:\n1. ALWAYS use a <tool_call> block to call a tool. NEVER pretend to perform actions in plain text.\n2. You may output a brief acknowledgment before the <tool_call> block (e.g. 'Opening Dolphin for you!') but you MUST include the block.\n3. You can include multiple <tool_call> blocks in one response.\n4. After receiving tool results, respond naturally to the user based on what the tool returned.";
         }
         
-        messages.push({
-            "role": "system",
-            "content": sysPrompt
-        });
-
-        for (var i = 0; i < chatHistory.count; i++) {
-            var msg = chatHistory.get(i);
-            messages.push({
-                "role": msg.isUser ? "user" : "assistant",
-                "content": msg.text || ""
-            });
-        }
-
-        if (isSystemToolResult) {
-            var toolMsg = {
-                "role": "user",
-                "content": promptText
-            };
-            if (base64Image) {
-                toolMsg["images"] = [base64Image];
+        var requestBody;
+        if (root.isClaude) {
+            // Anthropic Messages API: system prompt is a top-level field; messages must
+            // carry non-empty content and cannot include the streaming placeholder.
+            var claudeMessages = [];
+            for (var i = 0; i < chatHistory.count; i++) {
+                var msg = chatHistory.get(i);
+                if (!msg.isUser && !msg.isFinished && (msg.text || "") === "")
+                    continue;
+                if ((msg.text || "") === "")
+                    continue;
+                claudeMessages.push({
+                    "role": msg.isUser ? "user" : "assistant",
+                    "content": msg.text
+                });
             }
-            messages.push(toolMsg);
+
+            if (isSystemToolResult) {
+                var claudeContent;
+                if (base64Image) {
+                    claudeContent = [
+                        { "type": "text", "text": promptText },
+                        { "type": "image", "source": { "type": "base64", "media_type": "image/jpeg", "data": base64Image } }
+                    ];
+                } else {
+                    claudeContent = promptText;
+                }
+                claudeMessages.push({ "role": "user", "content": claudeContent });
+            }
+
+            requestBody = {
+                "model": model,
+                "max_tokens": 4096,
+                "system": sysPrompt,
+                "messages": claudeMessages,
+                "stream": true
+            };
+        } else {
+            var messages = [];
+            messages.push({
+                "role": "system",
+                "content": sysPrompt
+            });
+
+            for (var j = 0; j < chatHistory.count; j++) {
+                var m = chatHistory.get(j);
+                messages.push({
+                    "role": m.isUser ? "user" : "assistant",
+                    "content": m.text || ""
+                });
+            }
+
+            if (isSystemToolResult) {
+                var toolMsg = {
+                    "role": "user",
+                    "content": promptText
+                };
+                if (base64Image) {
+                    if (root.isOpenaiCompat) {
+                        // OpenAI carries images inline in the content array as data URLs;
+                        // Ollama takes a separate base64 "images" field.
+                        toolMsg["content"] = [
+                            { "type": "text", "text": promptText },
+                            { "type": "image_url", "image_url": { "url": "data:image/jpeg;base64," + base64Image } }
+                        ];
+                    } else {
+                        toolMsg["images"] = [base64Image];
+                    }
+                }
+                messages.push(toolMsg);
+            }
+
+            // Native tool-calling API removed; using text-based <tool_call> parsing instead,
+            // which is compatible with all models including llama3, mistral, phi, etc.
+            requestBody = {
+                "model": model,
+                "messages": messages,
+                "stream": true
+            };
         }
 
-        var requestBody = {
-            "model": ollamaModel,
-            "messages": messages,
-            "stream": true
-        };
-        
-        // Native tool-calling API removed; using text-based <tool_call> parsing instead,
-        // which is compatible with all models including llama3, mistral, phi, etc.
-        
         xhr.send(JSON.stringify(requestBody));
     }
 
@@ -1240,16 +2209,26 @@ Item {
                  }
              }
 
-             Item { Layout.fillWidth: true } // Spacer pushes Model Selector to the right
+         }
 
-             // Model Selector Split Button
-             // Provider selector. Hidden while there is only one to choose from, so
-             // it costs nothing until more than Ollama is available.
+         // Provider + model (+ account) selectors on their own row; a Flow so the
+         // pills wrap to a second line instead of overflowing a narrow sidebar.
+         Flow {
+             id: selectorRow
+             anchors.top: modeSwitcherRow.bottom
+             anchors.left: parent.left
+             anchors.right: parent.right
+             anchors.topMargin: Tokens.spacing.small
+             z: 10
+             spacing: Tokens.spacing.small
+
+             // Provider Selector Split Button (Ollama / Claude Code)
              SplitButton {
                  id: providerSelector
                  type: SplitButton.Tonal
                  verticalPadding: 4
                  visible: root.providerList.length > 1
+                 Layout.preferredWidth: implicitWidth
 
                  active: menuItems.find(m => m.modelData === root.provider) ?? menuItems[0] ?? null
                  menu.onItemSelected: item => {
@@ -1258,7 +2237,7 @@ Item {
 
                  menuItems: providerVariants.instances
 
-                 fallbackIcon: "hub"
+                 fallbackIcon: "cloud"
                  fallbackText: qsTr("Provider")
                  stateLayer.disabled: true
 
@@ -1273,6 +2252,7 @@ Item {
                  }
              }
 
+             // Model Selector Split Button
              SplitButton {
                  id: modelSelector
                  type: SplitButton.Tonal
@@ -1283,9 +2263,17 @@ Item {
                  menu.onItemSelected: item => {
                      if (root.isClaudeCode) {
                          GlobalConfig.ai.defaultClaudeCodeModel = item.modelData;
-                         // Effort levels differ per model — reset when it changes.
+                         // Effort levels differ per model — reset to default on model change.
                          GlobalConfig.ai.claudeCodeEffort = "default";
-                     } else
+                     } else if (root.isClaude)
+                         GlobalConfig.ai.defaultClaudeModel = item.modelData;
+                     else if (root.provider === "openai")
+                         GlobalConfig.ai.defaultOpenaiModel = item.modelData;
+                     else if (root.provider === "gemini")
+                         GlobalConfig.ai.defaultGeminiModel = item.modelData;
+                     else if (root.provider === "openrouter")
+                         GlobalConfig.ai.defaultOpenrouterModel = item.modelData;
+                     else
                          GlobalConfig.ai.defaultOllamaModel = item.modelData;
                  }
 
@@ -1297,7 +2285,15 @@ Item {
 
                  Variants {
                      id: modelVariants
-                     model: root.isClaudeCode ? root.claudeCodeModelsList : root.ollamaModelsList
+                     model: {
+                         if (root.isClaudeCode)
+                             return root.claudeCodeModelsList;
+                         if (root.isClaude)
+                             return root.claudeModelsList;
+                         if (root.isOpenaiCompat)
+                             return root.openaiCompatModelList();
+                         return root.ollamaModelsList;
+                     }
 
                      delegate: MenuItem {
                          required property string modelData
@@ -1306,8 +2302,7 @@ Item {
                  }
              }
 
-             // Effort / thinking level. Which levels a model supports varies, and
-             // several support none — the selector hides itself in that case.
+             // Effort / thinking-level Selector (Claude Code).
              SplitButton {
                  id: effortSelector
                  type: SplitButton.Tonal
@@ -1321,7 +2316,7 @@ Item {
 
                  menuItems: effortVariants.instances
 
-                 fallbackIcon: "psychology"
+                 fallbackIcon: "neurology"
                  fallbackText: qsTr("Effort")
                  stateLayer.disabled: true
 
@@ -1336,12 +2331,41 @@ Item {
                  }
              }
 
+             // Account Selector (Claude Code multi-login) — only when >1 account exists.
+             SplitButton {
+                 id: accountSelector
+                 type: SplitButton.Tonal
+                 verticalPadding: 4
+                 visible: root.isClaudeCode && root.claudeAccountIds.length > 1
+
+                 active: menuItems.find(m => m.modelData === (GlobalConfig.ai.activeClaudeAccount || "")) ?? menuItems[0] ?? null
+                 menu.onItemSelected: item => {
+                     GlobalConfig.ai.activeClaudeAccount = item.modelData;
+                 }
+
+                 menuItems: accountVariants.instances
+
+                 fallbackIcon: "person"
+                 fallbackText: qsTr("Account")
+                 stateLayer.disabled: true
+
+                 Variants {
+                     id: accountVariants
+                     model: root.claudeAccountIds
+
+                     delegate: MenuItem {
+                         required property string modelData
+                         text: root.accountLabel(modelData)
+                     }
+                 }
+             }
+
 
          }
          
          Item {
              id: contentStack
-             anchors.top: modeSwitcherRow.bottom
+             anchors.top: selectorRow.bottom
              anchors.bottom: parent.bottom
              anchors.left: parent.left
              anchors.right: parent.right
@@ -1794,6 +2818,86 @@ Item {
                      }
                  }
 
+                 // Prompt suggestion chips (Claude Code) — float just above the input.
+                 ColumnLayout {
+                     id: suggestionBox
+                     anchors.bottom: inputBoxRow.top
+                     anchors.bottomMargin: Tokens.spacing.small
+                     anchors.left: parent.left
+                     anchors.right: parent.right
+                     z: 11
+                     spacing: Tokens.spacing.small
+                     visible: root.isClaudeCode && root.promptSuggestions.length > 0
+
+                     // Header with a close button.
+                     RowLayout {
+                         Layout.fillWidth: true
+                         spacing: Tokens.spacing.small
+
+                         StyledText {
+                             Layout.fillWidth: true
+                             text: qsTr("Suggestions")
+                             color: Colours.palette.m3onSurfaceVariant
+                             font: Tokens.font.label.small
+                         }
+
+                         Item {
+                             Layout.preferredWidth: 24
+                             Layout.preferredHeight: 24
+
+                             MaterialIcon {
+                                 anchors.centerIn: parent
+                                 text: "close"
+                                 color: closeSugMouse.containsMouse ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
+                                 font: Tokens.font.icon.small
+                             }
+
+                             MouseArea {
+                                 id: closeSugMouse
+                                 anchors.fill: parent
+                                 hoverEnabled: true
+                                 cursorShape: Qt.PointingHandCursor
+                                 onClicked: root.promptSuggestions = []
+                             }
+                         }
+                     }
+
+                     Repeater {
+                         model: root.promptSuggestions
+
+                         StyledRect {
+                             required property string modelData
+                             Layout.fillWidth: true
+                             implicitHeight: sugChipText.implicitHeight + Tokens.padding.medium * 2
+                             radius: Tokens.rounding.large
+                             color: Colours.tPalette.m3surfaceContainerHigh
+
+                             StateLayer {
+                                 radius: Tokens.rounding.large
+                                 onClicked: {
+                                     inputArea.text = modelData;
+                                     root.promptSuggestions = [];
+                                     inputArea.forceActiveFocus();
+                                 }
+                             }
+
+                             StyledText {
+                                 id: sugChipText
+                                 anchors.left: parent.left
+                                 anchors.right: parent.right
+                                 anchors.top: parent.top
+                                 anchors.leftMargin: Tokens.padding.medium
+                                 anchors.rightMargin: Tokens.padding.medium
+                                 anchors.topMargin: Tokens.padding.medium
+                                 text: parent.modelData
+                                 color: Colours.palette.m3onSurface
+                                 font: Tokens.font.body.small
+                                 wrapMode: Text.Wrap
+                             }
+                         }
+                     }
+                 }
+
                  // Input Box Row
                  StyledRect {
                      id: inputBoxRow
@@ -1878,6 +2982,28 @@ Item {
                              }
                          }
 
+                         // Prompt suggestions trigger (Claude Code).
+                         Item {
+                             visible: root.isClaudeCode
+                             Layout.preferredWidth: visible ? 32 : 0
+                             Layout.preferredHeight: 32
+
+                             MaterialIcon {
+                                 anchors.centerIn: parent
+                                 text: root.loadingSuggestions ? "hourglass_empty" : "lightbulb"
+                                 color: sugMouse.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                                 font: Tokens.font.icon.small
+                             }
+
+                             MouseArea {
+                                 id: sugMouse
+                                 anchors.fill: parent
+                                 hoverEnabled: true
+                                 cursorShape: Qt.PointingHandCursor
+                                 onClicked: root.fetchPromptSuggestions()
+                             }
+                         }
+
                          Item {
                              Layout.preferredWidth: 36
                              Layout.preferredHeight: 36
@@ -1899,10 +3025,11 @@ Item {
                                      cursorShape: (inputArea.text.length > 0 || root.isTyping) ? Qt.PointingHandCursor : Qt.ArrowCursor
                                      onClicked: {
                                          if (root.isTyping) {
+                                             root.cancelRateLimitRetry();
                                              if (root.currentRequest) {
                                                  root.currentRequest.abort();
-                                             root.stopClaudeCode();
                                              }
+                                             root.stopClaudeCode();
                                              root.isTyping = false;
                                              root.isThinking = false;
                                              root.inAgentLoop = false;
