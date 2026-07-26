@@ -41,38 +41,7 @@ else
     echo "  [SKIP] Skipping Darkly theme"
 fi
 
-# ── 3. Reconfigure KWin to pick up new settings ───────────────────────────────
-echo "  Reloading KWin..."
-qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
-systemctl --user restart plasma-kglobalaccel.service 2>/dev/null || true
-
-echo "[OK]  10 virtual desktops created"
-
-#  Disable KDE OSDs (volume, brightness popups) 
-echo "  Disabling KDE OSD popups..."
-# Plasma volume OSD
-kwriteconfig6 --file plasmarc --group "OSD" --key "Enabled" "false" 2>/dev/null || true
-# kde-plasma-volume / kded audio volume OSD
-kwriteconfig6 --file kdeglobals --group "KDE" --key "OSDEnabled" "false" 2>/dev/null || true
-# plasma-volume OSD
-kwriteconfig6 --file plasmanotifyrc --group "Notifications" \
-    --key "LoudnessChangedOSD" "false" 2>/dev/null || true
-# Brightness OSD via powerdevil
-kwriteconfig6 --file powerdevilrc --group "BrightnessControl" \
-    --key "showOSD" "false" 2>/dev/null || true
-kwriteconfig6 --file powerdevilrc --group "AC" \
-    --key "brightnessosd" "false" 2>/dev/null || true
-# Plasma workspace OSD (Plasma 6 unified OSD daemon)
-kwriteconfig6 --file plasmarc --group "OSD" --key "ShowOnActiveScreen" "false" 2>/dev/null || true
-# Disable the plasma-volume kded module OSD flag
-mkdir -p "$HOME/.config"
-cat > "$HOME/.config/kmixrc" <<'EOF' 2>/dev/null || true
-[Global]
-ShowOSD=false
-EOF
-echo "  [OK]  KDE OSDs disabled."
-
-#  Apply via lookandfeeltool if Darkly LNF exists (Fonts included) 
+# ── 3. Apply via lookandfeeltool if Darkly LNF exists (Fonts included) ────────
 if [[ "${APPLY_FONTS:-true}" == "true" ]]; then
     if command -v lookandfeeltool >/dev/null 2>&1; then
         if [[ "${APPLY_DARKLY:-true}" == "true" ]]; then

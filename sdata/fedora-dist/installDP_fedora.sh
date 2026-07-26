@@ -12,50 +12,118 @@ INSTALL_FISH="${INSTALL_FISH:-true}"
 INSTALL_PAPIRUS="${INSTALL_PAPIRUS:-true}"
 INSTALL_DARKLY="${INSTALL_DARKLY:-true}"
 
-# Core dependencies (minus hyprland-specific ones)
-PACKAGES=(
-    # build dependencies
-    cmake ninja-build
-    # Core system tools
+# Core dependencies split by group — controlled via PACKAGE_GROUP env var
+PACKAGE_GROUP="${PACKAGE_GROUP:-all}"
+
+CORE_PACKAGES=(
+    cmake ninja-build ccache
     wl-clipboard cliphist wl-clip-persist inotify-tools wireplumber trash-cli jq aubio lm_sensors lm_sensors-devel
-    # lib files
-    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel kf6-kpipewire kf6-kpipewire-devel
-    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel kf6-kwindowsystem-devel qt6-qtbase-private-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel
-    # Shells & terminal
-    foot eza fastfetch starship btop bash
-    # Themes & Fonts
-    adw-gtk3-theme google-rubik-fonts
-    # Utilities
-    fuzzel swappy brightnessctl ddcutil NetworkManager ImageMagick tesseract tesseract-langpack-eng spectacle gpu-screen-recorder slurp grim xdg-utils sassc
-    # playerctl
-    # Known to require manual build/copr on Fedora
-    app2unit libcava quickshell-git
+    pipewire-devel glibc qt6-qtdeclarative qt6-qtdeclarative-devel qt6-qtwayland qt6-qtwayland-devel kf6-kglobalaccel-devel qt6-qtbase-private-devel qt6-qtsvg qt6-qtsvg-devel qt6-qtshadertools-devel libgcc qt6-qtbase libqalculate libqalculate-devel aubio-devel kf6-kpipewire kf6-kpipewire-devel kf6-kwindowsystem-devel
 )
 
-if [[ "$INSTALL_FISH" == "true" ]]; then
-    PACKAGES+=(fish)
-else
-    log "Skipping Fish installation by user choice."
+SHELL_PACKAGES=(
+    foot eza fastfetch starship btop bash
+)
+
+THEME_PACKAGES=(
+    adw-gtk3-theme google-rubik-fonts
+)
+
+UTILITY_PACKAGES=(
+    fuzzel swappy brightnessctl ddcutil NetworkManager ImageMagick tesseract tesseract-langpack-eng spectacle gpu-screen-recorder slurp grim xdg-utils sassc
+)
+
+# Packages known to need copr or manual fallback
+COPR_CORE=(app2unit libcava)
+COPR_SHELL=(quickshell-git)
+COPR_UTILS=()
+
+# Build final package list based on selected group
+PACKAGES=()
+COPR_PKGS=()
+case "$PACKAGE_GROUP" in
+    core)   PACKAGES=("${CORE_PACKAGES[@]}");   COPR_PKGS=("${COPR_CORE[@]}") ;;
+    shell)  PACKAGES=("${SHELL_PACKAGES[@]}");  COPR_PKGS=("${COPR_SHELL[@]}") ;;
+    themes) PACKAGES=("${THEME_PACKAGES[@]}");  COPR_PKGS=() ;;
+    utils)  PACKAGES=("${UTILITY_PACKAGES[@]}"); COPR_PKGS=("${COPR_UTILS[@]}") ;;
+    all|*)  PACKAGES=("${CORE_PACKAGES[@]}" "${SHELL_PACKAGES[@]}" "${THEME_PACKAGES[@]}" "${UTILITY_PACKAGES[@]}")
+            COPR_PKGS=("quickshell-git" "gpu-screen-recorder" "app2unit" "starship" "libcava" "wl-clip-persist") ;;
+esac
+
+# Ensure COPR-only packages are actually requested for the relevant groups
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "core" ]]; then
+    PACKAGES+=("${COPR_CORE[@]}")
+fi
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+    PACKAGES+=("${COPR_SHELL[@]}")
 fi
 
-if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
-    PACKAGES+=(papirus-icon-theme)
-else
-    log "Skipping Papirus icon theme installation by user choice."
+log "Installing packages (group: $PACKAGE_GROUP)..."
+
+# Optional packages only included for relevant groups (or "all")
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+    if [[ "$INSTALL_FISH" == "true" ]]; then
+        PACKAGES+=(fish)
+    else
+        log "Skipping Fish installation by user choice."
+    fi
+fi
+
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "themes" ]]; then
+    if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
+        PACKAGES+=(papirus-icon-theme)
+    else
+        log "Skipping Papirus icon theme installation by user choice."
+    fi
 fi
 
 log "Enabling RPM Fusion for H264 hardware codecs..."
 sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm || true
 sudo dnf swap -y ffmpeg-free ffmpeg --allowerasing || true
 
-PACKAGES+=(ffmpeg)
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "core" ]]; then
+    PACKAGES+=(ffmpeg)
+fi
 
-log "Installing packages via dnf..."
+log "Installing packages via dnf (batch mode)..."
 sudo dnf upgrade -y || true
 
-FAILED_PKGS=()
+# Build a batch list excluding copr-only packages
+BATCH_PKGS=()
 for pkg in "${PACKAGES[@]}"; do
-    if sudo dnf install -y "$pkg"; then
+    _is_copr="no"
+    for cp in "${COPR_PKGS[@]}"; do
+        if [[ "$pkg" == "$cp" ]]; then _is_copr="yes"; break; fi
+    done
+    if [[ "$_is_copr" == "no" ]]; then
+        BATCH_PKGS+=("$pkg")
+    fi
+done
+
+FAILED_PKGS=()
+
+# Batch install standard packages
+if [[ ${#BATCH_PKGS[@]} -gt 0 ]]; then
+    if ! sudo dnf install -y "${BATCH_PKGS[@]}"; then
+        log "Batch install had failures. Retrying standard packages individually..."
+        for pkg in "${BATCH_PKGS[@]}"; do
+            if ! rpm -q "$pkg" >/dev/null 2>&1; then
+                sudo dnf install -y "$pkg" || true
+            fi
+        done
+    fi
+fi
+
+# Handle copr/manual-fallback packages individually
+for pkg in "${COPR_PKGS[@]}"; do
+    # Skip if not in the original PACKAGES list
+    _needed="no"
+    for op in "${PACKAGES[@]}"; do
+        if [[ "$op" == "$pkg" ]]; then _needed="yes"; break; fi
+    done
+    if [[ "$_needed" == "no" ]]; then continue; fi
+
+    if sudo dnf install -y "$pkg" 2>/dev/null; then
         continue
     fi
 
@@ -92,7 +160,6 @@ for pkg in "${PACKAGES[@]}"; do
                 COPR_FAILED="no"
             fi
             ;;
-
     esac
 
     if [ "$COPR_FAILED" = "no" ]; then
@@ -174,11 +241,30 @@ if [ ${#FAILED_PKGS[@]} -ne 0 ]; then
 fi
 
 
-log "Downloading and installing required custom fonts (Material Symbols Rounded, Jet Brain Mono & CaskaydiaCove NF)..."
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "themes" ]]; then
+
+log "Downloading and installing required custom fonts (parallel)..."
 mkdir -p "${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
-curl -sL "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf" -o "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MaterialSymbolsRounded.ttf" || { err "Failed to download Material Symbols font."; echo "Material Symbols font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
-curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/CascadiaCode.zip" -o "/tmp/CascadiaCode.zip" && unzip -qo "/tmp/CascadiaCode.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" && rm "/tmp/CascadiaCode.zip" || { err "Failed to download CascadiaCode font."; echo "CascadiaCode font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
-curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip" -o "/tmp/JetBrainsMono.zip" && unzip -qo "/tmp/JetBrainsMono.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" && rm -f "/tmp/JetBrainsMono.zip" || { err "Failed to download JetBrains Mono Nerd Font."; echo "JetBrains Mono Nerd Font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+
+# Download all fonts in parallel
+curl -sL "https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf" -o "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MaterialSymbolsRounded.ttf" &
+_pid_ms=$!
+
+curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/CascadiaCode.zip" -o "/tmp/CascadiaCode.zip" &
+_pid_cc=$!
+
+curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip" -o "/tmp/JetBrainsMono.zip" &
+_pid_jb=$!
+
+# Wait for all downloads to finish
+wait $_pid_ms $_pid_cc $_pid_jb
+
+# Extract zip files
+unzip -qo "/tmp/CascadiaCode.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" 2>/dev/null && rm -f "/tmp/CascadiaCode.zip" || { err "Failed to extract CascadiaCode font."; echo "CascadiaCode font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+unzip -qo "/tmp/JetBrainsMono.zip" -d "${XDG_DATA_HOME:-$HOME/.local/share}/fonts" 2>/dev/null && rm -f "/tmp/JetBrainsMono.zip" || { err "Failed to extract JetBrains Mono Nerd Font."; echo "JetBrains Mono Nerd Font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+# Material Symbols is a single .ttf, no extraction needed
+[[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/fonts/MaterialSymbolsRounded.ttf" ]] || { err "Failed to download Material Symbols font."; echo "Material Symbols font" >> "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde/failed_packages.txt"; }
+
 fc-cache -f
 
 log "Building and Installing Darkly KDE Theme..."
@@ -189,6 +275,10 @@ if [[ "$INSTALL_DARKLY" == "true" ]]; then
 else
     log "Skipping Darkly package installation by user choice."
 fi
+
+fi  # end of PACKAGE_GROUP themes/all block
+
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
 
 log "Installing Caelestia CLI wrapper..."
 if ! command -v caelestia >/dev/null 2>&1; then
@@ -217,5 +307,7 @@ fi
 if command -v sassc >/dev/null 2>&1 && ! command -v sass >/dev/null 2>&1; then
     sudo ln -sf /usr/bin/sassc /usr/local/bin/sass || true
 fi
+
+fi  # end of PACKAGE_GROUP shell/all block
 
 log "Fedora package installation complete."

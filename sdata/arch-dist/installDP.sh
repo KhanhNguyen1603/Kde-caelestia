@@ -25,66 +25,89 @@ if ! command -v yay >/dev/null 2>&1; then
     rm -rf "$tmpdir"
 fi
 
-# Core dependencies (minus hyprland-specific ones)
-PACKAGES=(
-    # build dependencies
-    cmake ninja
-    # Core system tools
+# Core dependencies split by group — controlled via PACKAGE_GROUP env var
+PACKAGE_GROUP="${PACKAGE_GROUP:-all}"
+
+CORE_PACKAGES=(
+    cmake ninja ccache
     wl-clipboard cliphist wl-clip-persist inotify-tools app2unit wireplumber trash-cli jq aubio lm_sensors
-    # lib files
     libpipewire glibc libcava qt6-declarative gcc-libs qt6-base qt6-declarative qt6-wayland libqalculate kpipewire kglobalaccel kglobalacceld
-    # Shell wrapper
-    caelestia-cli quickshell-git
-    # Shells & terminal
-    foot eza fastfetch starship btop bash
-    # Themes & Fonts
-    adw-gtk-theme ttf-jetbrains-mono-nerd ttf-material-symbols-variable ttf-rubik-vf ttf-cascadia-code-nerd
-    # Utilities
-    swappy brightnessctl ddcutil networkmanager imagemagick tesseract tesseract-data-eng satty spectacle xdg-utils sassc
-    #playerctl
 )
 
-if [[ "$INSTALL_FISH" == "true" ]]; then
-    PACKAGES+=(fish)
-else
-    log "Skipping Fish installation by user choice."
-fi
+SHELL_PACKAGES=(
+    caelestia-cli quickshell-git
+    foot eza fastfetch starship btop bash
+)
 
-if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
-    PACKAGES+=(papirus-icon-theme)
-else
-    log "Skipping Papirus icon theme installation by user choice."
-fi
+THEME_PACKAGES=(
+    adw-gtk-theme ttf-jetbrains-mono-nerd ttf-material-symbols-variable ttf-rubik-vf ttf-cascadia-code-nerd
+)
 
-if [[ "$INSTALL_DARKLY" == "true" ]]; then
-    PACKAGES+=(darkly)
-else
-    log "Skipping Darkly package installation by user choice."
-fi
+UTILITY_PACKAGES=(
+    swappy brightnessctl ddcutil networkmanager imagemagick tesseract tesseract-data-eng satty spectacle xdg-utils sassc
+)
 
-log "Syncing package databases and installing packages..."
-FAILED_PKGS=()
-yay -Syu --noconfirm || true
+# Build final package list based on selected group
+PACKAGES=()
+case "$PACKAGE_GROUP" in
+    core)   PACKAGES=("${CORE_PACKAGES[@]}") ;;
+    shell)  PACKAGES=("${SHELL_PACKAGES[@]}") ;;
+    themes) PACKAGES=("${THEME_PACKAGES[@]}") ;;
+    utils)  PACKAGES=("${UTILITY_PACKAGES[@]}") ;;
+    all|*)  PACKAGES=("${CORE_PACKAGES[@]}" "${SHELL_PACKAGES[@]}" "${THEME_PACKAGES[@]}" "${UTILITY_PACKAGES[@]}") ;;
+esac
 
-for pkg in "${PACKAGES[@]}"; do
-    if ! yay -S --needed --noconfirm "$pkg"; then
-        log "yay failed to install $pkg. Attempting manual build from AUR..."
-        tmpdir="$(mktemp -d)"
-        if git clone "https://aur.archlinux.org/${pkg}.git" "$tmpdir"; then
-            (
-                cd "$tmpdir" || exit 1
-                makepkg -si --noconfirm
-            ) || {
-                err "Manual build for $pkg failed."
-                FAILED_PKGS+=("$pkg")
-            }
-        else
-            err "Could not find AUR repository for $pkg."
-            FAILED_PKGS+=("$pkg")
-        fi
-        rm -rf "$tmpdir"
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "shell" ]]; then
+    if [[ "$INSTALL_FISH" == "true" ]]; then
+        PACKAGES+=(fish)
+    else
+        log "Skipping Fish installation by user choice."
     fi
-done
+fi
+
+if [[ "$PACKAGE_GROUP" == "all" || "$PACKAGE_GROUP" == "themes" ]]; then
+    if [[ "$INSTALL_PAPIRUS" == "true" ]]; then
+        PACKAGES+=(papirus-icon-theme)
+    else
+        log "Skipping Papirus icon theme installation by user choice."
+    fi
+    if [[ "$INSTALL_DARKLY" == "true" ]]; then
+        PACKAGES+=(darkly)
+    else
+        log "Skipping Darkly package installation by user choice."
+    fi
+fi
+
+log "Installing packages (group: $PACKAGE_GROUP)..."
+FAILED_PKGS=()
+
+# Batch install all packages at once — much faster than individual yay calls
+if ! yay -S --needed --noconfirm "${PACKAGES[@]}"; then
+    log "Batch install had failures. Retrying individually..."
+    for pkg in "${PACKAGES[@]}"; do
+        # Skip packages already installed by the batch attempt
+        if pacman -Q "$pkg" >/dev/null 2>&1; then
+            continue
+        fi
+        if ! yay -S --needed --noconfirm "$pkg"; then
+            log "yay failed to install $pkg. Attempting manual build from AUR..."
+            tmpdir="$(mktemp -d)"
+            if git clone "https://aur.archlinux.org/${pkg}.git" "$tmpdir"; then
+                (
+                    cd "$tmpdir" || exit 1
+                    makepkg -si --noconfirm
+                ) || {
+                    err "Manual build for $pkg failed."
+                    FAILED_PKGS+=("$pkg")
+                }
+            else
+                err "Could not find AUR repository for $pkg."
+                FAILED_PKGS+=("$pkg")
+            fi
+            rm -rf "$tmpdir"
+        fi
+    done
+fi
 
 if [ ${#FAILED_PKGS[@]} -ne 0 ]; then
     mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/caelestia-kde"
