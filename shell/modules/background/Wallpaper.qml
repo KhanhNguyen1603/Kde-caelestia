@@ -164,6 +164,11 @@ Item {
 
         function update(): void {
             this.screen = root.screen;
+            // Ask about the source being switched to, not the isVideoImage binding:
+            // that binding can still hold the previous source's answer when this
+            // runs, which routed a video into the image loader. The image cannot
+            // decode it, so the wallpaper just went white.
+            const isVideoImage = root.isVideo(root.source);
             if (isVideoImage) {
                 if (videoPath === root.source)
                     root.current = this;
@@ -182,6 +187,7 @@ Item {
         }
 
         function updateContent(): void {
+            const isVideoImage = root.isVideo(root.source);
             if (isVideoImage) {
                 imagePath = "";
                 videoPath = root.source;
