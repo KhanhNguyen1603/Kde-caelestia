@@ -15,6 +15,7 @@ Item {
 
     readonly property bool shouldBeActive: visibilities.launcher && Config.launcher.enabled
 
+
     readonly property real maxHeight: {
         let max = screen.height - Config.border.thickness * 2 + Tokens.padding.extraLarge;
         if (visibilities.dashboard)
@@ -25,9 +26,9 @@ Item {
     property real offsetScale: shouldBeActive ? 0 : 1
 
     onShouldBeActiveChanged: {
-        if (shouldBeActive)
+        if (shouldBeActive) {
             implicitHeight = Qt.binding(() => content.implicitHeight);
-        else
+        } else
             implicitHeight = implicitHeight; // Break binding during close anim
     }
 
