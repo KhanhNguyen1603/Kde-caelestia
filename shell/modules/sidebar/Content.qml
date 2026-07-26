@@ -19,8 +19,13 @@ Item {
 
     property string activeTab: "notifications"
 
+    // The assistant has its own switch now, so turning a provider off no longer
+    // takes the whole tab with it.
+    readonly property bool aiEnabled: GlobalConfig.ai.enableAiAssistant && GlobalConfig.ai.enableOllama
+
     Connections {
         target: GlobalConfig.ai
+        function onEnableAiAssistantChanged() { checkAiTab(); }
         function onEnableOllamaChanged() { checkAiTab(); }
         function onShowNewsChanged() { checkAiTab(); }
     }
@@ -36,7 +41,7 @@ Item {
     }
 
     function checkAiTab() {
-        if (!GlobalConfig.ai.enableOllama && root.activeTab === "ai") {
+        if (!root.aiEnabled && root.activeTab === "ai") {
             root.activeTab = "notifications";
         }
         if (!GlobalConfig.ai.showNews && root.activeTab === "news") {
@@ -69,8 +74,8 @@ Item {
                 Item {
                     id: headerContainer
                     Layout.fillWidth: true
-                    implicitHeight: (!GlobalConfig.ai.enableOllama && !GlobalConfig.ai.showNews) ? 0 : 64
-                    visible: GlobalConfig.ai.enableOllama || GlobalConfig.ai.showNews
+                    implicitHeight: (!root.aiEnabled && !GlobalConfig.ai.showNews) ? 0 : 64
+                    visible: root.aiEnabled || GlobalConfig.ai.showNews
                     clip: true
 
                     RowLayout {
@@ -85,7 +90,7 @@ Item {
                                 var tabs = [
                                     { id: "notifications", label: qsTr("Notifications"), icon: "notifications" }
                                 ];
-                                if (GlobalConfig.ai.enableOllama) {
+                                if (root.aiEnabled) {
                                     tabs.push({ id: "ai", label: qsTr("AI Assistant"), icon: "smart_toy" });
                                 }
                                 if (GlobalConfig.ai.showNews) {
@@ -172,7 +177,7 @@ Item {
                 StyledRect {
                     Layout.fillWidth: true
                     implicitHeight: 1
-                    visible: GlobalConfig.ai.enableOllama || GlobalConfig.ai.showNews
+                    visible: root.aiEnabled || GlobalConfig.ai.showNews
                     color: Colours.palette.m3outlineVariant
                 }
 

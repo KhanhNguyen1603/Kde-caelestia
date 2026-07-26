@@ -22,6 +22,10 @@ class AiConfig : public ConfigObject {
 
     CONFIG_PROPERTY(QString, defaultProvider, u"ollama"_s)
     CONFIG_PROPERTY(bool, enableOllama, true)
+
+    // Master switch for the sidebar assistant, independent of which providers are
+    // enabled — so turning a provider off no longer means losing the whole tab.
+    CONFIG_PROPERTY(bool, enableAiAssistant, true)
     CONFIG_PROPERTY(bool, enableCelestialMode, true)
     CONFIG_PROPERTY(bool, showNews, true)
     CONFIG_PROPERTY(bool, showCaelestiaMode, true)
