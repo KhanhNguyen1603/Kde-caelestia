@@ -90,6 +90,30 @@ Item {
     }
 
     property var ollamaModelsList: []
+
+    // Which backend the chat talks to. Only Ollama exists today; this is the seam
+    // the others slot into, so the chat never has to know which one is active.
+    readonly property string provider: GlobalConfig.ai.defaultProvider || "ollama"
+
+    // Providers offered in the selector, respecting their enable toggles. Never
+    // empty — falling back to Ollama beats presenting no choice at all.
+    readonly property var providerList: {
+        const l = [];
+        if (GlobalConfig.ai.enableOllama)
+            l.push("ollama");
+        if (l.length === 0)
+            l.push("ollama");
+        return l;
+    }
+
+    function providerLabel(p: string): string {
+        return "Ollama";
+    }
+
+    // The model to send for the active provider.
+    function activeModel(): string {
+        return GlobalConfig.ai.defaultOllamaModel || root.ollamaModelsList[0] || "";
+    }
     property bool isTyping: false
     property bool isThinking: false
     property string currentThoughtText: ""
@@ -229,12 +253,12 @@ Item {
                             }
                         }
                         if (list.length > 0) {
+                            // Only what this instance actually has pulled — a guessed
+                            // list just offers models that are not installed.
                             ollamaModelsList = list;
                             if (list.indexOf(GlobalConfig.ai.defaultOllamaModel) === -1) {
                                 GlobalConfig.ai.defaultOllamaModel = list[0];
                             }
-                        } else {
-                            ollamaModelsList = ["llama3", "mistral", "phi3", "gemma"];
                         }
                     } catch (e) {
                         Logger.log("Error parsing Ollama models: " + e.message);
@@ -904,13 +928,43 @@ Item {
              Item { Layout.fillWidth: true } // Spacer pushes Model Selector to the right
 
              // Model Selector Split Button
+             // Provider selector. Hidden while there is only one to choose from, so
+             // it costs nothing until more than Ollama is available.
+             SplitButton {
+                 id: providerSelector
+                 type: SplitButton.Tonal
+                 verticalPadding: 4
+                 visible: root.providerList.length > 1
+
+                 active: menuItems.find(m => m.modelData === root.provider) ?? menuItems[0] ?? null
+                 menu.onItemSelected: item => {
+                     GlobalConfig.ai.defaultProvider = item.modelData;
+                 }
+
+                 menuItems: providerVariants.instances
+
+                 fallbackIcon: "hub"
+                 fallbackText: qsTr("Provider")
+                 stateLayer.disabled: true
+
+                 Variants {
+                     id: providerVariants
+                     model: root.providerList
+
+                     delegate: MenuItem {
+                         required property string modelData
+                         text: root.providerLabel(modelData)
+                     }
+                 }
+             }
+
              SplitButton {
                  id: modelSelector
                  type: SplitButton.Tonal
                  verticalPadding: 4
                  Layout.preferredWidth: implicitWidth
 
-                 active: menuItems.find(m => m.modelData === GlobalConfig.ai.defaultOllamaModel) ?? menuItems[0] ?? null
+                 active: menuItems.find(m => m.modelData === root.activeModel()) ?? menuItems[0] ?? null
                  menu.onItemSelected: item => {
                      GlobalConfig.ai.defaultOllamaModel = item.modelData;
                  }
@@ -923,9 +977,7 @@ Item {
 
                  Variants {
                      id: modelVariants
-                     model: {
-                         return root.ollamaModelsList && root.ollamaModelsList.length > 0 ? root.ollamaModelsList : ["llama3", "mistral", "phi3", "gemma"];
-                     }
+                     model: root.ollamaModelsList
 
                      delegate: MenuItem {
                          required property string modelData
