@@ -7,11 +7,17 @@ import Caelestia.Config
 import qs.components
 import qs.components.controls
 import qs.services
+import qs.utils
 
 Item {
     id: root
 
-    property alias source: img.source
+    // The picker was handed the video file itself, which Image cannot decode, so
+    // it sat at Image.Loading forever. Show the extracted frame instead — and
+    // while it is being extracted, the spinner is honest rather than permanent.
+    property string source
+    readonly property bool isVideo: Images.isVideo(String(source).replace(/^file:\/\//, ""))
+    readonly property string displaySource: root.isVideo ? Wallpapers.thumbFor(source) : source
     property alias text: label.text
     property alias radius: imgWrapper.radius
     property alias imgHeight: imgWrapper.implicitHeight
@@ -68,6 +74,7 @@ Item {
             Image {
                 id: img
 
+                source: root.displaySource
                 anchors.fill: parent
                 asynchronous: true
                 fillMode: Image.PreserveAspectCrop
