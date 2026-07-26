@@ -19,14 +19,22 @@ Item {
 
     property string activeTab: "notifications"
 
-    // The assistant has its own switch now, so turning a provider off no longer
-    // takes the whole tab with it.
-    readonly property bool aiEnabled: GlobalConfig.ai.enableAiAssistant && GlobalConfig.ai.enableOllama
+    // The AI tab shows when the master switch is on AND at least one provider is enabled.
+    // True while the assistant is mid-answer, so the sidebar can stay loaded long
+    // enough to finish instead of taking the request down with it when it closes.
+    readonly property bool aiBusy: aiLoader.item ? (aiLoader.item.isTyping || aiLoader.item.inAgentLoop) : false
+
+    readonly property bool aiEnabled: GlobalConfig.ai.enableAiAssistant && (GlobalConfig.ai.enableOllama || GlobalConfig.ai.enableClaudeCode || GlobalConfig.ai.enableClaude || GlobalConfig.ai.enableOpenai || GlobalConfig.ai.enableGemini || GlobalConfig.ai.enableOpenrouter)
 
     Connections {
         target: GlobalConfig.ai
         function onEnableAiAssistantChanged() { checkAiTab(); }
         function onEnableOllamaChanged() { checkAiTab(); }
+        function onEnableClaudeCodeChanged() { checkAiTab(); }
+        function onEnableClaudeChanged() { checkAiTab(); }
+        function onEnableOpenaiChanged() { checkAiTab(); }
+        function onEnableGeminiChanged() { checkAiTab(); }
+        function onEnableOpenrouterChanged() { checkAiTab(); }
         function onShowNewsChanged() { checkAiTab(); }
     }
 
@@ -204,6 +212,7 @@ Item {
                     }
 
                     Loader {
+                        id: aiLoader
                         property bool hasBeenActive: false
                         active: hasBeenActive || root.activeTab === "ai"
                         onActiveChanged: if (active) hasBeenActive = true
