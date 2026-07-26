@@ -280,7 +280,8 @@ if [[ -z "${TMUX:-}" && "${CAELESTIA_NO_TMUX:-0}" == "0" && "${CAELESTIA_USE_TMU
     mkfifo /tmp/caelestia_cmd
     mkfifo /tmp/caelestia_status
     
-    tmux new-session -d -s caelestia_install "bash \"$0\" $@"
+    printf -v args_str '%q ' "$0" "$@"
+    tmux new-session -d -s caelestia_install "bash $args_str"
     tmux set-option -t caelestia_install mouse on
     
     tmux attach-session -t caelestia_install
