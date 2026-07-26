@@ -66,7 +66,6 @@ private:
     std::vector<float> m_buffer2;
     std::atomic<std::vector<float>*> m_readBuffer;
     std::atomic<std::vector<float>*> m_writeBuffer;
-    quint32 m_sampleCount;
 
     void reload();
     void start() override;
