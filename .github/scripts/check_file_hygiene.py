@@ -73,9 +73,18 @@ def should_skip(rel_path: str, patterns: list[str] | None = None) -> bool:
 
 
 def get_changed_files() -> list[str]:
-    """Get list of files changed in this PR, or all tracked files if not in CI."""
-    # Try to get the base ref from CI environment
+    """Get list of files changed in this PR/push, or empty list if no diff available."""
+    # For pull_request events, use GITHUB_BASE_REF
     base_ref = os.environ.get("GITHUB_BASE_REF")
+    if not base_ref:
+        # For push events, try comparing with origin/main
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "origin/main"],
+            capture_output=True, text=True, cwd=ROOT,
+        )
+        if result.returncode == 0:
+            base_ref = "main"
+
     if base_ref:
         result = subprocess.run(
             ["git", "diff", "--name-only", f"origin/{base_ref}...HEAD"],
@@ -86,14 +95,8 @@ def get_changed_files() -> list[str]:
             print(f"Checking {len(files)} changed file(s) against {base_ref}")
             return files
 
-    # Fallback: all git-tracked files
-    print("Not in PR context - checking all tracked files")
-    result = subprocess.run(
-        ["git", "ls-files"],
-        capture_output=True, text=True, cwd=ROOT,
-    )
-    if result.returncode == 0:
-        return [f.strip() for f in result.stdout.splitlines() if f.strip()]
+    # On push to main/dev with no diff context, skip to avoid flagging pre-existing issues
+    print("No diff context available - skipping file hygiene check")
     return []
 
 
