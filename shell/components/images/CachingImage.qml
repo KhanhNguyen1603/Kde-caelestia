@@ -12,6 +12,8 @@ Image {
     source: IUtils.urlForPath(path, fillMode)
     sourceSize: {
         const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
-        return Qt.size(width * dpr, height * dpr);
+        const targetW = width > 0 ? width * dpr : 512;
+        const targetH = height > 0 ? height * dpr : 512;
+        return Qt.size(targetW, targetH);
     }
 }
