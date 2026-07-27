@@ -43,160 +43,128 @@ Item {
         service: Audio.beatTracker
     }
 
-    CircularProgress {
-        id: prog
+    Column {
+        id: contentBox
 
-        anchors.centerIn: cover
-        implicitSize: cover.width + root.arcCoverGap + thickness * 2
-
-        fgColour: Colours.palette.m3primary
-        strokeWidth: Tokens.sizes.dashboard.mediaProgressThickness
-        startAngle: -90 - sweepAngle / 2
-        sweepAngle: Tokens.sizes.dashboard.mediaProgressSweep
-        value: root.playerProgress
-
-        wavy: true
-        waveFrequency: 8
-        waveDuration: 2000
-        wavePaused: !Players.active?.isPlaying
-    }
-
-    CoverArt {
-        id: cover
-
-        anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.margins: Tokens.padding.medium + root.arcCoverGap + prog.thickness
-        implicitHeight: width
-    }
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Tokens.spacing.small
 
-    StyledText {
-        id: title
+        Item {
+            id: coverContainer
 
-        anchors.top: cover.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: Tokens.spacing.medium
+            width: parent.width
+            height: cover.implicitHeight + root.arcCoverGap * 2 + prog.thickness * 2
 
-        animate: true
-        horizontalAlignment: Text.AlignHCenter
-        text: (Players.active?.trackTitle ?? qsTr("No media")) || qsTr("Unknown title")
-        color: Colours.palette.m3primary
-        font: Tokens.font.title.small
+            CircularProgress {
+                id: prog
 
-        width: parent.implicitWidth - Tokens.padding.extraLargeIncreased
-        elide: Text.ElideRight
-    }
+                anchors.centerIn: cover
+                implicitSize: cover.width + root.arcCoverGap + thickness * 2
 
-    StyledText {
-        id: album
+                fgColour: Colours.palette.m3primary
+                strokeWidth: Tokens.sizes.dashboard.mediaProgressThickness
+                startAngle: -90 - sweepAngle / 2
+                sweepAngle: Tokens.sizes.dashboard.mediaProgressSweep
+                value: root.playerProgress
 
-        anchors.top: title.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: Tokens.spacing.small
+                wavy: true
+                waveFrequency: 8
+                waveDuration: 2000
+                wavePaused: !Players.active?.isPlaying
+            }
 
-        animate: true
-        horizontalAlignment: Text.AlignHCenter
-        text: (Players.active?.trackAlbum ?? qsTr("No media")) || qsTr("Unknown album")
-        color: Colours.palette.m3outline
-        font: Tokens.font.body.small
+            CoverArt {
+                id: cover
 
-        width: parent.implicitWidth - Tokens.padding.extraLargeIncreased
-        elide: Text.ElideRight
-    }
-
-    StyledText {
-        id: artist
-
-        anchors.top: album.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: Tokens.spacing.small
-
-        animate: true
-        horizontalAlignment: Text.AlignHCenter
-        text: (Players.active?.trackArtist ?? qsTr("No media")) || qsTr("Unknown artist")
-        color: Colours.palette.m3secondary
-
-        width: parent.implicitWidth - Tokens.padding.extraLargeIncreased
-        elide: Text.ElideRight
-    }
-
-    ButtonRow {
-        id: controls
-
-        anchors.top: artist.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.topMargin: Tokens.spacing.medium
-        anchors.margins: Tokens.padding.large
-
-        spacing: Tokens.spacing.extraSmall
-
-        IconButton {
-            type: IconButton.Tonal
-            icon: "skip_previous"
-            isRound: true
-            shapeMorph: true
-            disabled: !Players.active?.canGoPrevious
-            onClicked: Players.active?.previous()
+                anchors.centerIn: parent
+                width: parent.width - (Tokens.padding.medium + root.arcCoverGap + prog.thickness) * 2
+                implicitHeight: width
+            }
         }
 
-        IconButton {
-            fillWidth: true
-            icon: Players.active?.isPlaying ? "pause" : "play_arrow"
-            isRound: true
-            shapeMorph: true
-            checked: Players.active?.isPlaying ?? false
-            disabled: !Players.active?.canTogglePlaying
-            onClicked: Players.active?.togglePlaying()
+        StyledText {
+            id: title
+
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            animate: true
+            horizontalAlignment: Text.AlignHCenter
+            text: (Players.active?.trackTitle ?? qsTr("No media")) || qsTr("Unknown title")
+            color: Colours.palette.m3primary
+            font: Tokens.font.title.small
+
+            width: parent.width - Tokens.padding.large * 2
+            maximumLineCount: 2
+            wrapMode: Text.Wrap
+            elide: Text.ElideRight
         }
 
-        IconButton {
-            type: IconButton.Tonal
-            icon: "skip_next"
-            isRound: true
-            shapeMorph: true
-            disabled: !Players.active?.canGoNext
-            onClicked: Players.active?.next()
-        }
-    }
+        StyledText {
+            id: album
 
-    Item {
-        id: bongocat
+            anchors.horizontalCenter: parent.horizontalCenter
 
-        anchors.top: controls.bottom
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.topMargin: Tokens.spacing.small
-        anchors.bottomMargin: Tokens.padding.large
-        anchors.margins: Tokens.padding.extraLargeIncreased
+            animate: true
+            horizontalAlignment: Text.AlignHCenter
+            text: (Players.active?.trackAlbum ?? qsTr("No media")) || qsTr("Unknown album")
+            color: Colours.palette.m3outline
+            font: Tokens.font.body.small
 
-        AnimatedImage {
-            id: gif
-
-            anchors.fill: parent
-
-            playing: Players.active?.isPlaying ?? false
-            speed: Audio.beatTracker.bpm / Config.general.mediaGifSpeedAdjustment // qmllint disable unresolved-type
-            source: Paths.absolutePath(Config.paths.mediaGif)
-            asynchronous: true
-            fillMode: AnimatedImage.PreserveAspectFit
-            visible: !Config.dashboard.useMediaShapes
+            width: parent.width - Tokens.padding.large * 2
+            elide: Text.ElideRight
         }
 
-        MultiEffect {
-            anchors.fill: gif
-            source: gif
+        StyledText {
+            id: artist
 
-            visible: Config.dashboard.colorizeMediaGif && !Config.dashboard.useMediaShapes
-            colorization: 1
-            colorizationColor: Colours.palette.m3primary
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            animate: true
+            horizontalAlignment: Text.AlignHCenter
+            text: (Players.active?.trackArtist ?? qsTr("No media")) || qsTr("Unknown artist")
+            color: Colours.palette.m3secondary
+
+            width: parent.width - Tokens.padding.large * 2
+            elide: Text.ElideRight
         }
 
-        MediaShapes {
-            anchors.fill: parent
-            visible: Config.dashboard.useMediaShapes
+        ButtonRow {
+            id: controls
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: parent.width - Tokens.padding.medium * 2
+
+            spacing: Tokens.spacing.extraSmall
+
+            IconButton {
+                type: IconButton.Tonal
+                icon: "skip_previous"
+                isRound: true
+                shapeMorph: true
+                disabled: !Players.active?.canGoPrevious
+                onClicked: Players.active?.previous()
+            }
+
+            IconButton {
+                fillWidth: true
+                icon: Players.active?.isPlaying ? "pause" : "play_arrow"
+                isRound: true
+                shapeMorph: true
+                checked: Players.active?.isPlaying ?? false
+                disabled: !Players.active?.canTogglePlaying
+                onClicked: Players.active?.togglePlaying()
+            }
+
+            IconButton {
+                type: IconButton.Tonal
+                icon: "skip_next"
+                isRound: true
+                shapeMorph: true
+                disabled: !Players.active?.canGoNext
+                onClicked: Players.active?.next()
+            }
         }
     }
 }
