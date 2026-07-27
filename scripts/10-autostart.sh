@@ -44,7 +44,7 @@ export CAELESTIA_LIB_DIR="\$HOME/.local/lib/caelestia"
 # stdbuf forces line-buffered stdout/stderr; without it, glibc fully-buffers
 # output when it isn't attached to a TTY (e.g. when captured by journald via
 # systemd), so qDebug/qWarning messages can sit unflushed indefinitely.
-exec stdbuf -oL -eL "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
+exec env __NV_PRIME_RENDER_OFFLOAD=0 stdbuf -oL -eL "$QUICKSHELL_PATH" -d -n -p "\$HOME/.config/quickshell/caelestia/shell.qml"
 EOF
 chmod +x "$HOME/.local/bin/caelestia-autostart.sh"
 
