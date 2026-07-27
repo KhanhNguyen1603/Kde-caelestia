@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check repository file hygiene — large files, binary blobs, whitespace issues,
+"""Check repository file hygiene - large files, binary blobs, whitespace issues,
 merge conflict markers, and common mistakes that should be caught before merge.
 
 Checks:
@@ -67,7 +67,7 @@ def is_text_file(filepath: Path) -> bool:
 def is_generated_file(filepath: Path) -> bool:
     """Skip well-known generated/vendored files."""
     generated_patterns = [
-        "json.hpp",  # nlohmann json — vendored single-header
+        "json.hpp",  # nlohmann json - vendored single-header
         "qml-lint-conventions.py",  # our own tool
     ]
     return filepath.name in generated_patterns
@@ -100,7 +100,7 @@ def check_large_files() -> None:
                 if any(skip in str(rel) for skip in ("wallpapers", "sounds", "assets")):
                     warn(f"Large asset file: {rel} ({size_kb:.0f} KB)")
                 else:
-                    error(f"File too large ({size_kb:.0f} KB): {rel} — max allowed is {MAX_FILE_SIZE_KB} KB")
+                    error(f"File too large ({size_kb:.0f} KB): {rel} - max allowed is {MAX_FILE_SIZE_KB} KB")
 
 
 def check_merge_conflicts() -> None:
@@ -191,7 +191,7 @@ def check_tab_indentation() -> None:
 
             for line_no, line in enumerate(lines, 1):
                 if line.startswith("\t"):
-                    error(f"Tab indentation in {rel}:{line_no} — use spaces instead")
+                    error(f"Tab indentation in {rel}:{line_no} - use spaces instead")
                     break  # one error per file is enough
 
 

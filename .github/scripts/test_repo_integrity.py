@@ -149,7 +149,7 @@ class InstallerTests(unittest.TestCase):
         """Installer step numbering (00-*, 01-*, ...) should match Runner.cpp order.
 
         The glob result order from git may differ from Runner.cpp order; this test
-        is informational — Runner.cpp defines the canonical order, and step scripts
+        is informational - Runner.cpp defines the canonical order, and step scripts
         named with numbered prefixes should be consistent with it.
         """
         runner_text = (ROOT / "installer/src/Runner.cpp").read_text(encoding="utf-8")
@@ -164,7 +164,7 @@ class InstallerTests(unittest.TestCase):
                 if num < prev_num:
                     self.fail(
                         f"Installer step '{script}' (number {num:02d}) comes after "
-                        f"step number {prev_num:02d} in Runner.cpp — check ordering"
+                        f"step number {prev_num:02d} in Runner.cpp - check ordering"
                     )
                 prev_num = num
 
@@ -231,7 +231,7 @@ class SubmoduleTests(unittest.TestCase):
             full_path = ROOT / sub_path.strip()
             self.assertTrue(
                 full_path.is_dir(),
-                f"Submodule path '{sub_path}' does not exist — run git submodule update --init"
+                f"Submodule path '{sub_path}' does not exist - run git submodule update --init"
             )
 
 
@@ -242,7 +242,7 @@ class WorkflowYamlTests(unittest.TestCase):
         try:
             import yaml  # type: ignore[import-untyped]
         except ImportError:
-            # PyYAML not installed in CI — skip gracefully
+            # PyYAML not installed in CI - skip gracefully
             return
 
         workflows_dir = ROOT / ".github" / "workflows"
@@ -316,7 +316,7 @@ class ScriptNumberingTests(unittest.TestCase):
             max_num = max(numbers)
             self.assertLessEqual(
                 max_num, 99,
-                f"Script number {max_num} seems too high — consider renumbering"
+                f"Script number {max_num} seems too high - consider renumbering"
             )
 
 

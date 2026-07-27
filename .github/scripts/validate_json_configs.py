@@ -2,9 +2,9 @@
 """Validate JSON configuration files for schema and internal consistency.
 
 Validates:
-  1. installer/theme.json — required top-level keys, color references are valid,
+  1. installer/theme.json - required top-level keys, color references are valid,
      ANSI codes match expected pattern.
-  2. installer/menu.json — valid menu tree, unique IDs, all action IDs are recognized,
+  2. installer/menu.json - valid menu tree, unique IDs, all action IDs are recognized,
      select options are non-empty, text defaults are strings.
 """
 
@@ -69,7 +69,7 @@ def validate_theme(filepath: Path) -> None:
     try:
         data = json.loads(filepath.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        error(f"{filepath}: invalid JSON — {e}")
+        error(f"{filepath}: invalid JSON - {e}")
         return
 
     # Top-level sections
@@ -235,7 +235,7 @@ def validate_menu(filepath: Path) -> None:
     try:
         data = json.loads(filepath.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
-        error(f"menu.json: invalid JSON — {e}")
+        error(f"menu.json: invalid JSON - {e}")
         return
 
     if not isinstance(data, dict):

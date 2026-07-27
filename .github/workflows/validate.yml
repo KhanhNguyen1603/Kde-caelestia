@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   # ═══════════════════════════════════════════════════════════
-  # Job 1: Shell script quality — syntax, shellcheck, best practices
+  # Job 1: Shell script quality - syntax, shellcheck, best practices
   # ═══════════════════════════════════════════════════════════
   shell-quality:
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
         run: bash .github/scripts/check_shell_quality.sh
 
   # ═══════════════════════════════════════════════════════════
-  # Job 2: QML conventions — import order, section order, structure
+  # Job 2: QML conventions - import order, section order, structure
   # ═══════════════════════════════════════════════════════════
   qml-conventions:
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
         run: python3 shell/scripts/qml-lint-conventions.py
 
   # ═══════════════════════════════════════════════════════════
-  # Job 3: C++ build — compile the TUI installer
+  # Job 3: C++ build - compile the TUI installer
   # ═══════════════════════════════════════════════════════════
   cpp-build:
     runs-on: ubuntu-latest
@@ -72,7 +72,7 @@ jobs:
         run: test -f installer/build/caelestia-install && echo "Installer binary OK"
 
   # ═══════════════════════════════════════════════════════════
-  # Job 4: Python quality — lint, compile, best practices
+  # Job 4: Python quality - lint, compile, best practices
   # ═══════════════════════════════════════════════════════════
   python-quality:
     runs-on: ubuntu-latest
@@ -111,7 +111,7 @@ jobs:
           echo "::endgroup::"
 
   # ═══════════════════════════════════════════════════════════
-  # Job 5: Repository integrity — cross-cutting consistency checks
+  # Job 5: Repository integrity - cross-cutting consistency checks
   # ═══════════════════════════════════════════════════════════
   repo-integrity:
     runs-on: ubuntu-latest
@@ -148,7 +148,7 @@ jobs:
         run: python3 .github/scripts/validate_json_configs.py
 
   # ═══════════════════════════════════════════════════════════
-  # Job 7: File hygiene — large files, whitespace, merge conflicts
+  # Job 7: File hygiene - large files, whitespace, merge conflicts
   # ═══════════════════════════════════════════════════════════
   file-hygiene:
     runs-on: ubuntu-latest
@@ -215,18 +215,18 @@ jobs:
           for job in "${!job_results[@]}"; do
             result="${job_results[$job]}"
             if [[ "$result" == "success" ]]; then
-              echo "- :white_check_mark: **${job}** — passed" >> $GITHUB_STEP_SUMMARY
+              echo "- [PASS] **${job}**" >> $GITHUB_STEP_SUMMARY
             elif [[ "$result" == "skipped" ]]; then
-              echo "- :heavy_minus_sign: **${job}** — skipped" >> $GITHUB_STEP_SUMMARY
+              echo "- [SKIP] **${job}**" >> $GITHUB_STEP_SUMMARY
             else
-              echo "- :x: **${job}** — ${result}" >> $GITHUB_STEP_SUMMARY
+              echo "- [FAIL] **${job}** - ${result}" >> $GITHUB_STEP_SUMMARY
               all_passed=false
             fi
           done
 
           if [[ "$all_passed" != "true" ]]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo ":warning: Some checks failed. Please review the job logs above." >> $GITHUB_STEP_SUMMARY
+            echo "Some checks failed. Please review the job logs above." >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
 

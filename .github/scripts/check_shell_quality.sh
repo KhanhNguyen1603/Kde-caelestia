@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check_shell_quality.sh — Shell script quality checks for CI.
+# check_shell_quality.sh - Shell script quality checks for CI.
 #
 # Checks performed:
 #   1. All .sh files parse with `bash -n` (syntax check)
@@ -65,7 +65,7 @@ if command -v shellcheck &>/dev/null; then
         log_ok "shellcheck passed on all scripts"
     fi
 else
-    log_warn "shellcheck not installed — skipping (install with: apt install shellcheck)"
+    log_warn "shellcheck not installed - skipping (install with: apt install shellcheck)"
 fi
 
 # ─── 3. Strict mode check (set -euo pipefail) ───

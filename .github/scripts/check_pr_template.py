@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""Validate that a PR description properly fills out the PR template.
+"""Validate that a PR description is meaningful - not just placeholder text.
 
 Reads the PR body from the GitHub event payload and checks:
-  1. The PR description is not just the default template text
-  2. At least one "Type of change" checkbox is checked
-  3. At least one "Impact" checkbox is checked
-  4. The "Testing" section is filled (not left with placeholder)
-  5. The "Review status" section has a selection
-  6. Description section has been modified from placeholder
+  1. The description is not completely empty
+  2. The "What does this change?" section has been filled in
 """
 
 import json
@@ -44,7 +40,7 @@ def load_pr_body() -> str | None:
     """Load PR body from the GitHub event file."""
     event_path = os.environ.get("GITHUB_EVENT_PATH")
     if not event_path:
-        print("Warning: GITHUB_EVENT_PATH not set — running locally?")
+        print("Warning: GITHUB_EVENT_PATH not set - running locally?")
         return None
 
     try:
@@ -58,9 +54,8 @@ def load_pr_body() -> str | None:
     return pull_request.get("body", "")
 
 
-def check_checkbox_section(body: str, section_header: str, min_checked: int = 1) -> bool:
-    """Find a section by header and check if at least min_checked boxes are checked."""
-    # Find the section
+def check_section_filled(body: str, section_header: str) -> bool:
+    """Verify that a section has real content, not just placeholder text."""
     header_pattern = re.escape(section_header)
     section_match = re.search(
         rf"#{1,3}\s+{header_pattern}.*?\n(.*?)(?=\n#{1,3}\s+|\Z)",
@@ -68,35 +63,12 @@ def check_checkbox_section(body: str, section_header: str, min_checked: int = 1)
         re.DOTALL | re.IGNORECASE,
     )
     if not section_match:
-        warn(f"Section '{section_header}' not found in PR description")
-        return False
-
-    section_text = section_match.group(1)
-    # Count checked boxes: - [x] or - [X]
-    checked = len(re.findall(r"-\s+\[[xX]\]", section_text))
-    total = len(re.findall(r"-\s+\[[ xX]\]", section_text))
-
-    if checked < min_checked:
-        error(f"'{section_header}': {checked}/{total} checkboxes checked (need at least {min_checked})")
-        return False
-
-    return True
-
-
-def check_section_not_placeholder(body: str, section_header: str) -> bool:
-    """Verify that a section has been filled in (not left with placeholder text)."""
-    header_pattern = re.escape(section_header)
-    section_match = re.search(
-        rf"#{1,3}\s+{header_pattern}.*?\n(.*?)(?=\n#{1,3}\s+|\Z)",
-        body,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if not section_match:
-        return True  # No section to check
+        return True  # Section not present - the new template is lightweight
 
     section_text = section_match.group(1).strip()
 
     placeholder_texts = [
+        "A sentence or two about what this PR does",
         "Briefly describe what this PR changes",
         "Describe how you tested these changes",
         "Add screenshots if they are relevant",
@@ -105,13 +77,13 @@ def check_section_not_placeholder(body: str, section_header: str) -> bool:
 
     for placeholder in placeholder_texts:
         if placeholder.lower() in section_text.lower() and len(section_text) < len(placeholder) + 30:
-            warn(f"'{section_header}' appears to still contain placeholder text")
+            warn(f"'{section_header}' still contains placeholder text - fill it in?")
             return False
 
     # Check if section is essentially empty
     cleaned = re.sub(r"[#\-\*\s]", "", section_text)
     if len(cleaned) < 10:
-        warn(f"'{section_header}' section appears empty or minimal")
+        warn(f"'{section_header}' section is empty - a sentence or two helps reviewers")
         return False
 
     return True
@@ -121,37 +93,25 @@ def main() -> int:
     body = load_pr_body()
 
     if body is None:
-        print(f"{YELLOW}Skipping PR template validation — not running in CI context.{RESET}")
+        print(f"{YELLOW}Skipping PR template validation - not running in CI context.{RESET}")
         return 0
 
-    print(f"{BOLD}=== PR Template Validation ==={RESET}")
+    print(f"{BOLD}=== PR Description Check ==={RESET}")
 
-    # 1. Type of change must have at least one checkbox checked
-    check_checkbox_section(body, "Type of change", min_checked=1)
+    # Only one real check: is there actual content in the description section?
+    check_section_filled(body, "What does this change?")
 
-    # 2. Impact must have at least one checkbox checked
-    check_checkbox_section(body, "Impact", min_checked=1)
-
-    # 3. Review status must be selected (either ready or WIP)
-    check_checkbox_section(body, "Review status", min_checked=1)
-
-    # 4. Description section should not be placeholder
-    check_section_not_placeholder(body, "Description")
-
-    # 5. Testing section should not be placeholder
-    check_section_not_placeholder(body, "Testing")
-
-    # 6. Check that the PR is not empty (no description at all)
+    # Bare minimum: is there ANY content at all?
     if not body or len(body.strip()) < 20:
-        error("PR description is empty or too short")
+        error("PR description is empty - please add a sentence about what this changes")
 
     print()
     if EXIT_CODE == 0:
-        print(f"{BOLD}{GREEN}PR template validation passed.{RESET}")
+        print(f"{BOLD}{GREEN}PR description looks good!{RESET}")
         if WARNINGS:
-            print(f"{YELLOW}(with {len(WARNINGS)} warning(s)){RESET}")
+            print(f"{YELLOW}({len(WARNINGS)} gentle suggestion(s) above){RESET}")
     else:
-        print(f"{BOLD}{RED}PR template validation failed — please fill out all sections.{RESET}")
+        print(f"{BOLD}{RED}Please add a description before submitting.{RESET}")
 
     return EXIT_CODE
 
