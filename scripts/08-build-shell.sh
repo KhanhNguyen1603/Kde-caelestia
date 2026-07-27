@@ -126,14 +126,6 @@ cmake --install build || {
     exit 1
 }
 
-# Window-icon extractor: pulls _NET_WM_ICON for XWayland apps with no desktop entry
-# (Minecraft / Steam games) so the dock can show their real icon.
-mkdir -p ~/.local/bin
-if [ -f "$BUNDLE_DIR/scripts/caelestia-winicon.py" ]; then
-    cp --remove-destination "$BUNDLE_DIR/scripts/caelestia-winicon.py" ~/.local/bin/caelestia-winicon.py 2>/dev/null || true
-    chmod +x ~/.local/bin/caelestia-winicon.py 2>/dev/null || true
-fi
-
 # Validate critical QML module presence before declaring success.
 CONFIG_MODULE_DIR="$HOME/.local/lib/qt6/qml/Caelestia/Config"
 if [[ ! -f "$CONFIG_MODULE_DIR/qmldir" ]]; then

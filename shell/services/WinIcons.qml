@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Caelestia.Services
 
 // Icons pulled straight out of a window's own _NET_WM_ICON (XWayland) for apps
 // that have no resolvable desktop entry or themed icon — Minecraft, most Steam
@@ -22,7 +23,9 @@ Singleton {
     // appClass -> extraction already attempted (don't re-spawn the helper)
     property var tried: ({})
 
-    // Kick off an extraction for a window class, at most once per class.
+    // Ask the plugin for the icon, at most once per class. The extraction is a
+    // direct XGetWindowProperty read on _NET_WM_ICON — no helper process, and no
+    // python-xlib/Pillow to have installed.
     function request(appClass: string, title: string): void {
         if (!appClass || root.tried[appClass])
             return;
@@ -31,33 +34,29 @@ Singleton {
         t[appClass] = true;
         root.tried = t;
 
-        const helper = (Quickshell.env("HOME") || "") + "/.local/bin/caelestia-winicon.py";
-        const cmd = ["sh", "-c", 'DISPLAY="${DISPLAY:-:0}" python3 "$0" --class "$1" --title "$2"', helper, appClass, title || ""];
-        const qmlStr =
-            "import QtQuick\n" +
-            "import Quickshell.Io\n" +
-            "Process {\n" +
-            "    id: wp\n" +
-            "    command: " + JSON.stringify(cmd) + "\n" +
-            "    stdout: StdioCollector { onStreamFinished: root.register(" + JSON.stringify(appClass) + ", (text || \"\").trim(), wp); }\n" +
-            "    onExited: code => { if (code !== 0) wp.destroy(); }\n" +
-            "}";
-        try {
-            const o = Qt.createQmlObject(qmlStr, root, "winIconProc");
-            o.running = true;
-        } catch (e) {}
+        const path = WindowIcon.extract(appClass, title || "");
+        if (path)
+            root.register(appClass, path);
+    }
+
+    // Cached hits come straight back from extract(), but a window that only
+    // appears later still reports through the signal.
+    Connections {
+        target: WindowIcon
+
+        function onExtracted(appClass: string, path: string): void {
+            root.register(appClass, path);
+        }
     }
 
     // Record a freshly extracted icon. Reassigning a copy is what notifies the
     // bindings that read paths[...] — mutating in place would not.
-    function register(appClass: string, path: string, proc: var): void {
-        if (path && path !== "") {
-            const m = root.paths;
-            m[appClass] = path;
-            root.paths = Object.assign({}, m);
-        }
-        if (proc)
-            proc.destroy();
+    function register(appClass: string, path: string): void {
+        if (!path || path === "" || root.paths[appClass] === path)
+            return;
+        const m = root.paths;
+        m[appClass] = path;
+        root.paths = Object.assign({}, m);
     }
 
     // Resolve an icon for a dock entry, in the order the taskbar tile and the
