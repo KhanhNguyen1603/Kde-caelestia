@@ -163,6 +163,7 @@ Item {
     // Caelestia Mode Toggle
     StyledRect {
         id: toggleRect
+        visible: false
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -179,7 +180,8 @@ Item {
             spacing: Tokens.spacing.medium
             
             StyledRect {
-                implicitWidth: implicitHeight
+                visible: false
+            implicitWidth: implicitHeight
                 implicitHeight: icon.implicitHeight + Tokens.padding.large
                 radius: Tokens.rounding.full
                 color: Visibilities.isCaelestiaMode ? Colours.palette.m3secondary : Colours.palette.m3secondaryContainer
