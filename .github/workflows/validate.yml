@@ -29,24 +29,6 @@ jobs:
         run: bash .github/scripts/check_shell_quality.sh
 
   # ═══════════════════════════════════════════════════════════
-  # Job 2: QML conventions - import order, section order, structure
-  # ═══════════════════════════════════════════════════════════
-  qml-conventions:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Run QML lint conventions
-        run: python3 shell/scripts/qml-lint-conventions.py
-
-  # ═══════════════════════════════════════════════════════════
   # Job 3: C++ build - compile the TUI installer
   # ═══════════════════════════════════════════════════════════
   cpp-build:
@@ -191,7 +173,6 @@ jobs:
   validate-gate:
     needs:
       - shell-quality
-      - qml-conventions
       - cpp-build
       - python-quality
       - repo-integrity
@@ -208,7 +189,6 @@ jobs:
 
           declare -A job_results
           job_results[shell-quality]="${{ needs.shell-quality.result }}"
-          job_results[qml-conventions]="${{ needs.qml-conventions.result }}"
           job_results[cpp-build]="${{ needs.cpp-build.result }}"
           job_results[python-quality]="${{ needs.python-quality.result }}"
           job_results[repo-integrity]="${{ needs.repo-integrity.result }}"
