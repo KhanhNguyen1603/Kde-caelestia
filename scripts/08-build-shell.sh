@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -uo pipefail
+set -euo pipefail
 
 CYAN="\033[0;36m"
 GREEN="\033[0;32m"
