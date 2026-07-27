@@ -12,11 +12,86 @@ Singleton {
     id: root
 
     readonly property list<MprisPlayer> list: Mpris.players.values
-    readonly property MprisPlayer active: props.manualActive ?? list.find(p => getIdentity(p) === GlobalConfig.services.defaultPlayer) ?? list[0] ?? null
+    readonly property MprisPlayer active: props.manualActive ?? list.find(p => p.isPlaying && (p.trackTitle ?? "") !== "") ?? list.find(p => getIdentity(p) === GlobalConfig.services.defaultPlayer) ?? list.find(p => (p.trackTitle ?? "") !== "") ?? list[0] ?? null
     property alias manualActive: props.manualActive
 
     // Dedup key for progressive metadata (e.g. mpv-mpris/yt-dlp player fills title then artist later).
     property string lastNowPlayingKey: ""
+
+    property string fetchedArtUrl: ""
+    readonly property string activeArtUrl: active ? (getArtUrl(active) || fetchedArtUrl) : ""
+
+    property string lastFetchedTitle: ""
+
+    function isPlaceholderTitle(title: string): bool {
+        if (!title) return true;
+        const clean = title.toLowerCase().trim();
+        return clean.startsWith("spotify - web player") ||
+               clean.startsWith("youtube - web player") ||
+               clean.startsWith("youtube music") ||
+               clean === "spotify" ||
+               clean === "youtube" ||
+               clean === "web player" ||
+               clean === "unknown title";
+    }
+
+    function fetchArtwork() {
+        const player = root.active;
+        if (!player) {
+            fetchedArtUrl = "";
+            lastFetchedTitle = "";
+            return;
+        }
+
+        if (getArtUrl(player) !== "") {
+            fetchedArtUrl = "";
+            lastFetchedTitle = "";
+            return;
+        }
+
+        const title = player.trackTitle ? player.trackTitle.trim() : "";
+        if (title === "" || isPlaceholderTitle(title)) {
+            // Keep previous fetchedArtUrl when paused on generic web player titles
+            return;
+        }
+
+        if (title === lastFetchedTitle && fetchedArtUrl !== "")
+            return;
+
+        lastFetchedTitle = title;
+
+        // Clean title only (strip unclosed/closed brackets, keywords)
+        let cleanTitle = title;
+        cleanTitle = cleanTitle.replace(/[\(\[\{][^\)\]\}]*$/, "");
+        cleanTitle = cleanTitle.replace(/\s*[\(\[\{].*?[\)\]\}]\s*/g, " ");
+        cleanTitle = cleanTitle.replace(/\s+(feat|ft|featuring)\..*/gi, "");
+        cleanTitle = cleanTitle.replace(/\s+(remix|music video|official video|lyric video|lyrics|audio|mv|hd|4k)\b/gi, " ");
+        cleanTitle = cleanTitle.trim();
+
+        if (cleanTitle === "")
+            cleanTitle = title.trim();
+
+        // Search ONLY by title
+        const queryUrl = "https://itunes.apple.com/search?term=" + encodeURIComponent(cleanTitle) + "&entity=song&limit=1";
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", queryUrl);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.results && response.results.length > 0) {
+                        fetchedArtUrl = response.results[0].artworkUrl100 || "";
+                    } else {
+                        fetchedArtUrl = "";
+                    }
+                } catch (e) {
+                    fetchedArtUrl = "";
+                }
+            }
+        };
+        xhr.send();
+    }
 
     function getIdentity(player: MprisPlayer): string {
         if (!player)
@@ -28,15 +103,20 @@ Singleton {
     function getArtUrl(player: MprisPlayer): string {
         if (!player)
             return "";
-        if (player.trackArtUrl)
-            return player.trackArtUrl;
 
-        const url = player.metadata["xesam:url"] ?? "";
-        if (url.startsWith("https://www.youtube.com/watch")) {
-            // Fallback for youtube
-            const id = url.match(/[?&]v=([\w-]{11})/)?.[1];
-            return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "";
+        // 1. Extract Youtube Video ID from any Youtube URL format (highest priority for Youtube)
+        const url = String(player.metadata["xesam:url"] ?? player.metadata["mpris:artUrl"] ?? player.trackArtUrl ?? "");
+        const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|ytimg\.com\/vi\/)([^"&?\/\s]{11})/i);
+        if (ytMatch && ytMatch[1]) {
+            return "https://img.youtube.com/vi/" + ytMatch[1] + "/mqdefault.jpg";
         }
+
+        // 2. Ignore Chrome temporary local file paths (/tmp/.org.chromium...) and plasma browser integration cache
+        const art = player.trackArtUrl ? String(player.trackArtUrl).trim() : "";
+        if (art !== "" && !art.includes(".org.chromium.Chromium") && !art.includes("/tmp/") && !art.includes("plasma-browser-integration")) {
+            return art;
+        }
+
         return "";
     }
 
@@ -64,19 +144,25 @@ Singleton {
         Toaster.toast(qsTr("Now Playing"), qsTr("%1 - %2").arg(artist).arg(title), "music_note");
     }
 
-    onActiveChanged: lastNowPlayingKey = ""
+    onActiveChanged: {
+        lastNowPlayingKey = "";
+        fetchArtwork();
+    }
 
     Connections {
         function onPostTrackChanged(): void {
             root.maybeToastNowPlaying();
+            root.fetchArtwork();
         }
 
         function onTrackTitleChanged(): void {
             root.maybeToastNowPlaying();
+            root.fetchArtwork();
         }
 
         function onTrackArtistChanged(): void {
             root.maybeToastNowPlaying();
+            root.fetchArtwork();
         }
 
         target: root.active

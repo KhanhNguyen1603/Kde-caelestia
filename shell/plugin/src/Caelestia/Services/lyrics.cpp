@@ -230,15 +230,31 @@ qreal Lyrics::timeForIndex(int index) const {
     return m_lines.at(index).time + m_offset;
 }
 
+static bool isPlaceholderTitle(const QString& title) {
+    if (title.isEmpty()) return true;
+    const QString clean = title.toLower().trimmed();
+    return clean.startsWith(u"spotify - web player"_s) ||
+           clean.startsWith(u"youtube - web player"_s) ||
+           clean.startsWith(u"youtube music"_s) ||
+           clean == u"spotify"_s ||
+           clean == u"youtube"_s ||
+           clean == u"web player"_s ||
+           clean == u"unknown title"_s;
+}
+
 void Lyrics::setTrack(const QString& artist, const QString& title, const QString& album, qreal duration) {
-    const QString a = artist.trimmed();
     const QString t = title.trimmed();
 
-    if (a == m_artist && t == m_title && album == m_album && qFuzzyCompare(duration + 1.0, m_duration + 1.0)) {
+    if (t.isEmpty() || isPlaceholderTitle(t)) {
+        // Keep previous lyrics when paused on generic web player titles
         return;
     }
 
-    m_artist = a;
+    if (t == m_title) {
+        return;
+    }
+
+    m_artist = artist.trimmed();
     m_title = t;
     m_album = album;
     m_duration = duration;
@@ -503,16 +519,20 @@ void Lyrics::tryLrclib(int reqId) {
 
     setBackend(LyricsBackend::LRCLIB);
 
-    QUrl url(u"https://lrclib.net/api/get"_s);
+    // Clean title for searching (strip [MV], (Official Video), feat, etc.)
+    QString cleanTitle = m_title;
+    cleanTitle.remove(QRegularExpression(u"[\\(\\[\\{][^\\)\\]\\}]*$"_s));
+    cleanTitle.remove(QRegularExpression(u"\\s*[\\(\\[\\{].*?[\\)\\]\\}]\\s*"_s));
+    cleanTitle.remove(QRegularExpression(u"\\s+(feat|ft|featuring)\\..*"_s, QRegularExpression::CaseInsensitiveOption));
+    cleanTitle.remove(QRegularExpression(u"\\s+(remix|music video|official video|lyric video|lyrics|audio|mv|hd|4k)\\b"_s, QRegularExpression::CaseInsensitiveOption));
+    cleanTitle = cleanTitle.trimmed();
+    if (cleanTitle.isEmpty()) {
+        cleanTitle = m_title.trimmed();
+    }
+
+    QUrl url(u"https://lrclib.net/api/search"_s);
     QUrlQuery q;
-    q.addQueryItem(u"track_name"_s, m_title);
-    q.addQueryItem(u"artist_name"_s, m_artist);
-    if (!m_album.isEmpty()) {
-        q.addQueryItem(u"album_name"_s, m_album);
-    }
-    if (m_duration > 0) {
-        q.addQueryItem(u"duration"_s, QString::number(qRound(m_duration)));
-    }
+    q.addQueryItem(u"track_name"_s, cleanTitle);
     url.setQuery(q);
 
     auto* reply = getJson(url, lrclibHeaders());
@@ -524,39 +544,46 @@ void Lyrics::tryLrclib(int reqId) {
             return;
         }
         if (reply->error() != QNetworkReply::NoError) {
-            qCDebug(lcLyrics) << "lrclib /get error:" << reply->errorString();
+            qCDebug(lcLyrics) << "lrclib /search error:" << reply->errorString();
             chainNext(LyricsBackend::LRCLIB, reqId);
             return;
         }
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        const QJsonObject obj = doc.object();
-        const QString synced = obj.value(u"syncedLyrics"_s).toString();
-        const qint64 id = static_cast<qint64>(obj.value(u"id"_s).toDouble());
+        const QJsonArray arr = doc.array();
 
-        if (synced.isEmpty()) {
-            qCDebug(lcLyrics) << "lrclib: no syncedLyrics for" << m_artist << "-" << m_title;
-            chainNext(LyricsBackend::LRCLIB, reqId);
+        for (const auto& v : arr) {
+            const QJsonObject obj = v.toObject();
+            const QString synced = obj.value(u"syncedLyrics"_s).toString();
+            const QString plain = obj.value(u"plainLyrics"_s).toString();
+            const QString lyricsText = !synced.isEmpty() ? synced : plain;
+            const qint64 id = static_cast<qint64>(obj.value(u"id"_s).toDouble());
+
+            if (lyricsText.isEmpty()) {
+                continue;
+            }
+
+            const auto lines = parseLrc(lyricsText);
+            if (lines.isEmpty()) {
+                continue;
+            }
+
+            writeCachedLrc(LyricsBackend::LRCLIB, QString::number(id), lyricsText);
+            setLines(lines, LyricsBackend::LRCLIB);
+            const LyricCandidate cand(LyricsBackend::LRCLIB, QString::number(id), obj.value(u"trackName"_s).toString(),
+                obj.value(u"artistName"_s).toString(), obj.value(u"albumName"_s).toString(),
+                obj.value(u"duration"_s).toDouble());
+            appendCandidates({ cand });
+            m_selected = cand;
+            emit selectedCandidateChanged();
+            if (!m_settingFromPrefs) {
+                persistTrackPrefs();
+            }
+            setLoading(false);
             return;
         }
 
-        const auto lines = parseLrc(synced);
-        if (lines.isEmpty()) {
-            chainNext(LyricsBackend::LRCLIB, reqId);
-            return;
-        }
-
-        writeCachedLrc(LyricsBackend::LRCLIB, QString::number(id), synced);
-        setLines(lines, LyricsBackend::LRCLIB);
-        const LyricCandidate cand(LyricsBackend::LRCLIB, QString::number(id), obj.value(u"trackName"_s).toString(),
-            obj.value(u"artistName"_s).toString(), obj.value(u"albumName"_s).toString(),
-            obj.value(u"duration"_s).toDouble());
-        appendCandidates({ cand });
-        m_selected = cand;
-        emit selectedCandidateChanged();
-        if (!m_settingFromPrefs) {
-            persistTrackPrefs();
-        }
-        setLoading(false);
+        qCDebug(lcLyrics) << "lrclib: no lyrics found for" << m_artist << "-" << m_title;
+        chainNext(LyricsBackend::LRCLIB, reqId);
     });
 }
 

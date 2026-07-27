@@ -97,7 +97,9 @@ Item {
 
         anchors.fill: parent
 
-        source: Players.getArtUrl(Players.active)
+        source: Players.activeArtUrl
+        cache: false
+        sourceSize: Qt.size(256, 256)
 
         layer.enabled: true
         layer.effect: Mask {
