@@ -1,6 +1,6 @@
 name: Feature request
 description: Got an idea? We'd love to hear it
-labels: ["enhancement"]
+labels: ["feature"]
 
 body:
   - type: markdown
@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for the idea!
 
-        A quick search of [existing requests](https://github.com/ladybug-me/caelestia-dots-kde/issues?q=is%3Aissue+label%3Aenhancement) avoids duplicates - if you find one, give it a thumbs up instead.
+        A quick search of [existing requests](https://github.com/ladybug-me/caelestia-dots-kde/issues?q=is%3Aissue+label%3Afeature) avoids duplicates - if you find one, give it a thumbs up instead.
 
   - type: textarea
     attributes:
