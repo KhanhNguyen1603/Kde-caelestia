@@ -113,7 +113,21 @@ if [ ! -f "$BUNDLE_DIR/scripts/03-deploy-configs.sh" ] || [ ! -f "$BUNDLE_DIR/sc
     die "Critical internal scripts are missing from $BUNDLE_DIR/scripts/"
 fi
 
-# Robust Privilege Escalation for GUI and Terminal
+# Cache sudo credentials once now so sub-scripts don't each re-prompt.
+# sudo -v refreshes the timestamp; a background loop keeps it alive.
+sudo -v || die "Failed to obtain sudo privileges."
+
+# Refresh the sudo timestamp every 55 seconds in the background while
+# we run the deployment and build steps (sudo default timeout is 5 min).
+_keeper_started=0
+sudo_keepalive() {
+    while kill -0 $$ 2>/dev/null; do
+        sudo -v 2>/dev/null || break
+        sleep 55
+    done
+}
+
+# Determine the best escalation helper for GUI environments
 run_elevated() {
     if [ "$EUID" -eq 0 ]; then
         "$@"
@@ -128,14 +142,22 @@ run_elevated() {
     fi
 }
 
-info "We will deploy core configs and KDE bridges. A password prompt may appear."
+# Start keepalive in background (only once)
+sudo_keepalive &
+SUDO_KEEPER_PID=$!
+_keeper_started=1
 
-# This script deploys Python bridges and mock hyprctl which the shell needs
-# Execute normally; any internal sudo calls will trigger prompts automatically
+# This script deploys Python bridges and mock hyprctl which the shell needs.
+# Its internal sudo calls will reuse the cached credential without re-prompting.
 bash "$BUNDLE_DIR/scripts/03-deploy-configs.sh" || die "Config deployment failed."
 
 info "Building Caelestia Shell UI..."
 bash "$BUNDLE_DIR/scripts/08-build-shell.sh" || die "Shell build failed."
+
+# Kill the keepalive background process now that sudo is no longer needed
+if [ "$_keeper_started" -eq 1 ] && kill -0 "$SUDO_KEEPER_PID" 2>/dev/null; then
+    kill "$SUDO_KEEPER_PID" 2>/dev/null || true
+fi
 
 section "Update Completed Successfully"
 echo
@@ -154,7 +176,23 @@ elif [[ -x "/usr/bin/caelestia" ]]; then
 else
     CAELESTIA_BIN="caelestia"
 fi
-"$CAELESTIA_BIN" shell -k 2>/dev/null || true
+
+# Resolve a reliable way to talk to the running shell instance.
+# Prefer the (now-patched) CLI; fall back to the path-based IPC wrapper.
+SHELL_IPC=""
+if [[ -x "$HOME/.local/bin/caelestia-shell-ipc" ]]; then
+    SHELL_IPC="$HOME/.local/bin/caelestia-shell-ipc"
+fi
+
+# Kill the running shell – try CLI first, then the IPC wrapper, then pkill.
+if "$CAELESTIA_BIN" shell -k 2>/dev/null; then
+    : # CLI succeeded
+elif [[ -n "$SHELL_IPC" ]] && "$SHELL_IPC" quit 2>/dev/null; then
+    : # IPC wrapper succeeded
+else
+    pkill -f "quickshell.*caelestia/shell.qml" 2>/dev/null || true
+fi
+
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/caelestia"
 SCHEME_FILE="$STATE_DIR/scheme.json"
 i=0
@@ -162,7 +200,20 @@ while [[ $i -lt 15 && ! -s "$SCHEME_FILE" ]]; do
     sleep 1
     i=$((i + 1))
 done
-"$CAELESTIA_BIN" shell -d >/dev/null 2>&1 &
+
+# Start the shell – the CLI was patched for path-based resolution during build.
+# Fall back to the IPC wrapper or direct quickshell if the CLI is unavailable.
+if command -v "$CAELESTIA_BIN" >/dev/null 2>&1; then
+    "$CAELESTIA_BIN" shell -d >/dev/null 2>&1 &
+elif [[ -n "$SHELL_IPC" ]]; then
+    "$SHELL_IPC" start 2>/dev/null &
+else
+    QUICKSHELL_PATH="$(command -v quickshell 2>/dev/null || command -v qs 2>/dev/null || echo quickshell)"
+    export QML2_IMPORT_PATH="$HOME/.local/lib/qt6/qml"
+    export CAELESTIA_LIB_DIR="$HOME/.local/lib/caelestia"
+    stdbuf -oL -eL "$QUICKSHELL_PATH" -d -n -p "$HOME/.config/quickshell/caelestia/shell.qml" >/dev/null 2>&1 &
+fi
+
 echo "Shell restarted successfully!"
 echo
 echo "If the shell doesn't start, please restart it manually by running: $CAELESTIA_BIN shell -d"

@@ -1,21 +1,69 @@
 {
   "menu": [
     {
-      "id": "menu_system",
+      "id": "menu_packages",
       "type": "submenu",
-      "title": "System Configuration",
+      "title": "Package Installation",
       "items": [
         {
-          "id": "CONFIRM_ARG",
+          "id": "INSTALL_FISH",
           "type": "boolean",
-          "title": "Auto package confirmation (-y / --noconfirm)",
+          "title": "Fish shell",
           "default": true
         },
         {
-          "id": "REMOVE_CACHE",
+          "id": "INSTALL_PAPIRUS",
           "type": "boolean",
-          "title": "Remove build cache after successful install",
-          "default": false
+          "title": "Papirus icon theme",
+          "default": true
+        },
+        {
+          "id": "INSTALL_DARKLY",
+          "type": "boolean",
+          "title": "Darkly theme package",
+          "default": true
+        },
+        {
+          "id": "INSTALL_KVANTUM",
+          "type": "boolean",
+          "title": "Kvantum theme engine",
+          "default": true
+        },
+        {
+          "id": "action_back",
+          "type": "action",
+          "title": "Back to Main Menu"
+        }
+      ]
+    },
+    {
+      "id": "menu_theming",
+      "type": "submenu",
+      "title": "Plasma Theming",
+      "items": [
+        {
+          "id": "APPLY_DARKLY",
+          "type": "boolean",
+          "title": "Apply Darkly theme (style, decorations, window borders)",
+          "default": true
+        },
+        {
+          "id": "APPLY_MATERIAL_YOU",
+          "type": "boolean",
+          "title": "Enable Material You dynamic colors",
+          "default": true
+        },
+        {
+          "id": "APPLY_FONTS",
+          "type": "boolean",
+          "title": "Apply custom fonts (Rubik, JetBrains Mono Nerd)",
+          "default": true
+        },
+        {
+          "id": "APPLY_LOCKSCREEN",
+          "type": "boolean",
+          "title": "Enable custom lockscreen wallpaper plugin",
+          "default": true
         },
         {
           "id": "action_back",
@@ -27,14 +75,8 @@
     {
       "id": "menu_shell",
       "type": "submenu",
-      "title": "Shell settings",
+      "title": "Shell Preferences",
       "items": [
-        {
-          "id": "INSTALL_FISH",
-          "type": "boolean",
-          "title": "Install Fish shell and Fish config",
-          "default": true
-        },
         {
           "id": "DEFAULT_SHELL",
           "type": "select",
@@ -54,51 +96,21 @@
       ]
     },
     {
-      "id": "menu_desktop",
+      "id": "menu_installer",
       "type": "submenu",
-      "title": "KDE Plasma Customizations",
+      "title": "Installer Behavior",
       "items": [
         {
-          "id": "INSTALL_PAPIRUS",
+          "id": "CONFIRM_ARG",
           "type": "boolean",
-          "title": "Install Papirus icon theme package",
+          "title": "Auto-confirm package installs (--noconfirm / -y)",
           "default": true
         },
         {
-          "id": "INSTALL_DARKLY",
+          "id": "REMOVE_CACHE",
           "type": "boolean",
-          "title": "Install Darkly theme package",
-          "default": true
-        },
-        {
-          "id": "INSTALL_KVANTUM",
-          "type": "boolean",
-          "title": "Install Kvantum packages",
-          "default": true
-        },
-        {
-          "id": "APPLY_DARKLY",
-          "type": "boolean",
-          "title": "Apply Darkly Theme (Plasma style, window decorations, Kvantum)",
-          "default": true
-        },
-        {
-          "id": "APPLY_MATERIAL_YOU",
-          "type": "boolean",
-          "title": "Enable Material You colors (kde-material-you-colors)",
-          "default": true
-        },
-        {
-          "id": "APPLY_FONTS",
-          "type": "boolean",
-          "title": "Apply included custom fonts",
-          "default": true
-        },
-        {
-          "id": "APPLY_LOCKSCREEN",
-          "type": "boolean",
-          "title": "Enable Lockscreen Wallpaper plugin",
-          "default": true
+          "title": "Remove build cache after install",
+          "default": false
         },
         {
           "id": "action_back",

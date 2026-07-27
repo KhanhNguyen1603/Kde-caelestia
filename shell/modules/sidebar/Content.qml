@@ -19,9 +19,22 @@ Item {
 
     property string activeTab: "notifications"
 
+    // The AI tab shows when the master switch is on AND at least one provider is enabled.
+    // True while the assistant is mid-answer, so the sidebar can stay loaded long
+    // enough to finish instead of taking the request down with it when it closes.
+    readonly property bool aiBusy: aiLoader.item ? (aiLoader.item.isTyping || aiLoader.item.inAgentLoop) : false
+
+    readonly property bool aiEnabled: GlobalConfig.ai.enableAiAssistant && (GlobalConfig.ai.enableOllama || GlobalConfig.ai.enableClaudeCode || GlobalConfig.ai.enableClaude || GlobalConfig.ai.enableOpenai || GlobalConfig.ai.enableGemini || GlobalConfig.ai.enableOpenrouter)
+
     Connections {
         target: GlobalConfig.ai
+        function onEnableAiAssistantChanged() { checkAiTab(); }
         function onEnableOllamaChanged() { checkAiTab(); }
+        function onEnableClaudeCodeChanged() { checkAiTab(); }
+        function onEnableClaudeChanged() { checkAiTab(); }
+        function onEnableOpenaiChanged() { checkAiTab(); }
+        function onEnableGeminiChanged() { checkAiTab(); }
+        function onEnableOpenrouterChanged() { checkAiTab(); }
         function onShowNewsChanged() { checkAiTab(); }
     }
 
@@ -36,7 +49,7 @@ Item {
     }
 
     function checkAiTab() {
-        if (!GlobalConfig.ai.enableOllama && root.activeTab === "ai") {
+        if (!root.aiEnabled && root.activeTab === "ai") {
             root.activeTab = "notifications";
         }
         if (!GlobalConfig.ai.showNews && root.activeTab === "news") {
@@ -69,8 +82,8 @@ Item {
                 Item {
                     id: headerContainer
                     Layout.fillWidth: true
-                    implicitHeight: (!GlobalConfig.ai.enableOllama && !GlobalConfig.ai.showNews) ? 0 : 64
-                    visible: GlobalConfig.ai.enableOllama || GlobalConfig.ai.showNews
+                    implicitHeight: (!root.aiEnabled && !GlobalConfig.ai.showNews) ? 0 : 64
+                    visible: root.aiEnabled || GlobalConfig.ai.showNews
                     clip: true
 
                     RowLayout {
@@ -85,7 +98,7 @@ Item {
                                 var tabs = [
                                     { id: "notifications", label: qsTr("Notifications"), icon: "notifications" }
                                 ];
-                                if (GlobalConfig.ai.enableOllama) {
+                                if (root.aiEnabled) {
                                     tabs.push({ id: "ai", label: qsTr("AI Assistant"), icon: "smart_toy" });
                                 }
                                 if (GlobalConfig.ai.showNews) {
@@ -172,7 +185,7 @@ Item {
                 StyledRect {
                     Layout.fillWidth: true
                     implicitHeight: 1
-                    visible: GlobalConfig.ai.enableOllama || GlobalConfig.ai.showNews
+                    visible: root.aiEnabled || GlobalConfig.ai.showNews
                     color: Colours.palette.m3outlineVariant
                 }
 
@@ -199,6 +212,7 @@ Item {
                     }
 
                     Loader {
+                        id: aiLoader
                         property bool hasBeenActive: false
                         active: hasBeenActive || root.activeTab === "ai"
                         onActiveChanged: if (active) hasBeenActive = true

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # 06-services.sh  Enable systemd user services and reload KWin.
 
+set -euo pipefail
+
 echo
 echo ""
 echo "  Step 6/11  Services & KWin"
@@ -105,12 +107,5 @@ if [[ -f "${BUNDLE_DIR:-$(dirname "$(dirname "$0")")}/src/systemd/ydotoold.servi
         echo "  [INFO] ydotoold will start on next login."
     echo "  [OK]  ydotoold service configured."
 fi
-
-#  Reload KWin and KGlobalAccel 
-echo "  Reloading KWin..."
-qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
-
-echo "  Restarting plasma-kglobalaccel..."
-systemctl --user restart plasma-kglobalaccel.service 2>/dev/null || true
 
 echo "[OK]  Services configured."

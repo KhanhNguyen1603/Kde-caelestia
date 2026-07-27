@@ -122,6 +122,65 @@ Searcher {
         return path;
     }
 
+    // Video wallpapers have no still to show, so the pickers had nothing to draw
+    // and sat on a loading spinner forever. Extract a frame once and cache it
+    // beside the wallpaper caches, keyed the same way getThumbnailPath already
+    // described — that path was being computed but never produced by anything.
+    property var videoThumbs: ({})   // source path -> cached frame, once it exists
+    property var videoThumbsPending: ({})
+
+    // What a picker should actually display for a wallpaper: the image itself, or
+    // a video's extracted frame once there is one. Returns "" for a video whose
+    // frame is still being made, so callers can show a placeholder meanwhile.
+    function thumbFor(path: string): string {
+        const p = String(path || "").replace(/^file:\/\//, "");
+        if (p === "" || !Images.isVideo(p))
+            return p;
+        if (root.videoThumbs[p])
+            return root.videoThumbs[p];
+        requestVideoThumb(p);
+        return "";
+    }
+
+    function requestVideoThumb(path: string): void {
+        if (root.videoThumbsPending[path] || root.videoThumbs[path])
+            return;
+        const pending = root.videoThumbsPending;
+        pending[path] = true;
+        root.videoThumbsPending = pending;
+
+        const out = getThumbnailPath(path);
+        const script = 'out="$1"; src="$2"; [ -s "$out" ] || { mkdir -p "$(dirname "$out")"; ' +
+                       'ffmpeg -y -loglevel error -i "$src" -vf "thumbnail,scale=640:-1" -frames:v 1 "$out" >/dev/null 2>&1; }; ' +
+                       '[ -s "$out" ] && printf %s "$out"';
+        const qml = 'import QtQuick\nimport Quickshell.Io\n' +
+            'Process {\n' +
+            '    id: p\n' +
+            '    command: ' + JSON.stringify(["sh", "-c", script, "--", out, path]) + '\n' +
+            '    stdout: StdioCollector { onStreamFinished: root.onVideoThumb(' + JSON.stringify(path) + ', (text || "").trim(), p); }\n' +
+            '    onExited: code => { if (code !== 0) p.destroy(); }\n' +
+            '}';
+        try {
+            const o = Qt.createQmlObject(qml, root, "videoThumbProc");
+            o.running = true;
+        } catch (e) {
+            Logger.log("[wallpapers] video thumbnail error: " + e.message);
+        }
+    }
+
+    function onVideoThumb(path: string, out: string, proc: var): void {
+        if (out !== "") {
+            const m = root.videoThumbs;
+            m[path] = out;
+            root.videoThumbs = Object.assign({}, m);   // a copy, so bindings re-run
+        }
+        const pending = root.videoThumbsPending;
+        delete pending[path];
+        root.videoThumbsPending = pending;
+        if (proc)
+            proc.destroy();
+    }
+
     onPreviewColourLockChanged: {
         if (!previewColourLock && pendingPreviewClear)
             Colours.showPreview = false;

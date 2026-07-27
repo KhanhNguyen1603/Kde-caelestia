@@ -11,9 +11,9 @@
 #   bash scripts/10-system-tweaks.sh           # Apply all tweaks
 #   bash scripts/10-system-tweaks.sh --list    # List available tweaks
 
-set -uo pipefail
+set -euo pipefail
 RED="\033[0;31m"
-CYAN="\033[0;36m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RST="\033[0m"
+CYAN="\033[0;36m"; GREEN="\033[0;32m"; RST="\033[0m"
 info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
 warn() { echo -e "${RED}[WARN]  $*${RST}"; }
@@ -130,7 +130,6 @@ tweak_reload_kde() {
     info "Reloading KWin and plasma-kglobalaccel..."
     qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
     systemctl --user restart plasma-kglobalaccel.service 2>/dev/null || true
-    kbuildsycoca6 --noincremental 2>/dev/null || true
     ok "KDE daemons reloaded."
 }
 
@@ -250,7 +249,6 @@ if [[ "${1:-}" == "--list" ]]; then
 fi
 
 tweak_disable_kde_osd
-tweak_five_desktops
 tweak_workspace_shortcuts
 tweak_default_shell
 tweak_patch_caelestia_cli

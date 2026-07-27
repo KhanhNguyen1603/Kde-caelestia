@@ -82,15 +82,19 @@ vector<Step> steps = {
     {"System update", "scripts/00a-system-update.sh", "PENDING"},
     {"Ensure prerequisites", "scripts/01-ensure-prereqs.sh", "PENDING"},
     {"Update submodules", "scripts/02a-submodules.sh", "PENDING"},
-    {"Install packages", "scripts/02-packages.sh", "PENDING"},
+    {"Install core packages", "scripts/02-core-packages.sh", "PENDING"},
+    {"Install shell & terminal tools", "scripts/02-shell-packages.sh", "PENDING"},
+    {"Install themes & fonts", "scripts/02-theme-packages.sh", "PENDING"},
+    {"Install desktop utilities", "scripts/02-utility-packages.sh", "PENDING"},
+    {"Set up wallpaper plugin", "scripts/02-packages.sh", "PENDING"},
     {"Backup KDE Settings", "scripts/00-backup-themes.sh", "PENDING"},
-    {"Deploy configs", "scripts/03-deploy-configs.sh", "PENDING"},
-    {"Deploy KDE tweaks", "scripts/04-deploy-kde.sh", "PENDING"},
-    {"Enable services", "scripts/06-services.sh", "PENDING"},
-    {"Configure KDE apps", "scripts/07-kde-apps.sh", "PENDING"},
-    {"Build shell", "scripts/08-build-shell.sh", "PENDING"},
-    {"System tweaks", "scripts/09-system-tweaks.sh", "PENDING"},
-    {"Autostart entries", "scripts/10-autostart.sh", "PENDING"},
+    {"Deploy config files", "scripts/03-deploy-configs.sh", "PENDING"},
+    {"Apply KDE theme settings", "scripts/04-deploy-kde.sh", "PENDING"},
+    {"Enable system services", "scripts/06-services.sh", "PENDING"},
+    {"Configure KDE applications", "scripts/07-kde-apps.sh", "PENDING"},
+    {"Build Caelestia shell", "scripts/08-build-shell.sh", "PENDING"},
+    {"Apply system tweaks", "scripts/09-system-tweaks.sh", "PENDING"},
+    {"Create autostart entries", "scripts/10-autostart.sh", "PENDING"},
 };
 
 string show_error_dialog(const string &step_name, const string &script_path,
@@ -396,6 +400,7 @@ void execute() {
       // Continuously check for status or terminal resizes
       int exit_code = -1;
       int status_fd = open("/tmp/caelestia_status", O_RDWR | O_NONBLOCK);
+      int poll_iterations = 0;
       while (true) {
         if (g_resized)
           draw_progress_ui(i);
@@ -421,7 +426,12 @@ void execute() {
           close(test_fd);
         }
 
-        this_thread::sleep_for(chrono::milliseconds(100));
+        // Adaptive polling: start at 100ms, ramp up to 500ms for long-running scripts
+        int sleep_ms = 100;
+        if (poll_iterations > 60) sleep_ms = 500;
+        else if (poll_iterations > 20) sleep_ms = 250;
+        poll_iterations++;
+        this_thread::sleep_for(chrono::milliseconds(sleep_ms));
 
         // Handle Ctrl+C gracefully
         fd_set fds;

@@ -22,7 +22,7 @@ if(NOT DEFINED VERSION)
 
     # Last resort hardcoded
     if("${VERSION}" STREQUAL "" OR "${VERSION}" STREQUAL "rolling")
-        set(VERSION "v2.2.1")
+        set(VERSION "2.2.2")
     endif()
 endif()
 
@@ -66,6 +66,15 @@ project(caelestia-shell VERSION ${VERSION} LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Use ccache if available for dramatically faster rebuilds
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "ccache found — compiler caching enabled")
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 set(DISTRIBUTOR "Unset" CACHE STRING "Distributor")
