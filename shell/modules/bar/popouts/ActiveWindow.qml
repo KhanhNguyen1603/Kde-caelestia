@@ -12,8 +12,8 @@ Item {
 
     required property PopoutState popouts
 
-    implicitWidth: child.implicitWidth
-    implicitHeight: child.implicitHeight
+    implicitWidth: 0
+    implicitHeight: 0
 
     readonly property string gifPath: {
         const hr = new Date().getHours();
@@ -37,28 +37,9 @@ Item {
 
     readonly property int previewSize: Math.round(Tokens.sizes.bar.windowPreviewSize * scaleOffset)
 
-    Column {
+    Item {
         id: child
-
-        anchors.centerIn: parent
-        spacing: Tokens.spacing.medium
-
-        ClippingWrapperRectangle {
-            color: "transparent"
-            radius: Tokens.rounding.medium
-            implicitWidth: previewSize
-            implicitHeight: previewSize
-
-            AnimatedImage {
-                id: preview
-                
-                cache: false
-                source: root.gifPath
-                fillMode: root.gifPath.includes("morning.gif") ? Image.PreserveAspectFit : Image.PreserveAspectCrop
-                
-                width: previewSize
-                height: previewSize
-            }
-        }
+        implicitWidth: 0
+        implicitHeight: 0
     }
 }
