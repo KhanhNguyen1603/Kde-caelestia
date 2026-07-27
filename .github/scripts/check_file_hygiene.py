@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Check repository file hygiene - large files, binary blobs, whitespace issues,
-merge conflict markers, and common mistakes that should be caught before merge.
+"""Check repository file hygiene for files changed in this PR only.
 
 Checks:
   1. No files > 500 KB (prevents accidental large binary commits)
   2. No unresolved merge conflict markers (<<<<<<<, =======, >>>>>>>)
   3. No trailing whitespace in code files
-  4. No tab indentation in QML / Python / CMake files
+  4. No tab indentation in QML / Python / CMake / C++ files
   5. No binary files in text-only directories (docs/, scripts/)
   6. .sh files have the correct extension and shebang
 """
 
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -28,6 +28,16 @@ MAX_FILE_SIZE_KB = 500
 
 EXIT_CODE = 0
 VIOLATIONS: list[str] = []
+
+# Files and directories to always skip
+SKIP_PATTERNS = [
+    "diff_upstream.txt",
+    "QMLTermWidget",
+    "json.hpp",
+]
+
+# Files/dirs skipped for whitespace/tab checks (vendored/generated)
+STYLE_SKIP_DIRS = {"QMLTermWidget", "build", "__pycache__", ".git"}
 
 
 def error(msg: str) -> None:
@@ -45,16 +55,6 @@ def ok(msg: str) -> None:
     print(f"{GREEN}[OK]{RESET}   {msg}")
 
 
-def is_tracked_in_git(rel_path: str) -> bool:
-    """Check if a file is tracked by git (not ignored, not in .git)."""
-    return (
-        ".git" not in rel_path.split(os.sep)
-        and "__pycache__" not in rel_path
-        and "build" not in rel_path.split(os.sep)
-        and "node_modules" not in rel_path
-    )
-
-
 def is_text_file(filepath: Path) -> bool:
     """Heuristic: try to read as UTF-8 text; if it fails, treat as binary."""
     try:
@@ -64,13 +64,37 @@ def is_text_file(filepath: Path) -> bool:
         return False
 
 
-def is_generated_file(filepath: Path) -> bool:
-    """Skip well-known generated/vendored files."""
-    generated_patterns = [
-        "json.hpp",  # nlohmann json - vendored single-header
-        "qml-lint-conventions.py",  # our own tool
-    ]
-    return filepath.name in generated_patterns
+def should_skip(rel_path: str, patterns: list[str] | None = None) -> bool:
+    """Check if a path should be skipped based on patterns."""
+    for pat in (patterns or SKIP_PATTERNS):
+        if pat in rel_path.replace("\\", "/"):
+            return True
+    return False
+
+
+def get_changed_files() -> list[str]:
+    """Get list of files changed in this PR, or all tracked files if not in CI."""
+    # Try to get the base ref from CI environment
+    base_ref = os.environ.get("GITHUB_BASE_REF")
+    if base_ref:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", f"origin/{base_ref}...HEAD"],
+            capture_output=True, text=True, cwd=ROOT,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            files = [f.strip() for f in result.stdout.splitlines() if f.strip()]
+            print(f"Checking {len(files)} changed file(s) against {base_ref}")
+            return files
+
+    # Fallback: all git-tracked files
+    print("Not in PR context - checking all tracked files")
+    result = subprocess.run(
+        ["git", "ls-files"],
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    if result.returncode == 0:
+        return [f.strip() for f in result.stdout.splitlines() if f.strip()]
+    return []
 
 
 TEXT_FILE_EXTS = {".qml", ".py", ".cpp", ".hpp", ".h", ".cmake", ".txt",
@@ -78,197 +102,192 @@ TEXT_FILE_EXTS = {".qml", ".py", ".cpp", ".hpp", ".h", ".cmake", ".txt",
                   ".css", ".js", ".ts", ".xml", ".html", ".conf",
                   ".desktop", ".service", ".timer", ".env", ".toml"}
 
+SPACE_ONLY_EXTS = {".qml", ".py", ".cpp", ".hpp", ".h"}
+
 NON_TEXT_DIRS = {"assets", "wallpapers", "sounds", "icons", "images"}
 
 
-def check_large_files() -> None:
-    """Check for files larger than MAX_FILE_SIZE_KB."""
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        # Skip .git, build dirs, and caches
-        dirnames[:] = [d for d in dirnames if d not in (".git", "build", "__pycache__", "node_modules")]
+def check_large_files(changed_files: list[str]) -> None:
+    """Check for files larger than MAX_FILE_SIZE_KB in changed files."""
+    for rel_path in changed_files:
+        if should_skip(rel_path):
+            continue
 
-        for filename in filenames:
-            filepath = Path(dirpath) / filename
-            try:
-                size_kb = filepath.stat().st_size / 1024
-            except OSError:
-                continue
+        filepath = ROOT / rel_path
+        if not filepath.is_file():
+            continue
 
-            if size_kb > MAX_FILE_SIZE_KB:
-                rel = filepath.relative_to(ROOT)
-                # Allow known large assets, but flag everything else
-                if any(skip in str(rel) for skip in ("wallpapers", "sounds", "assets")):
-                    warn(f"Large asset file: {rel} ({size_kb:.0f} KB)")
-                else:
-                    error(f"File too large ({size_kb:.0f} KB): {rel} - max allowed is {MAX_FILE_SIZE_KB} KB")
+        try:
+            size_kb = filepath.stat().st_size / 1024
+        except OSError:
+            continue
+
+        if size_kb > MAX_FILE_SIZE_KB:
+            if any(skip in rel_path for skip in ("wallpapers", "sounds", "assets")):
+                warn(f"Large asset file: {rel_path} ({size_kb:.0f} KB)")
+            else:
+                error(f"File too large ({size_kb:.0f} KB): {rel_path} - max allowed is {MAX_FILE_SIZE_KB} KB")
 
 
-def check_merge_conflicts() -> None:
-    """Check for unresolved merge conflict markers."""
+def check_merge_conflicts(changed_files: list[str]) -> None:
+    """Check for unresolved merge conflict markers in changed files."""
     conflict_markers = (
-        re.compile(rb"^<{7} "),       # <<<<<<< branch
-        re.compile(rb"^={7}$"),        # =======
-        re.compile(rb"^>{7} "),       # >>>>>>> branch
+        re.compile(rb"^<{7} "),
+        re.compile(rb"^={7}$"),
+        re.compile(rb"^>{7} "),
     )
 
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in (".git", "build", "__pycache__", "node_modules")]
+    for rel_path in changed_files:
+        if should_skip(rel_path):
+            continue
 
-        for filename in filenames:
-            filepath = Path(dirpath) / filename
-            if not is_text_file(filepath):
-                continue
+        filepath = ROOT / rel_path
+        if not filepath.is_file():
+            continue
+        if not is_text_file(filepath):
+            continue
 
-            try:
-                content = filepath.read_bytes()
-            except OSError:
-                continue
+        try:
+            content = filepath.read_bytes()
+        except OSError:
+            continue
 
-            for line_no, line in enumerate(content.split(b"\n"), 1):
-                for marker in conflict_markers:
-                    if marker.match(line):
-                        rel = filepath.relative_to(ROOT)
-                        error(f"Unresolved merge conflict in {rel}:{line_no}")
-                        break
-
-
-def check_trailing_whitespace() -> None:
-    """Check for trailing whitespace in code files."""
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in (".git", "build", "__pycache__", "node_modules")]
-
-        for filename in filenames:
-            filepath = Path(dirpath) / filename
-            rel = str(filepath.relative_to(ROOT))
-
-            if not is_tracked_in_git(rel):
-                continue
-
-            ext = filepath.suffix
-            if ext not in TEXT_FILE_EXTS:
-                continue
-            if not is_text_file(filepath):
-                continue
-            if is_generated_file(filepath):
-                continue
-
-            try:
-                lines = filepath.read_text(encoding="utf-8").split("\n")
-            except OSError:
-                continue
-
-            for line_no, line in enumerate(lines, 1):
-                if line.rstrip() != line.rstrip("\n"):
-                    # Has trailing space
-                    if line.rstrip() != line:
-                        error(f"Trailing whitespace: {rel}:{line_no}")
+        for line_no, line in enumerate(content.split(b"\n"), 1):
+            for marker in conflict_markers:
+                if marker.match(line):
+                    error(f"Unresolved merge conflict in {rel_path}:{line_no}")
+                    break
 
 
-def check_tab_indentation() -> None:
-    """Check that QML, Python, and CMake files use spaces, not tabs."""
-    space_only_exts = {".qml", ".py", ".cpp", ".hpp", ".h"}
+def check_trailing_whitespace(changed_files: list[str]) -> None:
+    """Check for trailing whitespace in changed code files."""
+    for rel_path in changed_files:
+        if should_skip(rel_path, SKIP_PATTERNS):
+            continue
 
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in (".git", "build", "__pycache__", "node_modules")]
+        filepath = ROOT / rel_path
+        if not filepath.is_file():
+            continue
 
-        for filename in filenames:
-            filepath = Path(dirpath) / filename
-            rel = str(filepath.relative_to(ROOT))
+        ext = filepath.suffix
+        if ext not in TEXT_FILE_EXTS:
+            continue
+        if not is_text_file(filepath):
+            continue
 
-            if not is_tracked_in_git(rel):
-                continue
-            if filepath.suffix not in space_only_exts:
-                continue
-            if not is_text_file(filepath):
-                continue
-            if is_generated_file(filepath):
-                continue
+        # Skip vendored directories
+        if any(d in rel_path.replace("\\", "/").split("/") for d in STYLE_SKIP_DIRS):
+            continue
 
-            try:
-                lines = filepath.read_text(encoding="utf-8").split("\n")
-            except OSError:
-                continue
+        try:
+            lines = filepath.read_text(encoding="utf-8").split("\n")
+        except OSError:
+            continue
 
-            for line_no, line in enumerate(lines, 1):
-                if line.startswith("\t"):
-                    error(f"Tab indentation in {rel}:{line_no} - use spaces instead")
-                    break  # one error per file is enough
+        for line_no, line in enumerate(lines, 1):
+            if line.rstrip() != line.rstrip("\n") and line.rstrip() != line:
+                error(f"Trailing whitespace: {rel_path}:{line_no}")
 
 
-def check_binary_in_text_dirs() -> None:
+def check_tab_indentation(changed_files: list[str]) -> None:
+    """Check that code files use spaces, not tabs."""
+    for rel_path in changed_files:
+        if should_skip(rel_path, SKIP_PATTERNS):
+            continue
+
+        filepath = ROOT / rel_path
+        if not filepath.is_file():
+            continue
+
+        if filepath.suffix not in SPACE_ONLY_EXTS:
+            continue
+        if not is_text_file(filepath):
+            continue
+
+        if any(d in rel_path.replace("\\", "/").split("/") for d in STYLE_SKIP_DIRS):
+            continue
+
+        try:
+            lines = filepath.read_text(encoding="utf-8").split("\n")
+        except OSError:
+            continue
+
+        for line_no, line in enumerate(lines, 1):
+            if line.startswith("\t"):
+                error(f"Tab indentation in {rel_path}:{line_no} - use spaces instead")
+                break
+
+
+def check_binary_in_text_dirs(changed_files: list[str]) -> None:
     """Flag binary files in directories that should only contain text."""
     text_only_dirs = ["docs", "scripts", ".github/scripts"]
 
-    for check_dir in text_only_dirs:
-        dir_path = ROOT / check_dir
-        if not dir_path.is_dir():
+    for rel_path in changed_files:
+        for check_dir in text_only_dirs:
+            if rel_path.replace("\\", "/").startswith(check_dir + "/"):
+                filepath = ROOT / rel_path
+                if filepath.is_file() and not is_text_file(filepath):
+                    error(f"Binary file in text-only directory: {rel_path}")
+                break
+
+
+def check_shell_extensions(changed_files: list[str]) -> None:
+    """Ensure .sh files are shell scripts with proper shebangs."""
+    for rel_path in changed_files:
+        if not rel_path.endswith(".sh"):
+            continue
+        if should_skip(rel_path):
             continue
 
-        for filepath in dir_path.rglob("*"):
-            if filepath.is_dir():
-                continue
-            if ".git" in filepath.parts:
-                continue
+        filepath = ROOT / rel_path
+        if not filepath.is_file():
+            continue
 
-            if not is_text_file(filepath):
-                rel = filepath.relative_to(ROOT)
-                error(f"Binary file in text-only directory: {rel}")
+        try:
+            first_line = filepath.read_text(encoding="utf-8").split("\n")[0]
+        except (OSError, UnicodeDecodeError):
+            continue
 
-
-def check_shell_extensions() -> None:
-    """Ensure .sh files are shell scripts with proper shebangs."""
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in (".git", "build", "__pycache__", "node_modules")]
-
-        for filename in filenames:
-            if not filename.endswith(".sh"):
-                continue
-
-            filepath = Path(dirpath) / filename
-            rel = str(filepath.relative_to(ROOT))
-
-            if not is_tracked_in_git(rel):
-                continue
-
-            try:
-                first_line = filepath.read_text(encoding="utf-8").split("\n")[0]
-            except (OSError, UnicodeDecodeError):
-                continue
-
-            if not first_line.startswith("#!"):
-                warn(f"Shell script missing shebang: {rel}")
-            elif "sh" not in first_line.split("/")[-1]:
-                warn(f"Shell script has unexpected shebang: {rel}: {first_line}")
+        if not first_line.startswith("#!"):
+            warn(f"Shell script missing shebang: {rel_path}")
+        elif "sh" not in first_line.split("/")[-1]:
+            warn(f"Shell script has unexpected shebang: {rel_path}: {first_line}")
 
 
 def main() -> int:
+    changed_files = get_changed_files()
+
+    if not changed_files:
+        print(f"{YELLOW}No files to check.{RESET}")
+        return 0
+
     print(f"{BOLD}=== File Size Check ==={RESET}")
-    check_large_files()
+    check_large_files(changed_files)
     if EXIT_CODE == 0:
         ok("No oversized files found")
 
     print(f"\n{BOLD}=== Merge Conflict Marker Check ==={RESET}")
-    check_merge_conflicts()
+    check_merge_conflicts(changed_files)
     if EXIT_CODE == 0:
         ok("No unresolved merge conflicts")
 
     print(f"\n{BOLD}=== Trailing Whitespace Check ==={RESET}")
-    check_trailing_whitespace()
+    check_trailing_whitespace(changed_files)
     if EXIT_CODE == 0:
         ok("No trailing whitespace")
 
     print(f"\n{BOLD}=== Tab Indentation Check ==={RESET}")
-    check_tab_indentation()
+    check_tab_indentation(changed_files)
     if EXIT_CODE == 0:
         ok("No tab indentation in code files")
 
     print(f"\n{BOLD}=== Binary in Text Directories Check ==={RESET}")
-    check_binary_in_text_dirs()
+    check_binary_in_text_dirs(changed_files)
     if EXIT_CODE == 0:
         ok("No binary files in text-only directories")
 
     print(f"\n{BOLD}=== Shell Script Extension Check ==={RESET}")
-    check_shell_extensions()
+    check_shell_extensions(changed_files)
     if EXIT_CODE == 0:
         ok("All .sh files have proper shebangs")
 

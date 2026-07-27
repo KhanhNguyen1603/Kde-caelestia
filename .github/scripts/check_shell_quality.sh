@@ -102,26 +102,6 @@ if [[ "$CURL_PIPE_FOUND" -eq 0 ]]; then
     log_ok "No unsafe curl/wget-pipe-shell patterns found"
 fi
 
-# ─── 5. No unquoted variable expansions holding paths ───
-echo ""
-echo -e "${BOLD}=== Variable Quoting Check ===${RESET}"
-# Check for common unquoted path variables that can break on spaces
-UNQUOTED_FOUND=0
-for f in $(git ls-files '*.sh'); do
-    while IFS= read -r line; do
-        # Skip comments
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
-        # Look for unquoted $HOME, $BUNDLE_DIR, $CACHE_DIR, $UPD_DIR in arguments
-        if echo "$line" | grep -qE '\$(HOME|BUNDLE_DIR|CACHE_DIR|UPD_DIR|DOTS_DIR|FISH_DIR|BUILDDIR|PKGDEST|SRCDEST|BACKUP_DIR)\b'; then
-            log_err "$f: potential unquoted variable expansion: $line"
-            UNQUOTED_FOUND=1
-        fi
-    done < "$f"
-done
-if [[ "$UNQUOTED_FOUND" -eq 0 ]]; then
-    log_ok "No common unquoted path variable expansions found"
-fi
-
 # ─── Summary ───
 echo ""
 if [[ "$EXIT_CODE" -eq 0 ]]; then

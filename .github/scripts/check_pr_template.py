@@ -58,7 +58,7 @@ def check_section_filled(body: str, section_header: str) -> bool:
     """Verify that a section has real content, not just placeholder text."""
     header_pattern = re.escape(section_header)
     section_match = re.search(
-        rf"#{1,3}\s+{header_pattern}.*?\n(.*?)(?=\n#{1,3}\s+|\Z)",
+        rf"#{1,3}\s+{header_pattern}.*?\n(.*?)(?=\n#{1,3}\s+|\Z)",  # noqa: E231
         body,
         re.DOTALL | re.IGNORECASE,
     )
