@@ -182,6 +182,7 @@ PageBase {
                     GlobalConfig.services.arpcTargetWindowLabels = labels;
                     GlobalConfig.save();
                 }
+            }
         }
 
         StyledRect {
