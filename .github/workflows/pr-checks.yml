@@ -1,0 +1,229 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: ["**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  # Job 1: PR template validation — catch empty/placeholder PRs
+  # ═══════════════════════════════════════════════════════════
+  pr-template:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Validate PR template
+        run: python3 .github/scripts/check_pr_template.py
+
+  # ═══════════════════════════════════════════════════════════
+  # Job 2: Branch naming convention
+  # ═══════════════════════════════════════════════════════════
+  branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch name
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          echo "Checking branch name: $BRANCH_NAME"
+
+          # Allow main/dev (direct pushes are blocked anyway, but explicit)
+          if [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "dev" ]]; then
+            echo "::error::Pull requests should not target 'main' or 'dev' as the source branch."
+            exit 1
+          fi
+
+          # Valid patterns:
+          #   feature/<description>
+          #   fix/<description>
+          #   chore/<description>
+          #   docs/<description>
+          #   refactor/<description>
+          #   release/vX.Y.Z
+          #   hotfix/<description>
+
+          VALID_PATTERN='^(feature|fix|chore|docs|refactor|release|hotfix)/[a-z0-9._-]+$'
+
+          if [[ ! "$BRANCH_NAME" =~ $VALID_PATTERN ]]; then
+            cat << 'MSG'
+          ::error::Branch name does not follow convention.
+
+          Expected format:
+            feature/<name>   — new feature
+            fix/<name>       — bug fix
+            chore/<name>     — maintenance, CI, deps
+            docs/<name>      — documentation only
+            refactor/<name>  — code restructuring without behavior change
+            release/vX.Y.Z   — release preparation
+            hotfix/<name>    — urgent production fix
+
+          Examples:
+            feature/github-activity-widget
+            fix/launcher-crash-on-escape
+            chore/update-ci-checks
+          MSG
+            exit 1
+          fi
+
+          echo "Branch name '$BRANCH_NAME' follows convention."
+
+  # ═══════════════════════════════════════════════════════════
+  # Job 3: Changed files check — catch common mistakes by scope
+  # ═══════════════════════════════════════════════════════════
+  changed-files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze changed files
+        run: |
+          echo "### Changed Files Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get list of changed files in this PR
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed_files.txt
+
+          CHANGED_COUNT=$(wc -l < /tmp/changed_files.txt)
+          echo "Total files changed: $CHANGED_COUNT" >> $GITHUB_STEP_SUMMARY
+
+          # Check for too many files changed (possible accidental commit)
+          if [[ "$CHANGED_COUNT" -gt 75 ]]; then
+            echo "::warning::Large PR detected: $CHANGED_COUNT files changed. Consider breaking into smaller PRs."
+            echo ":warning: **$CHANGED_COUNT files changed** — consider breaking into smaller, focused PRs." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Detect QML changes that don't touch shell/
+          QML_CHANGES=$(grep '\.qml$' /tmp/changed_files.txt || true)
+          NON_SHELL_QML=$(echo "$QML_CHANGES" | grep -v '^shell/' || true)
+          if [[ -n "$NON_SHELL_QML" ]]; then
+            echo "::warning::QML files changed outside shell/ directory — verify location is intentional"
+            echo ":warning: QML files outside shell/: $NON_SHELL_QML" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Detect installer C++ changes — these affect the TUI installer
+          if grep -q '^installer/src/.*\.(cpp|hpp|h)$' /tmp/changed_files.txt; then
+            echo ":hammer: **Installer C++ changes** — compilation will be verified by validate workflow." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Detect shell CMakeLists.txt changes — build system changes
+          if grep -q 'CMakeLists.txt' /tmp/changed_files.txt; then
+            echo ":building_construction: **Build system changes** — verify with a clean build." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Detect version.env changes — version bumps need extra care
+          if grep -q 'version.env' /tmp/changed_files.txt; then
+            echo ":label: **Version bump** — ensure version-release workflow will fire correctly." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ═══════════════════════════════════════════════════════════
+  # Job 4: Commit message convention check
+  # ═══════════════════════════════════════════════════════════
+  commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        run: |
+          # Get all commits in this PR that aren't on the base branch
+          COMMITS=$(git log --format='%H %s' origin/${{ github.base_ref }}..HEAD)
+
+          if [[ -z "$COMMITS" ]]; then
+            echo "No commits to check."
+            exit 0
+          fi
+
+          HAS_ERROR=0
+
+          # Allowable commit types (conventional commits light)
+          VALID_TYPES='feat|fix|chore|docs|refactor|style|test|perf|ci|build|revert'
+
+          while IFS= read -r line; do
+            if [[ -z "$line" ]]; then continue; fi
+            HASH="${line%% *}"
+            MSG="${line#* }"
+
+            # Skip merge commits
+            if [[ "$MSG" == "Merge "* ]]; then
+              continue
+            fi
+
+            # Check commit message length (first line)
+            FIRST_LINE="${MSG%%$'\n'*}"
+            if [[ "${#FIRST_LINE}" -gt 72 ]]; then
+              echo "::warning::$HASH: commit subject too long (${#FIRST_LINE} > 72 chars): ${FIRST_LINE:0:80}..."
+              HAS_ERROR=1
+            fi
+
+            # Check for conventional commit format (optional but recommended)
+            if [[ ! "$FIRST_LINE" =~ ^($VALID_TYPES)(\([a-z0-9._-]+\))?:\ .+ ]]; then
+              echo "::notice::$HASH: consider using conventional commits: 'type: description'"
+            fi
+          done <<< "$COMMITS"
+
+          if [[ "$HAS_ERROR" -eq 1 ]]; then
+            echo "::error::Some commit messages need reformatting. Keep subjects under 72 characters."
+            exit 1
+          fi
+
+          echo "All commit messages pass length checks."
+
+  # ═══════════════════════════════════════════════════════════
+  # Final PR gate
+  # ═══════════════════════════════════════════════════════════
+  pr-gate:
+    needs:
+      - pr-template
+      - branch-name
+      - changed-files
+      - commit-messages
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Report status
+        run: |
+          echo "## PR Checks Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          declare -A job_results
+          job_results[pr-template]="${{ needs.pr-template.result }}"
+          job_results[branch-name]="${{ needs.branch-name.result }}"
+          job_results[changed-files]="${{ needs.changed-files.result }}"
+          job_results[commit-messages]="${{ needs.commit-messages.result }}"
+
+          all_passed=true
+          for job in "${!job_results[@]}"; do
+            result="${job_results[$job]}"
+            if [[ "$result" == "success" ]]; then
+              echo "- :white_check_mark: **${job}** — passed" >> $GITHUB_STEP_SUMMARY
+            elif [[ "$result" == "skipped" ]]; then
+              echo "- :heavy_minus_sign: **${job}** — skipped" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- :x: **${job}** — ${result}" >> $GITHUB_STEP_SUMMARY
+              all_passed=false
+            fi
+          done
+
+          if [[ "$all_passed" != "true" ]]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo ":warning: Some PR checks failed. Please review the job logs above." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
