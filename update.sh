@@ -203,7 +203,7 @@ done
 
 # Start the shell – the CLI was patched for path-based resolution during build.
 # Fall back to the IPC wrapper or direct quickshell if the CLI is unavailable.
-if [[ -n "$CAELESTIA_BIN" ]]; then
+if command -v "$CAELESTIA_BIN" >/dev/null 2>&1; then
     "$CAELESTIA_BIN" shell -d >/dev/null 2>&1 &
 elif [[ -n "$SHELL_IPC" ]]; then
     "$SHELL_IPC" start 2>/dev/null &
@@ -216,4 +216,4 @@ fi
 
 echo "Shell restarted successfully!"
 echo
-echo "If the shell doesn't start, please restart it manually by running: caelestia shell -d"
+echo "If the shell doesn't start, please restart it manually by running: $CAELESTIA_BIN shell -d"

@@ -312,7 +312,8 @@ else:
 '; then
     echo "Caelestia CLI path-based config resolution patch applied successfully"
 else
-    echo "Caelestia CLI path-based config resolution patch failed" >> "$HOME/.cache/caelestia-kde/failed_patches.txt" 2>/dev/null || true
+    mkdir -p "$USER_HOME/.cache/caelestia-kde" 2>/dev/null || true
+    echo "Caelestia CLI path-based config resolution patch failed" >> "$USER_HOME/.cache/caelestia-kde/failed_patches.txt" 2>/dev/null || true
 fi
 EOF
 
