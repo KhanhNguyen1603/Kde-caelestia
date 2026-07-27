@@ -10,7 +10,7 @@ class BorderConfig : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
 
-    CONFIG_PROPERTY(int, thickness, 10)
+    CONFIG_PROPERTY(int, thickness, 2)
     CONFIG_PROPERTY(int, rounding, 25)
     CONFIG_PROPERTY(int, smoothing, 20)
 
