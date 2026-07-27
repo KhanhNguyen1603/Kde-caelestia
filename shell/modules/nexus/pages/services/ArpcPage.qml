@@ -175,13 +175,13 @@ PageBase {
                 let list = Array.from(GlobalConfig.services.arpcTargetWindows);
                 let labels = Array.from(GlobalConfig.services.arpcTargetWindowLabels);
                 if (!list.includes(windowClass)) {
+                    while (labels.length < list.length) labels.push("");
                     list.push(windowClass);
                     labels.push("");
                     GlobalConfig.services.arpcTargetWindows = list;
                     GlobalConfig.services.arpcTargetWindowLabels = labels;
                     GlobalConfig.save();
                 }
-            }
         }
 
         StyledRect {
@@ -278,16 +278,23 @@ PageBase {
 
                             property bool initializing: true
 
-                            onTextChanged: {
+                            function commitLabel() {
                                 if (initializing) return;
                                 let labels = Array.from(GlobalConfig.services.arpcTargetWindowLabels);
                                 while (labels.length <= delegateRect.index) labels.push("");
                                 labels[delegateRect.index] = text;
                                 GlobalConfig.services.arpcTargetWindowLabels = labels;
                             }
-                            onAccepted: GlobalConfig.save()
+
+                            onAccepted: {
+                                commitLabel();
+                                GlobalConfig.save();
+                            }
                             onActiveFocusChanged: {
-                                if (!activeFocus && !initializing) GlobalConfig.save();
+                                if (!activeFocus && !initializing) {
+                                    commitLabel();
+                                    GlobalConfig.save();
+                                }
                             }
 
                             Component.onCompleted: {
