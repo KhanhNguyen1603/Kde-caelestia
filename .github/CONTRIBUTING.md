@@ -79,7 +79,8 @@ _For testing Quickshell widget changes without a full KDE installation:_
 
 **For Quickshell shell:**
 - Restart the shell cleanly: `caelestia shell -k && caelestia shell -d`
-- Or run raw: `qs -c caelestia` in the terminal to view debugging logs
+- Or run raw: `quickshell -p ~/.config/quickshell/caelestia/shell.qml` to view debugging logs
+- View logs of a running instance: `caelestia-shell-ipc log`
 - Edit files in `~/.config/quickshell/caelestia`, changes reload live
 
 **For KDE settings:**
