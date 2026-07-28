@@ -97,6 +97,7 @@ Item {
         enabled: root.active
         ignoreUnknownSignals: true
         function onWindowListChanged() { root.updatePresence(); }
+        function onActiveWindowChanged() { root.updatePresence(); }
     }
 
     Connections {
@@ -149,6 +150,20 @@ Item {
         let topTargetClass = "";
         let topTargetTitle = "";
         let topTargetMatchIdx = -1;
+
+        // Priority 2 prefers the focused window: a background app that happens
+        // to match the regex shouldn't describe you better than what you're
+        // actually looking at. Seeding the values here means the scan below
+        // only fills them in when nothing focused matched.
+        const activeClass = KWinActiveWindowBridge.activeWindow.class ?? "";
+        if (activeClass !== "") {
+            const activeIdx = root.findMatchingIndex(GlobalConfig.services.arpcTargetWindows, activeClass);
+            if (activeIdx >= 0) {
+                topTargetClass = activeClass;
+                topTargetTitle = KWinActiveWindowBridge.activeWindow.title ?? "";
+                topTargetMatchIdx = activeIdx;
+            }
+        }
 
         for (const toplevel of KWinActiveWindowBridge.windowList) {
             let winClass = toplevel.class ?? "";
