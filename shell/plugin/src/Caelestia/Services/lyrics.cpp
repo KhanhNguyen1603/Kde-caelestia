@@ -230,6 +230,37 @@ qreal Lyrics::timeForIndex(int index) const {
     return m_lines.at(index).time + m_offset;
 }
 
+static bool isPlaceholderTitle(const QString& title) {
+    if (title.isEmpty()) return true;
+    const QString clean = title.toLower().trimmed();
+    return clean.startsWith(u"spotify - web player"_s) ||
+           clean.startsWith(u"youtube - web player"_s) ||
+           clean.startsWith(u"spotify – web player"_s) ||
+           clean.startsWith(u"youtube – web player"_s) ||
+           clean.startsWith(u"youtube music"_s) ||
+           clean.contains(u"advertisement"_s) ||
+           clean.contains(u"quảng cáo"_s) ||
+           clean == u"spotify"_s ||
+           clean == u"youtube"_s ||
+           clean == u"web player"_s ||
+           clean == u"unknown title"_s;
+}
+
+static QString cleanTrackTitle(const QString& rawTitle) {
+    QString title = rawTitle.trimmed();
+    // Remove bullet point / dash separator and artist suffix (e.g. "Mùa Don't Đến • Hanja, Dewie")
+    title.remove(QRegularExpression(u"\\s*[•\\-–—]\\s+.*$"_s));
+    // Remove unclosed bracket at end
+    title.remove(QRegularExpression(u"[\\(\\[\\{][^\\)\\]\\}]*$"_s));
+    // Remove closed brackets
+    title.remove(QRegularExpression(u"\\s*[\\(\\[\\{].*?[\\)\\]\\}]\\s*"_s));
+    // Remove feat / remix / official video keywords
+    title.remove(QRegularExpression(u"\\s+(feat|ft|featuring)\\..*"_s, QRegularExpression::CaseInsensitiveOption));
+    title.remove(QRegularExpression(u"\\s+(remix|music video|official video|lyric video|lyrics|audio|mv|hd|4k)\\b"_s, QRegularExpression::CaseInsensitiveOption));
+    title = title.trimmed();
+    return title.isEmpty() ? rawTitle.trimmed() : title;
+}
+
 void Lyrics::setTrack(const QString& artist, const QString& title, const QString& album, qreal duration) {
     const QString a = artist.trimmed();
     const QString t = title.trimmed();
@@ -292,6 +323,12 @@ void Lyrics::setLines(QVector<LyricLine> lines, LyricsBackend::Backend source) {
         list.append(l.text);
     }
     m_lyrics = std::move(list);
+
+    if (!m_lines.isEmpty()) {
+        m_loadedTitle = m_title;
+    } else {
+        m_loadedTitle.clear();
+    }
 
     setBackend(source);
     emit lyricsChanged();
@@ -361,9 +398,15 @@ void Lyrics::trackReply(int reqId, QNetworkReply* reply) {
 }
 
 void Lyrics::doLoad() {
-    if (m_artist.isEmpty() && m_title.isEmpty()) {
+    if (m_title.isEmpty() || isPlaceholderTitle(m_title)) {
         clearLines();
         clearCandidates();
+        setLoading(false);
+        return;
+    }
+
+    // Only skip loading if lyrics were ALREADY loaded for THIS EXACT title
+    if (m_title == m_loadedTitle && !m_lines.isEmpty()) {
         setLoading(false);
         return;
     }
@@ -503,16 +546,11 @@ void Lyrics::tryLrclib(int reqId) {
 
     setBackend(LyricsBackend::LRCLIB);
 
-    QUrl url(u"https://lrclib.net/api/get"_s);
+    const QString cleanTitle = cleanTrackTitle(m_title);
+
+    QUrl url(u"https://lrclib.net/api/search"_s);
     QUrlQuery q;
-    q.addQueryItem(u"track_name"_s, m_title);
-    q.addQueryItem(u"artist_name"_s, m_artist);
-    if (!m_album.isEmpty()) {
-        q.addQueryItem(u"album_name"_s, m_album);
-    }
-    if (m_duration > 0) {
-        q.addQueryItem(u"duration"_s, QString::number(qRound(m_duration)));
-    }
+    q.addQueryItem(u"q"_s, cleanTitle);
     url.setQuery(q);
 
     auto* reply = getJson(url, lrclibHeaders());
@@ -524,39 +562,52 @@ void Lyrics::tryLrclib(int reqId) {
             return;
         }
         if (reply->error() != QNetworkReply::NoError) {
-            qCDebug(lcLyrics) << "lrclib /get error:" << reply->errorString();
+            qCDebug(lcLyrics) << "lrclib /search error:" << reply->errorString();
             chainNext(LyricsBackend::LRCLIB, reqId);
             return;
         }
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
-        const QJsonObject obj = doc.object();
-        const QString synced = obj.value(u"syncedLyrics"_s).toString();
-        const qint64 id = static_cast<qint64>(obj.value(u"id"_s).toDouble());
+        const QJsonArray arr = doc.array();
 
-        if (synced.isEmpty()) {
-            qCDebug(lcLyrics) << "lrclib: no syncedLyrics for" << m_artist << "-" << m_title;
-            chainNext(LyricsBackend::LRCLIB, reqId);
+        for (const auto& v : arr) {
+            const QJsonObject obj = v.toObject();
+            const QString synced = obj.value(u"syncedLyrics"_s).toString();
+            const QString plain = obj.value(u"plainLyrics"_s).toString();
+            const QString lyricsText = !synced.isEmpty() ? synced : plain;
+            const qint64 id = static_cast<qint64>(obj.value(u"id"_s).toDouble());
+            const double duration = obj.value(u"duration"_s).toDouble();
+
+            if (lyricsText.isEmpty()) {
+                continue;
+            }
+
+            // Strictly require duration match within 1.0 second (like author's original)
+            if (m_duration > 0.0 && duration > 0.0 && std::abs(duration - m_duration) > 1.0) {
+                continue;
+            }
+
+            const auto lines = parseLrc(lyricsText);
+            if (lines.isEmpty()) {
+                continue;
+            }
+
+            writeCachedLrc(LyricsBackend::LRCLIB, QString::number(id), lyricsText);
+            setLines(lines, LyricsBackend::LRCLIB);
+            const LyricCandidate cand(LyricsBackend::LRCLIB, QString::number(id), obj.value(u"trackName"_s).toString(),
+                obj.value(u"artistName"_s).toString(), obj.value(u"albumName"_s).toString(),
+                obj.value(u"duration"_s).toDouble());
+            appendCandidates({ cand });
+            m_selected = cand;
+            emit selectedCandidateChanged();
+            if (!m_settingFromPrefs) {
+                persistTrackPrefs();
+            }
+            setLoading(false);
             return;
         }
 
-        const auto lines = parseLrc(synced);
-        if (lines.isEmpty()) {
-            chainNext(LyricsBackend::LRCLIB, reqId);
-            return;
-        }
-
-        writeCachedLrc(LyricsBackend::LRCLIB, QString::number(id), synced);
-        setLines(lines, LyricsBackend::LRCLIB);
-        const LyricCandidate cand(LyricsBackend::LRCLIB, QString::number(id), obj.value(u"trackName"_s).toString(),
-            obj.value(u"artistName"_s).toString(), obj.value(u"albumName"_s).toString(),
-            obj.value(u"duration"_s).toDouble());
-        appendCandidates({ cand });
-        m_selected = cand;
-        emit selectedCandidateChanged();
-        if (!m_settingFromPrefs) {
-            persistTrackPrefs();
-        }
-        setLoading(false);
+        qCDebug(lcLyrics) << "lrclib: no lyrics found for" << m_artist << "-" << m_title;
+        chainNext(LyricsBackend::LRCLIB, reqId);
     });
 }
 
@@ -570,9 +621,11 @@ void Lyrics::tryNetEase(int reqId) {
     // Reset cookies (LyricsBackend::NetEase rejects requests with stale cookies sometimes)
     m_nam->setCookieJar(new QNetworkCookieJar(m_nam));
 
+    const QString cleanTitle = cleanTrackTitle(m_title);
+
     QUrl url(u"https://music.163.com/api/search/get"_s);
     QUrlQuery q;
-    q.addQueryItem(u"s"_s, u"%1 %2"_s.arg(m_title, m_artist));
+    q.addQueryItem(u"s"_s, cleanTitle);
     q.addQueryItem(u"type"_s, u"1"_s);
     q.addQueryItem(u"limit"_s, u"5"_s);
     url.setQuery(q);
@@ -594,36 +647,37 @@ void Lyrics::tryNetEase(int reqId) {
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
         const QJsonArray songs = doc.object().value(u"result"_s).toObject().value(u"songs"_s).toArray();
 
-        // Find best match by artist substring
-        qint64 bestId = -1;
-        for (const auto& v : songs) {
-            const QJsonObject s = v.toObject();
-            const QJsonArray artists = s.value(u"artists"_s).toArray();
-            if (artists.isEmpty()) {
-                continue;
-            }
-            const QString sArtist = artists.first().toObject().value(u"name"_s).toString();
-            if (containsCi(m_artist, sArtist) || containsCi(sArtist, m_artist)) {
-                bestId = static_cast<qint64>(s.value(u"id"_s).toDouble());
-                break;
-            }
-        }
-
-        if (bestId < 0) {
-            qCDebug(lcLyrics) << "netease: no artist match for" << m_artist << "-" << m_title;
+        if (songs.isEmpty()) {
+            qCDebug(lcLyrics) << "netease: no song match for" << m_title;
             chainNext(LyricsBackend::NetEase, reqId);
             return;
         }
 
-        fetchNetEaseLyricsById(QString::number(bestId), reqId);
+        for (const auto& v : songs) {
+            const QJsonObject s = v.toObject();
+            const double durationSec = s.value(u"dt"_s).toDouble(s.value(u"duration"_s).toDouble()) / 1000.0;
+
+            // Strictly require duration match within 1.0 second (like LRCLIB)
+            if (m_duration > 0.0 && durationSec > 0.0 && std::abs(durationSec - m_duration) > 1.0) {
+                continue;
+            }
+
+            const qint64 bestId = static_cast<qint64>(s.value(u"id"_s).toDouble());
+            fetchNetEaseLyricsById(QString::number(bestId), reqId);
+            return;
+        }
+
+        qCDebug(lcLyrics) << "netease: no duration match for" << m_title;
+        chainNext(LyricsBackend::NetEase, reqId);
     });
 }
 
 void Lyrics::searchLrclibCandidates(int reqId) {
+    const QString cleanTitle = cleanTrackTitle(m_title);
+
     QUrl url(u"https://lrclib.net/api/search"_s);
     QUrlQuery q;
-    q.addQueryItem(u"track_name"_s, m_title);
-    q.addQueryItem(u"artist_name"_s, m_artist);
+    q.addQueryItem(u"q"_s, cleanTitle);
     url.setQuery(q);
 
     auto* reply = getJson(url, lrclibHeaders());
@@ -660,9 +714,11 @@ void Lyrics::searchLrclibCandidates(int reqId) {
 void Lyrics::searchNetEaseCandidates(int reqId) {
     m_nam->setCookieJar(new QNetworkCookieJar(m_nam));
 
+    const QString cleanTitle = cleanTrackTitle(m_title);
+
     QUrl url(u"https://music.163.com/api/search/get"_s);
     QUrlQuery q;
-    q.addQueryItem(u"s"_s, u"%1 %2"_s.arg(m_title, m_artist));
+    q.addQueryItem(u"s"_s, cleanTitle);
     q.addQueryItem(u"type"_s, u"1"_s);
     q.addQueryItem(u"limit"_s, u"5"_s);
     url.setQuery(q);

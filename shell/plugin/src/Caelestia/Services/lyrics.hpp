@@ -134,6 +134,7 @@ private:
     QString m_artist;
     QString m_title;
     QString m_album;
+    QString m_loadedTitle;
     qreal m_duration = 0.0;
 
     int m_currentRequestId = 0;
