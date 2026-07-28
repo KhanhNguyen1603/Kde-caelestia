@@ -25,12 +25,16 @@ class ClipboardManager : public QObject {
 
     Q_PROPERTY(QVariantList items READ items NOTIFY itemsChanged)
     Q_PROPERTY(QString imageCacheDir READ imageCacheDir CONSTANT)
+    /// False once cliphist has been found to be missing or unusable, so the UI
+    /// can say so instead of showing an unexplained empty list.
+    Q_PROPERTY(bool available READ available NOTIFY availableChanged)
 
 public:
     explicit ClipboardManager(QObject* parent = nullptr);
 
     [[nodiscard]] QVariantList items() const;
     [[nodiscard]] QString imageCacheDir() const;
+    [[nodiscard]] bool available() const;
 
     Q_INVOKABLE void reload();
     Q_INVOKABLE void decodeImage(int id, const QString& outPath);
@@ -42,9 +46,13 @@ signals:
     void imageReady(int id, const QString& path);
     /// Emitted when clearHistory() completes.
     void clearHistoryFinished(bool success);
+    void availableChanged();
 
 private:
+    void setAvailable(bool available);
+
     QVariantList m_items;
+    bool m_available = true;
     QProcess* m_listProc = nullptr;
     QProcess* m_wipeProc = nullptr;
     QString m_imageCacheDir;

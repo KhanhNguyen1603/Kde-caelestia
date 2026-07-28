@@ -346,6 +346,10 @@ Item {
     Row {
         id: empty
 
+        /// The clipboard list is a mode of the app list rather than a state of
+        /// its own, so ask the list itself.
+        readonly property bool cliphistMissing: root.currentList?.state === "clipboard" && !Clipboard.available
+
         opacity: root.currentList?.count === 0 ? 1 : 0
         scale: root.currentList?.count === 0 ? 1 : 0.5
 
@@ -357,6 +361,8 @@ Item {
 
         MaterialIcon {
             text: {
+                if (empty.cliphistMissing)
+                    return "content_paste_off";
                 if (root.state === "wallpapers")
                     return "wallpaper_slideshow";
                 if (root.state === "keybinds")
@@ -376,6 +382,8 @@ Item {
 
             StyledText {
                 text: {
+                    if (empty.cliphistMissing)
+                        return qsTr("cliphist not found");
                     if (root.state === "wallpapers")
                         return qsTr("No wallpapers found");
                     if (root.state === "keybinds")
@@ -390,6 +398,8 @@ Item {
 
             StyledText {
                 text: {
+                    if (empty.cliphistMissing)
+                        return qsTr("Install cliphist to enable clipboard history");
                     if (root.state === "wallpapers")
                         return Wallpapers.list.length === 0 ? qsTr("Try putting some wallpapers in %1").arg(Paths.shortenHome(Paths.wallsdir)) : qsTr("Try searching for something else");
                     if (root.state === "keybinds")
