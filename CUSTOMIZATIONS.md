@@ -6,10 +6,10 @@ Tài liệu này tổng hợp toàn bộ các chỉnh sửa, tối ưu hóa và 
 
 ## 1. Tối ưu hóa hiệu năng & Tiết kiệm RAM/Pin
 
-### 🔌 Chạy Vulkan trên card đồ họa tích hợp Intel (iGPU)
+### 🔌 Ép Vulkan trên card đồ họa tích hợp Intel (iGPU)
 * **Tệp tin ảnh hưởng:**
   * [10-autostart.sh](file:///home/qkhanh/Code/Kde%20caelestia/caelestia-dots-kde/scripts/10-autostart.sh)
-* **Chi tiết:** Bổ sung biến môi trường `export __NV_PRIME_RENDER_OFFLOAD=0` vào kịch bản khởi động autostart để ép buộc Shell **chỉ chạy phần cứng trên card Intel (iGPU)**, giải phóng hoàn toàn GPU Nvidia dGPU giúp laptop mát máy, tiết kiệm pin tối đa và chạy các hiệu ứng mờ (Blur) cực mượt.
+* **Chi tiết:** Bổ sung biến môi trường `export __NV_PRIME_RENDER_OFFLOAD=0` và `export QSG_RHI_BACKEND=vulkan` vào kịch bản khởi động autostart để ép buộc Shell **chỉ chạy phần cứng Vulkan trực tiếp trên card Intel (iGPU)**, ngăn ngừa tự động nhảy card Nvidia hay đĩa ảo rendering phần mềm, giải phóng hoàn toàn GPU Nvidia dGPU giúp laptop mát máy, tiết kiệm pin tối đa và chạy các hiệu ứng mờ (Blur) cực mượt.
 
 ---
 
