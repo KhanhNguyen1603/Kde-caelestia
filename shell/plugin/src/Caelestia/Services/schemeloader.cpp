@@ -5,6 +5,7 @@
 
 #include <qdir.h>
 #include <qfile.h>
+#include <qfileinfo.h>
 #include <qfilesystemwatcher.h>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
@@ -23,15 +24,24 @@ SchemeLoader::SchemeLoader(QObject* parent)
         QDir::homePath() + "/.local/state");
     m_schemeStatePath = stateDir + "/caelestia/scheme.json";
 
-    // Watch for changes to scheme.json
-    if (QFile::exists(m_schemeStatePath)) {
-        m_watcher->addPath(m_schemeStatePath);
-    }
+    // Watch for changes to scheme.json. On a fresh install the file does not
+    // exist yet, so also watch its directory and pick the file up once it
+    // appears — otherwise the first `caelestia scheme set` would need a full
+    // shell restart to take effect.
+    const auto schemeDir = QFileInfo(m_schemeStatePath).absolutePath();
+    QDir().mkpath(schemeDir);
+    m_watcher->addPath(schemeDir);
+    watchSchemeState();
+
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, [this](const QString&) {
         loadCurrentScheme();
         // Re-add path because some editors replace files atomically
-        if (!m_watcher->files().contains(m_schemeStatePath)) {
-            m_watcher->addPath(m_schemeStatePath);
+        watchSchemeState();
+    });
+    connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, [this](const QString&) {
+        // The file may have just been created (or recreated) in the directory.
+        if (watchSchemeState()) {
+            loadCurrentScheme();
         }
     });
 
@@ -47,6 +57,13 @@ QString SchemeLoader::currentVariant() const { return m_currentVariant; }
 
 void SchemeLoader::reloadCurrent() {
     loadCurrentScheme();
+}
+
+bool SchemeLoader::watchSchemeState() {
+    if (m_watcher->files().contains(m_schemeStatePath) || !QFile::exists(m_schemeStatePath)) {
+        return false;
+    }
+    return m_watcher->addPath(m_schemeStatePath);
 }
 
 void SchemeLoader::loadSchemes() {
