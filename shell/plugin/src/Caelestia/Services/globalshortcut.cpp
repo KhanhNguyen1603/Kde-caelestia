@@ -3,9 +3,49 @@
 #include <KGlobalAccel>
 #include <QKeySequence>
 #include <QDebug>
-#include <cstdlib>
+#include <QProcess>
 #include "../Config/config.hpp"
 #include "../Config/generalconfig.hpp"
+
+namespace {
+
+// gdbus parses its arguments as GVariant text, where single quotes delimit
+// strings. Component and action names come from other applications'
+// KGlobalAccel registrations, so they are untrusted input and must be escaped
+// before being placed inside a quoted GVariant string.
+QString escapeGVariantString(const QString &value)
+{
+    QString escaped = value;
+    escaped.replace('\\', QStringLiteral("\\\\"));
+    escaped.replace('\'', QStringLiteral("\\'"));
+    return escaped;
+}
+
+// Passes the arguments as real argv entries so no shell ever re-parses them.
+void setShortcutKeys(const QString &component, const QString &action, const QString &keys)
+{
+    QProcess proc;
+    proc.setProgram(QStringLiteral("gdbus"));
+    proc.setArguments({
+        QStringLiteral("call"),
+        QStringLiteral("--session"),
+        QStringLiteral("--dest"), QStringLiteral("org.kde.kglobalaccel"),
+        QStringLiteral("--object-path"), QStringLiteral("/kglobalaccel"),
+        QStringLiteral("--method"), QStringLiteral("org.kde.KGlobalAccel.setShortcutKeys"),
+        QString("['%1', '%2', '', '']").arg(escapeGVariantString(component), escapeGVariantString(action)),
+        keys,
+        QStringLiteral("4"),
+    });
+    proc.setStandardOutputFile(QProcess::nullDevice());
+    proc.setStandardErrorFile(QProcess::nullDevice());
+    proc.start();
+    if (!proc.waitForFinished(2000)) {
+        proc.kill();
+        proc.waitForFinished(200);
+    }
+}
+
+} // namespace
 
 GlobalShortcut::GlobalShortcut(QObject *parent)
     : QObject(parent), m_action(new QAction(this))
@@ -31,14 +71,7 @@ GlobalShortcut::~GlobalShortcut()
             arrayStr = "[([0, 0, 0, 0],)]";
         }
         
-        QString cmd = QString("gdbus call --session --dest org.kde.kglobalaccel "
-                              "--object-path /kglobalaccel "
-                              "--method org.kde.KGlobalAccel.setShortcutKeys "
-                              "\"['%1', '%2', '', '']\" \"%3\" 4 > /dev/null 2>&1")
-                              .arg(stolen.component)
-                              .arg(stolen.action)
-                              .arg(arrayStr);
-        system(cmd.toUtf8().constData());
+        setShortcutKeys(stolen.component, stolen.action, arrayStr);
     }
 }
 
@@ -128,13 +161,8 @@ void GlobalShortcut::updateShortcut()
                 }
 
                 // 2. Unbind foreign shortcuts natively via gdbus
-                QString cmd = QString("gdbus call --session --dest org.kde.kglobalaccel "
-                                      "--object-path /kglobalaccel "
-                                      "--method org.kde.KGlobalAccel.setShortcutKeys "
-                                      "\"['%1', '%2', '', '']\" \"[([0, 0, 0, 0],)]\" 4 > /dev/null 2>&1")
-                                      .arg(info.componentUniqueName())
-                                      .arg(info.uniqueName());
-                system(cmd.toUtf8().constData());
+                setShortcutKeys(info.componentUniqueName(), info.uniqueName(),
+                                QStringLiteral("[([0, 0, 0, 0],)]"));
             }
         }
     }
