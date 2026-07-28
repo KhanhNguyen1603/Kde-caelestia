@@ -4,6 +4,7 @@ import QtQuick
 import Caelestia.Config
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import Caelestia
 import Caelestia.Services
 import qs.utils
@@ -48,6 +49,35 @@ Item {
     }
 
     property real shellStartTime: Date.now() / 1000
+
+    /// Rich presence is meant to say what you are doing now, not what you were
+    /// doing before you walked away. Uses the Wayland idle protocol rather than
+    /// a focus-change heuristic, so it also covers sitting and reading.
+    readonly property int idleTimeout: GlobalConfig.services.arpcIdleTimeout
+    property bool userIdle: false
+
+    onUserIdleChanged: {
+        if (!root.active || !DiscordIpc.connected)
+            return;
+
+        if (root.userIdle)
+            DiscordIpc.clearActivity();
+        else
+            root.updatePresence();
+    }
+
+    IdleMonitor {
+        // A timeout of 0 means the feature is off, and IdleMonitor would treat
+        // it as "idle immediately".
+        enabled: root.active && root.idleTimeout > 0
+        timeout: root.idleTimeout
+        onIsIdleChanged: root.userIdle = isIdle
+
+        // Turning the feature off while idle must not strand the presence in
+        // the cleared state.
+        onEnabledChanged: if (!enabled)
+            root.userIdle = false
+    }
 
     Connections {
         target: DiscordIpc
@@ -131,6 +161,9 @@ Item {
     function updatePresence() {
         if (!active || !DiscordIpc.connected) return;
         if (fetchingSteam) return; // Prevent loop during async fetch
+        // Any of the triggers below can fire while away; none of them should
+        // put the presence back until the user actually returns.
+        if (userIdle) return;
 
         // Priority 0: Manual Override
         if (GlobalConfig.services.arpcManualOverride && (GlobalConfig.services.arpcAppName || GlobalConfig.services.arpcDetails || GlobalConfig.services.arpcState)) {
