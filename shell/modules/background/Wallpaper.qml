@@ -295,7 +295,7 @@ Item {
                 path: img.imagePath
                 visible: !img.isVideoImage && img.imagePath !== ""
                 asynchronous: true
-                fillMode: AnimatedImage.PreserveAspectCrop
+                fillMode: Config.background.wallpaperFillMode
                 source: img.imagePath || ""
                 playing: true
 
@@ -307,10 +307,10 @@ Item {
                 // size makes it both quicker and far smaller. Every other wallpaper
                 // view already does this; only the one drawing the biggest image
                 // did not.
-                sourceSize: {
-                    const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
-                    return Qt.size(wallpaperImage.width * dpr, wallpaperImage.height * dpr);
-                }
+                // sourceSize: {
+                //     const dpr = (QsWindow.window as QsWindow)?.devicePixelRatio ?? 1;
+                //     return Qt.size(wallpaperImage.width * dpr, wallpaperImage.height * dpr);
+                // }
 
                 onStatusChanged: {
                     if (status === Image.Ready && !img.isVideoImage)
@@ -323,6 +323,7 @@ Item {
                 path: img.videoPath
                 screen: root.screen
                 visible: img.isVideoImage && img.videoPath !== ""
+                fillMode: Config.background.wallpaperFillMode
 
                 onPlayingChanged: {
                     if (playing && img.isVideoImage)

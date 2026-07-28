@@ -17,6 +17,19 @@ PageBase {
     isSubPage: true
     title: qsTr("Wallpaper Settings")
 
+    readonly property list<MenuItem> scalingItems: [
+        MenuItem { text: qsTr("Crop") },
+        MenuItem { text: qsTr("Fit") },
+        MenuItem { text: qsTr("Stretch") }
+    ]
+    readonly property list<int> scalingValues: [Image.PreserveAspectCrop, Image.PreserveAspectFit, Image.Stretch]
+
+    function scaleKeyToIndex(key: int): int {
+        if (key === Image.PreserveAspectFit) return 1;
+        if (key === Image.Stretch) return 2;
+        return 0; // Default to Crop
+    }
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -32,8 +45,26 @@ PageBase {
             Layout.fillWidth: true
             spacing: 0
 
-            ToggleRow {
+            SelectRow {
                 first: true
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                Layout.fillWidth: true
+                label: qsTr("Wallpaper scaling")
+                subtext: qsTr("How the wallpaper image fits the screen")
+                menuItems: root.scalingItems
+                active: root.scalingItems[root.scaleKeyToIndex(Config.background.wallpaperFillMode)]
+                onSelected: item => {
+                    let fillMode = root.scalingValues[root.scalingItems.indexOf(item)];
+                    GlobalConfig.background.wallpaperFillMode = fillMode;
+                    for (let i = 0; i < Quickshell.screens.length; i++) {
+                        let sConf = GlobalConfig.forScreen(Quickshell.screens[i].name);
+                        if (sConf) sConf.background.resetOption("wallpaperFillMode");
+                    }
+                    GlobalConfig.save();
+                }
+            }
+
+            ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true
                 text: Strings.localizeEnglishSpelling(qsTr("Recolour wallpaper"))

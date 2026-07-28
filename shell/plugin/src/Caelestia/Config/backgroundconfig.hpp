@@ -118,6 +118,7 @@ class BackgroundConfig : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, true)
     CONFIG_PROPERTY(bool, wallpaperEnabled, true)
+    CONFIG_PROPERTY(int, wallpaperFillMode, 3)
     CONFIG_PROPERTY(bool, wallpaperRecolor, false)
     CONFIG_PROPERTY(qreal, wallpaperRecolorStrength, 0.5)
     CONFIG_PROPERTY(bool, slideshowEnabled, false)
