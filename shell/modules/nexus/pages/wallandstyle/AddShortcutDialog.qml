@@ -5,6 +5,7 @@ import Quickshell
 import Caelestia.Config
 import qs.components.controls as Controls
 import qs.components.effects
+import qs.services
 
 Popup {
     id: root
@@ -17,9 +18,20 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    property var targetItem: null
+    parent: Overlay.overlay
 
-    x: Math.round((parent.width - width) / 2)
-    y: Math.round((parent.height - height) / 2)
+    x: targetItem && parent ? Math.min(parent.width - width - 16, Math.max(16, targetItem.mapToItem(parent, targetItem.width - width, targetItem.height + 8).x)) : (parent ? Math.round((parent.width - width) / 2) : 0)
+    y: targetItem && parent ? Math.min(parent.height - height - 16, Math.max(16, targetItem.mapToItem(parent, 0, targetItem.height + 8).y)) : (parent ? Math.round((parent.height - height) / 2) : 0)
+
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: Tokens.anim.durations.small }
+        NumberAnimation { property: "scale"; from: 0.9; to: 1.0; duration: Tokens.anim.durations.small; easing.type: Easing.OutCubic }
+    }
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: Tokens.anim.durations.small }
+        NumberAnimation { property: "scale"; from: 1.0; to: 0.9; duration: Tokens.anim.durations.small; easing.type: Easing.InCubic }
+    }
 
     background: Item {
         Elevation {
@@ -30,10 +42,10 @@ Popup {
         Rectangle {
             id: bgRect
             anchors.fill: parent
-            color: Colours.palette.surface
+            color: Colours.palette.m3surfaceContainerHigh
             radius: 16
             border.width: 1
-            border.color: Colours.palette.surfaceVariant
+            border.color: Colours.palette.m3outlineVariant
         }
     }
 
@@ -44,7 +56,7 @@ Popup {
         Text {
             text: qsTr("Add Custom Shortcut")
             font: Tokens.fonts.bodyLarge
-            color: Colours.palette.onSurface
+            color: Colours.palette.m3onSurface
             Layout.fillWidth: true
             Layout.bottomMargin: 8
         }
@@ -71,12 +83,12 @@ Popup {
             Layout.fillWidth: true
             Layout.topMargin: 8
             
-            Item { Layout.fillWidth: true } // Spacer
-
             Controls.TextButton {
                 text: qsTr("Cancel")
                 onClicked: root.close()
             }
+
+            Item { Layout.fillWidth: true } // Spacer
 
             Controls.TextButton {
                 text: qsTr("Save")

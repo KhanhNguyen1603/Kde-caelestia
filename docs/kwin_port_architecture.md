@@ -76,24 +76,34 @@ A QML component used to register global keyboard shortcuts through KDE's native 
 
 **Properties:**
 * `name` (`QString`): The unique identifier for the shortcut.
-* `key` (`QString`): The key sequence trigger (e.g., `"Meta+Shift+S"`). Multiple key sequences can be separated by semicolons (e.g., `"Meta+Shift+S; Print"`).
-* `description` (`QString`): A human-readable description of what the shortcut does (visible in KDE System Settings).
+* `key` (`QString`): The current active key sequence trigger (e.g., `"Meta+Shift+S"`). Multiple key sequences can be separated by semicolons.
+* `defaultKey` (`QString`): The original fallback key assigned at startup, used when resetting custom overrides.
+* `description` (`QString`): A human-readable description of what the shortcut does (visible in the UI).
 
 **Signals:**
 * `activated()`: Emitted globally when the user presses the registered key sequence.
 
+### `KeybindsModel` & `GlobalShortcutDispatcher` (Singletons)
+* **`GlobalShortcutDispatcher`**: A bridging singleton since static C++ methods cannot emit signals. `GlobalShortcut` instances register themselves into a static `QHash` registry on creation and fire signals through this dispatcher.
+* **`KeybindsModel`**: A `QAbstractListModel` singleton exposing the entire list of registered shortcuts to QML. It observes the dispatcher for new shortcuts, applies any user overrides from `~/.config/quickshell/keybinds.json`, and exposes them for the Nexus settings UI. Overrides are persisted to disk using a 300ms debounce timer to prevent IO thrashing.
+
+**`KeybindsModel` Methods (Invokables):**
+* `void setKey(const QString& name, const QString& newKey)`: Changes the keybind for the specified shortcut and saves the override to disk.
+* `void resetKey(const QString& name)`: Resets the shortcut back to its original `defaultKey` and removes the override.
+* `QVariantList query(const QString& searchText = "")`: Returns a filtered list of shortcuts. Used mostly for backward compatibility with older UI components like the app launcher.
+
 **Under the Hood: Key Theft & Conflict Resolution**
-To guarantee that Caelestia's hotkeys always work, the C++ backend overrides existing KDE shortcuts (such as the default Meta+Shift+S screenshot tool) on startup and restores them on exit:
+To guarantee that Caelestia's hotkeys always work, the C++ backend overrides existing KDE shortcuts on startup and restores them on exit:
 1. It queries `KGlobalAccel::globalShortcutsByKey(seq)` to find any conflicts with other registered KDE components.
-2. If conflicts are found, it unbinds them from their parent components using a shell execution of `gdbus`:
+2. For every conflict, it spawns an asynchronous `QProcess` executing a `gdbus` call to unbind the combo from the foreign component:
    ```bash
    gdbus call --session --dest org.kde.kglobalaccel \
               --object-path /kglobalaccel \
               --method org.kde.KGlobalAccel.setShortcutKeys \
               "['<component>', '<action>', '', '']" "[([0, 0, 0, 0],)]" 4
    ```
-3. It then binds the shortcut to Caelestia's own action object using `KGlobalAccel::self()->setShortcut(m_action, seqs, KGlobalAccel::NoAutoloading)`.
-4. Upon shell destruction, it executes a similar `gdbus` call to restore the original keybinds back to their respective components (e.g., Spectacle or KWin).
+3. **Performance First**: Since `system()` or synchronous `QProcess::execute()` would block the main Qt thread, all steal commands run concurrently. A `std::shared_ptr<QAtomicInt>` pending counter tracks them, and only the final process to finish registers the shortcut with `KGlobalAccel::self()->setShortcut(..., NoAutoloading)`. A generation counter (`m_registerGeneration`) protects against rapid consecutive property updates.
+4. Upon shell destruction, a similar detached `gdbus` call restores the original keybinds back to their respective components (e.g., Spectacle or KWin).
 
 ---
 
@@ -106,7 +116,10 @@ The `CustomShortcut` wrapper dynamically inspects the environment at startup:
 - **Hyprland**: If `$HYPRLAND_INSTANCE_SIGNATURE` is present, it loads `Quickshell.Hyprland`'s `GlobalShortcut` component. Key bindings are defined in `hyprland.conf` by mapping action names. (This should be removed in future)
 - **KDE (KWin)**: If not on Hyprland, it loads the C++ `Caelestia.GlobalShortcut` component, registering the hotkeys directly with KDE's global shortcut daemon.
 
-### Hardcoded vs. System Settings Configurable Keybinds
-There are two ways shortcuts are registered in `Shortcuts.qml` under KDE:
-1. **Hardcoded Hotkeys**: Keybinds that have an explicit `key` string defined (e.g., `key: "Meta+Shift+S; Print"` for screenshots or `key: "Meta+Return"` for launching the terminal). These are bound forcefully on startup.
-2. **KDE System-Configurable Hotkeys**: General shortcuts (like `nexus` or `dashboard`) are defined with a `name` and `description` but leave `key` empty. Because `key` is empty, Caelestia registers the action with `KGlobalAccel` but binds no default key. This registers the actions under **KDE System Settings -> Shortcuts -> quickshell**, allowing the user to natively map their own custom hotkeys inside KDE!
+### Nexus Shortcut Manager & Overrides
+In the KDE port, all Caelestia keybinds are managed fully natively inside the **Nexus settings panel**:
+1. **Initial Declaration**: `Shortcuts.qml` defines the defaults via `Caelestia.GlobalShortcut` elements.
+2. **Dynamic UI Rendering**: `KeybindsModel` automatically groups all active shortcuts into categories (Shell UI, Applications, Workspaces, Tiling) by regex-matching their names, exposing them to `ShortcutManagerPage.qml`.
+3. **Key Capture & Persistence**: When a user clicks a row in Nexus, a modal `KeyCaptureDialog` intercepts physical keystrokes (`Keys.onPressed`) in QML. The new combination is sent to `KeybindsModel::setKey()`, instantly rebinding the C++ backend and saving the override to `~/.config/quickshell/keybinds.json`.
+
+Because of this unified manager, leaving `key` empty in `Shortcuts.qml` simply registers the action without a default keybind, allowing the user to map it in Nexus later. (It also registers in KDE System Settings -> Shortcuts -> quickshell, but the in-shell Nexus manager is the intended frontend).

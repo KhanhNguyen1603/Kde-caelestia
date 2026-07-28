@@ -261,11 +261,13 @@ PageBase {
                 Item { Layout.fillWidth: true }
 
                 TextButton {
+                    id: addShortcutBtn
                     text: qsTr("Add Shortcut...")
                     type: TextButton.Filled
                     ToolTip.text: qsTr("Create a custom shortcut entry")
                     ToolTip.visible: hovered
                     onClicked: {
+                        addShortcutDialog.targetItem = addShortcutBtn;
                         addShortcutDialog.open();
                     }
                 }

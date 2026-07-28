@@ -146,6 +146,12 @@ QtObject {
             description: qsTr("Battery indicators, idle suspend"),
             category: "controls"
         },
+        {
+            label: qsTr("Shortcuts"),
+            icon: "keyboard",
+            description: qsTr("Keyboard shortcuts, custom keybinds"),
+            category: "controls"
+        },
 
         // Shell
         {

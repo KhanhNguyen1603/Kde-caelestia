@@ -191,6 +191,14 @@ QtObject {
                 }
             }
         },
+        Component {
+            // Shortcuts
+            StackPage {
+                Component {
+                    ShortcutManagerPage {}
+                }
+            }
+        },
 
         // Shell
         Component {

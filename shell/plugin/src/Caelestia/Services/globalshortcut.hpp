@@ -6,6 +6,21 @@
 #include <QString>
 #include <QList>
 #include <QKeySequence>
+#include <QHash>
+#include <memory>
+#include <QAtomicInt>
+
+class GlobalShortcut;
+
+class GlobalShortcutDispatcher : public QObject {
+    Q_OBJECT
+public:
+    static GlobalShortcutDispatcher* instance();
+signals:
+    void shortcutRegistered(GlobalShortcut* sc);
+    void shortcutUnregistered(GlobalShortcut* sc);
+};
+
 
 class GlobalShortcut : public QObject
 {
@@ -27,12 +42,20 @@ public:
 
     QString description() const;
     void setDescription(const QString &description);
+    
+    QString getCollisionName() const;
+    QString getCollisionNameForKey(const QString& keyPart) const;
+    int stolenCount() const { return m_stolenShortcuts.size(); }
 
 signals:
     void nameChanged();
     void keyChanged();
     void descriptionChanged();
     void activated();
+
+public:
+    static GlobalShortcut* findByName(const QString& name);
+    static QList<GlobalShortcut*> allShortcuts();
 
 private:
     void updateShortcut();
@@ -41,11 +64,17 @@ private:
     QString m_key;
     QString m_description;
     QAction *m_action;
+    
+    int m_registerGeneration = 0;
+
+    static QHash<QString, GlobalShortcut*> s_registry;
 
     struct StolenShortcut {
         QString component;
         QString action;
         QList<QKeySequence> keys;
+        QString componentFriendlyName;
+        QString actionFriendlyName;
     };
     QList<StolenShortcut> m_stolenShortcuts;
 };

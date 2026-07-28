@@ -406,7 +406,7 @@ PanelWindow {
         // The thing to the bottom-right with an icon
         CursorGuide {
             z: 9999
-            visible: root.phase === RegionSelection.Phase.Select
+            active: root.phase === RegionSelection.Phase.Select && root.visible
             x: mouseArea.mouseX
             y: mouseArea.mouseY
             action: root.action
