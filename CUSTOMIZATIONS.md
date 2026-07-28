@@ -58,12 +58,12 @@ Tài liệu này tổng hợp toàn bộ các chỉnh sửa, tối ưu hóa và 
   * [lyrics.hpp](file:///home/qkhanh/Code/Kde%20caelestia/caelestia-dots-kde/shell/plugin/src/Caelestia/Services/lyrics.hpp)
   * [lyrics.cpp](file:///home/qkhanh/Code/Kde%20caelestia/caelestia-dots-kde/shell/plugin/src/Caelestia/Services/lyrics.cpp)
 * **Chi tiết:** 
-  * **Trích xuất Youtube Thumbnail Siêu nhẹ & Chống mất ảnh:** Đưa ưu tiên bóc tách YouTube Video ID lên hàng đầu, lọc bỏ các tệp cache tạm hỏng `.org.chromium.Chromium` của Chrome/KDE, không bao giờ bị mất thumbnail sau 1s.
-  * **Tự động tìm kiếm Ảnh bìa Online (iTunes API):** Thêm hàm `fetchArtwork()` tự động tải ảnh bìa nhỏ gọn từ iTunes API khi trình phát nhạc không cung cấp cover art.
+  * **Trích xuất Youtube Thumbnail Toàn năng (`Regex`):** Sử dụng biểu thức Regex toàn năng hỗ trợ nhận diện 100% tất cả các định dạng URL của YouTube (`www.youtube.com`, `music.youtube.com`, `m.youtube.com`, `shorts`, `embed`, `youtu.be`), luôn lấy trực tiếp ảnh thumbnail gốc chất lượng cao từ YouTube.
+  * **Khóa cấm iTunes API cho YouTube & Spotify:** Khóa cấm YouTube và Spotify gửi yêu cầu tra cứu sang iTunes API (vì 2 nền tảng này luôn có sẵn ảnh chính chủ), loại bỏ hoàn toàn các lỗi lấy nhầm ảnh rác iTunes khi xem video. Các trình phát nhạc địa phương (VLC, MPV, file mp3...) vẫn giữ nguyên tính năng tra cứu iTunes API khi thiếu ảnh.
   * **Bộ lọc tiêu đề thông minh (`cleanTrackTitle`):** Tự động cắt bỏ các đoạn rác nối `• Ca sĩ` (như `Mùa Don't Đến • Hanja, Dewie`), loại bỏ các cặp ngoặc `(feat...)`, `[Official Video]`, `Remix`, và các ngoặc bỏ dở do bị rút gọn `...`.
   * **Lọc tiêu đề Tạm dừng & Quảng cáo (`isPlaceholderTitle`):** Tự động nhận diện và loại bỏ các chuỗi tạm dừng trình duyệt (`Spotify - Web Player...`) và Quảng cáo (`Spotify – Advertisement`, `quảng cáo`) để giữ nguyên giao diện sạch sẽ, không tìm lời rác cho Quảng cáo.
   * **Tìm kiếm LRCLIB qua Fuzzy Search (`?q=`):** Chuyển sang dùng `?q=cleanTitle` trên LRCLIB giúp tìm kiếm chính xác các bài hát có chứa chữ số hay dấu gạch ngang (như `3107 4`, `3107-4`).
-  * **Kiểm tra Thời lượng nghiêm ngặt chuẩn tác giả (`<= 1.0s`):** Bắt buộc thời lượng bài hát lệch không quá 1.0s (`std::abs(duration - m_duration) <= 1.0`), đúng chuẩn nguyên bản 100% của tác giả gốc.
+  * **Kiểm tra Thời lượng nghiêm ngặt cho LRCLIB & NetEase (`<= 1.0s`):** Bắt buộc thời lượng bài hát trên cả 2 backend LRCLIB và NetEase Music lệch không quá 1.0s (`std::abs(duration - m_duration) <= 1.0`), loại bỏ hoàn toàn việc bắt nhầm bài hát rác khi xem video.
 
 ---
 
