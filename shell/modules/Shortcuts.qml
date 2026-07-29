@@ -337,14 +337,84 @@ Scope {
         onPressed: Quickshell.execDetached(["/bin/bash", "-c", "~/.local/bin/kcolorpicker -a"])
     }
 
-    Instantiator {
-        model: 10
-        delegate: CustomShortcut {
-            name: `workspace${index + 1}`
-            description: `Switch to workspace ${index + 1}`
-            key: `Meta+${(index + 1) === 10 ? 0 : (index + 1)}`
-            onPressed: Quickshell.execDetached(["qdbus6", "org.kde.kglobalaccel", "/component/kwin", "org.kde.kglobalaccel.Component.invokeShortcut", `Switch to Desktop ${index + 1}`])
-        }
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace1"
+        description: "Switch to workspace 1"
+        onPressed: KWinActiveWindowBridge.setDesktop(1)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace2"
+        description: "Switch to workspace 2"
+        onPressed: KWinActiveWindowBridge.setDesktop(2)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace3"
+        description: "Switch to workspace 3"
+        onPressed: KWinActiveWindowBridge.setDesktop(3)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace4"
+        description: "Switch to workspace 4"
+        onPressed: KWinActiveWindowBridge.setDesktop(4)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace5"
+        description: "Switch to workspace 5"
+        onPressed: KWinActiveWindowBridge.setDesktop(5)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace6"
+        description: "Switch to workspace 6"
+        onPressed: KWinActiveWindowBridge.setDesktop(6)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace7"
+        description: "Switch to workspace 7"
+        onPressed: KWinActiveWindowBridge.setDesktop(7)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace8"
+        description: "Switch to workspace 8"
+        onPressed: KWinActiveWindowBridge.setDesktop(8)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace9"
+        description: "Switch to workspace 9"
+        onPressed: KWinActiveWindowBridge.setDesktop(9)
+    }
+
+    // qmllint disable unresolved-type
+    CustomShortcut {
+        // qmllint enable unresolved-type
+        name: "workspace10"
+        description: "Switch to workspace 10"
+        onPressed: KWinActiveWindowBridge.setDesktop(10)
     }
 
 
