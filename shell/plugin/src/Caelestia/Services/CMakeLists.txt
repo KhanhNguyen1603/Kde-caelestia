@@ -44,6 +44,8 @@ qml_module(caelestia-services
         kwinactivewindowbridge.cpp
         windowicon.cpp
         kwinactivewindowbridge.hpp
+        nightcolorbridge.cpp
+        nightcolorbridge.hpp
         globalshortcut.cpp
         globalshortcut.hpp
         windowscreencast.cpp

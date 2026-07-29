@@ -132,6 +132,13 @@ Item {
         }
 
         Popout {
+            name: "nightlight"
+            sourceComponent: NightLight {
+                popouts: root.popouts
+            }
+        }
+
+        Popout {
             name: "kblayout"
             sourceComponent: KbLayout {
                 popouts: root.popouts

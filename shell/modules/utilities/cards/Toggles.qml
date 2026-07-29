@@ -33,6 +33,9 @@ StyledRect {
             },
             {
                 id: "pauseWallpaper"
+            },
+            {
+                id: "nightlight"
             }
         ].filter(t => !disabledIds.has(t.id));
 
@@ -233,6 +236,16 @@ StyledRect {
                         onClicked: {
                             const newVal = !GlobalConfig.background.videoWallpaperPaused;
                             GlobalConfig.background.videoWallpaperPaused = newVal;
+                        }
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "nightlight"
+                    delegate: Toggle {
+                        icon: "bedtime"
+                        checked: HyprSunset.active
+                        onClicked: {
+                            HyprSunset.toggleNightLight();
                         }
                     }
                 }

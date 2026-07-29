@@ -110,6 +110,7 @@ class BarStatus : public ConfigObject {
     CONFIG_PROPERTY(QStringList, peripheralBatteryExcluded)
     CONFIG_PROPERTY(bool, showLockStatus, true)
     CONFIG_PROPERTY(bool, showNotifications, true)
+    CONFIG_PROPERTY(bool, showNightLight, true)
 
 public:
     explicit BarStatus(QObject* parent = nullptr)

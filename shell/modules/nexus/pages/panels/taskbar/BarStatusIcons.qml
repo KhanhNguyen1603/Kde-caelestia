@@ -61,6 +61,12 @@ PageBase {
         }
 
         ToggleRow {
+            text: qsTr("Night Light")
+            checked: Config.bar.status.showNightLight
+            onToggled: GlobalConfig.bar.status.showNightLight = checked
+        }
+
+        ToggleRow {
             Layout.fillWidth: true
             last: true
             text: qsTr("Caps lock")
