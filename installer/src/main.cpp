@@ -8,15 +8,32 @@
 
 using namespace std;
 
+// sig_atomic_t is the only type guaranteed to be safe for cross-thread/
+// signal-handler access. We use flags to defer all cleanup to the main loop.
+volatile sig_atomic_t g_sigint_received = 0;
+volatile sig_atomic_t g_sigterm_received = 0;
+
 void handle_sigwinch(int) {
     g_resized = true;
 }
 
 void handle_sigint(int) {
-    g_quit = true;
-    Term::restore();
-    system("rm -rf /tmp/caelestia_pass.txt /tmp/caelestia_askpass.sh /tmp/caelestia_bin");
-    exit(130);
+    // Only set the flag — do NOT call any library functions from signal context.
+    // cleanup happens in the main loop via check_signals().
+    g_sigint_received = 1;
+}
+
+void handle_sigterm(int) {
+    g_sigterm_received = 1;
+}
+
+void check_signals() {
+    if (g_sigint_received || g_sigterm_received) {
+        g_quit = true;
+        Term::restore();
+        system("rm -rf /tmp/caelestia_pass.txt /tmp/caelestia_askpass.sh /tmp/caelestia_bin");
+        exit(130);
+    }
 }
 
 int main(int argc, char** argv) {
@@ -44,16 +61,18 @@ int main(int argc, char** argv) {
 
     signal(SIGWINCH, handle_sigwinch);
     signal(SIGINT, handle_sigint);
-    signal(SIGTERM, handle_sigint);
+    signal(SIGTERM, handle_sigterm);
 
     // Phase 1: Splash
     UI::splash_screen();
+    check_signals();
 
     // Phase 2: Sudo Auth
     if (!UI::sudo_prompt()) {
         Term::restore();
         return 0;
     }
+    check_signals();
 
     // Phase 3 & 4: Dynamic Menu
     if (!g_menu.is_null() && g_menu.contains("menu")) {
@@ -74,9 +93,11 @@ int main(int argc, char** argv) {
         g_base_distro = env_distro;
     }
 
+    check_signals();
     // Phase 5: Execute
     Runner::execute();
 
+    check_signals();
     // Phase 6: Finalize
     UI::summary_screen();
     Term::restore();

@@ -1,6 +1,7 @@
 #include "Input.hpp"
 #include "Term.hpp"
 #include "Globals.hpp"
+#include <csignal>
 #include <unistd.h>
 #include <sys/select.h>
 #include <unordered_map>
@@ -21,8 +22,8 @@ namespace Input {
         string key(buf, n);
         
         if (key.length() == 1 && key[0] == 3) { // Ctrl+C
-            Term::restore();
-            exit(130);
+            g_quit = true;
+            return "signal_interrupt";
         }
         
         if (Key_escapes.count(key)) return Key_escapes[key];
@@ -30,7 +31,15 @@ namespace Input {
     }
 
     string wait_key(int timeout_ms) {
+        // Declare external signal flags from main.cpp
+        extern volatile sig_atomic_t g_sigint_received;
+        extern volatile sig_atomic_t g_sigterm_received;
+        
         while (!g_quit) {
+            if (g_sigint_received || g_sigterm_received) {
+                return "signal_interrupt";
+            }
+            
             fd_set fds;
             FD_ZERO(&fds);
             FD_SET(STDIN_FILENO, &fds);
@@ -47,7 +56,12 @@ namespace Input {
             } else if (res == 0) {
                 return ""; // timeout
             } else {
-                if (errno == EINTR && g_resized) return "resize";
+                if (errno == EINTR) {
+                    if (g_resized) return "resize";
+                    if (g_sigint_received || g_sigterm_received) return "signal_interrupt";
+                    // Spurious EINTR — retry
+                    continue;
+                }
             }
         }
         return "";
