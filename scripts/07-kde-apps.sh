@@ -52,7 +52,7 @@ fi
 if ! command -v uv >/dev/null 2>&1; then
     echo "  Installing uv..."
  #   if [[ "$BASE_DISTRO" == "arch" ]]; then
-    install_if_missing uv || curl -LsSf https://astral.sh/uv/install.sh | sh
+    install_if_missing uv || curl -LsSf https://astral.sh/uv/install.sh | sh  # ci:allow-curl-pipe
     #else
      #   curl -LsSf https://astral.sh/uv/install.sh | sh
     #fi
