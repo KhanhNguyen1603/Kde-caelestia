@@ -137,7 +137,7 @@ MouseArea {
             color: root.transparentBackground
                 ? "transparent"
                 : (GlobalConfig.appearance.transparency.enabled && GlobalConfig.appearance.blur)
-                    ? Colours.mix(Colours.palette.m3surfaceContainerLow, "transparent", GlobalConfig.appearance.transparency.base)
+                    ? Qt.alpha(Colours.palette.m3surfaceContainerLow, GlobalConfig.appearance.transparency.base)
                     : Colours.palette.m3surfaceContainerLow
 
             Flickable {

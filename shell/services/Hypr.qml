@@ -33,6 +33,14 @@ Singleton {
     })()
     property var monitorState: []
     property var _monitorCache: ({})
+
+    // Referenced by focusedWorkspace/activeWsId below as the single mock
+    // workspace id used throughout the KDE fallback bridge (there is no real
+    // Hyprland workspace concept under KWin). This property was previously
+    // never declared, so every read of root.mockActiveWs resolved to
+    // undefined - causing "Cannot call method 'toString' of undefined" and
+    // "Unable to assign [undefined] to ..." warnings wherever it was used.
+    readonly property int mockActiveWs: 1
     
     readonly property var monitors: {
         let _ = root.monitorState;

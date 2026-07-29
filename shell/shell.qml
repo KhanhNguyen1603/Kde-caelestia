@@ -29,6 +29,23 @@ import "modules/screenshot/regionSelector"
 ShellRoot {
     settings.watchFiles: false
 
+    // Several QtCore.Settings {} elements throughout the codebase (BlurOffsets,
+    // ContentWindow, UpdateChecker) rely on QCoreApplication's organization/app
+    // identifiers to build their QSettings storage path. Quickshell's host
+    // binary never sets these, so QSettings previously failed to initialize
+    // (status code 1) with "application identifiers have not been set"
+    // warnings everywhere. Setting Qt.application.* here runs during this
+    // object's property-binding phase, which always completes (for the whole
+    // tree) before any child's componentComplete/Component.onCompleted -
+    // i.e. before any Settings {} element is finalized - so this reliably
+    // fixes it project-wide from a single place.
+    readonly property bool _appIdentifiersSet: (function() {
+        Qt.application.organization = "Caelestia";
+        Qt.application.domain = "caelestia.dots";
+        Qt.application.name = "caelestia-shell";
+        return true;
+    })()
+
     GSFLoader {}
 
     Background {}
@@ -123,8 +140,12 @@ ShellRoot {
             fi
         `]
 
+        stdout: StdioCollector {
+            id: bbdxStdout
+        }
+
         onExited: {
-            if (stdout.trim() === "BBDX_ENABLED") {
+            if (bbdxStdout.text.trim() === "BBDX_ENABLED") {
                 GlobalConfig.appearance.blur = true;
             }
         }

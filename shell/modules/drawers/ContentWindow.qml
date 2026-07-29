@@ -240,7 +240,12 @@ StyledWindow {
     readonly property alias bar: bar
     readonly property alias interactionWrapper: interactions
 
-    readonly property HyprlandMonitor monitor: Hypr.monitorFor(screen)
+    // NOTE: strictly typed as HyprlandMonitor upstream, but under the KDE
+    // fallback bridge Hypr.monitorFor() returns a plain mock QtObject (not
+    // a real qs::hyprland::ipc::HyprlandMonitor), so keep this loosely
+    // typed to avoid "Unable to assign QObject to HyprlandMonitor" warnings
+    // and the resulting null-monitor cascade.
+    readonly property var monitor: Hypr.monitorFor(screen)
     readonly property bool hasSpecialWorkspace: (monitor?.lastIpcObject.specialWorkspace?.name.length ?? 0) > 0
     readonly property bool hasFullscreenOnNormalWs: monitor?.activeWorkspace?.toplevels.values.some(t => t.lastIpcObject.fullscreen > 1) ?? false
     readonly property bool hasFullscreen: {
