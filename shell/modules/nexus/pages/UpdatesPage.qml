@@ -94,6 +94,17 @@ PageBase {
     readonly property bool selectionIsRevert: root.timelineSelectionEnabled && root.selectedVersionState === "past"
     readonly property bool selectionIsFuture: root.timelineSelectionEnabled && root.selectedVersionState === "available"
 
+    // Drives both the primary button's visibility and the secondary button's
+    // width (it takes over as the sole, full-width action when the primary
+    // one isn't shown) — see the action row below.
+    readonly property bool primaryActionVisible: {
+        if (root.updateRunning) return false;
+        if (root.updateProgress === 1.0) return true;
+        if (root.selectionIsRevert) return true;
+        if (root.selectionIsFuture && root.selectedVersionId !== "") return true;
+        return UpdateChecker.hasUpdate;
+    }
+
     // ── Timeline data ──────────────────────────────────────────────────────
     readonly property var timelineEntries: {
         if (UpdateChecker.versionSummaryMode && UpdateChecker.availableVersions.length > 0) {
@@ -234,24 +245,24 @@ PageBase {
 
                 StyledProgressBar {
                     Layout.fillWidth: true
+                    Layout.topMargin: Tokens.spacing.extraSmall
                     visible: root.updateRunning
                     value: root.updateProgress
                     indeterminate: root.updateProgress === 0.0 && root.updateRunning
                 }
 
+                // Actions — the primary CTA always fills the remaining row
+                // width (and the whole row, when it's the only action shown)
+                // so it stays prominent and never overflows narrower windows.
                 RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.topMargin: Tokens.spacing.small
                     spacing: Tokens.spacing.small
 
                     // Primary action button
                     IconTextButton {
-                        visible: {
-                            if (root.updateRunning) return false;
-                            if (root.updateProgress === 1.0) return true;
-                            if (root.selectionIsRevert) return true;
-                            if (root.selectionIsFuture && root.selectedVersionId !== "") return true;
-                            return UpdateChecker.hasUpdate;
-                        }
+                        Layout.fillWidth: true
+                        visible: root.primaryActionVisible
                         text: {
                             if (root.updateProgress === 1.0) return qsTr("Log Out");
                             if (root.selectionIsRevert) return qsTr("Restore");
@@ -259,7 +270,10 @@ PageBase {
                                 return qsTr("Install %1").arg(root.selectedVersionId);
                             return qsTr("Install Update");
                         }
-                        type: TextButton.Primary
+                        type: TextButton.Filled
+                        font: Tokens.font.body.medium
+                        horizontalPadding: Tokens.padding.large
+                        verticalPadding: Tokens.padding.medium
                         icon: {
                             if (root.updateProgress === 1.0) return "logout";
                             if (root.selectionIsRevert) return "history";
@@ -284,11 +298,18 @@ PageBase {
                         }
                     }
 
-                    // Secondary: Stop / Check for updates / Cancel selection
+                    // Secondary: Stop / Check for updates / Cancel selection.
+                    // Takes over the full row width itself whenever the
+                    // primary action is hidden (e.g. while an update runs),
+                    // so there's always exactly one clear, prominent action.
                     IconTextButton {
+                        Layout.fillWidth: !root.primaryActionVisible
                         visible: root.updateProgress !== 1.0
                         text: root.updateRunning ? qsTr("Stop") : (root.selectedVersionId !== "" ? qsTr("Cancel") : qsTr("Check"))
                         type: TextButton.Tonal
+                        font: Tokens.font.body.medium
+                        horizontalPadding: Tokens.padding.large
+                        verticalPadding: Tokens.padding.medium
                         icon: root.updateRunning ? "stop" : (root.selectedVersionId !== "" ? "close" : "refresh")
                         onClicked: {
                             if (root.updateRunning) {
