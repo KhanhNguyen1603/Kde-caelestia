@@ -11,6 +11,10 @@ QtObject {
 
     readonly property var items: ClipboardManager.items
 
+    /// False when the cliphist binary could not be started, so the launcher can
+    /// explain the empty list instead of looking broken.
+    readonly property bool available: ClipboardManager.available
+
     /// Forwarded from C++ so QML items can connect to a single source of truth.
     signal imageReady(int id, string path)
     signal clearHistoryFinished(bool success)

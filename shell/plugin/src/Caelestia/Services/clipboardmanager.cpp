@@ -24,6 +24,16 @@ QVariantList ClipboardManager::items() const { return m_items; }
 
 QString ClipboardManager::imageCacheDir() const { return m_imageCacheDir; }
 
+bool ClipboardManager::available() const { return m_available; }
+
+void ClipboardManager::setAvailable(bool available) {
+    if (m_available == available) {
+        return;
+    }
+    m_available = available;
+    emit availableChanged();
+}
+
 void ClipboardManager::reload() {
     // Kill any in-flight list process
     if (m_listProc && m_listProc->state() != QProcess::NotRunning) {
@@ -119,11 +129,17 @@ void ClipboardManager::reload() {
         }
     });
 
-    connect(proc, &QProcess::errorOccurred, this, [release](QProcess::ProcessError err) {
+    // started() fires exactly when the binary was found and launched, which is
+    // the question `available` answers — independent of what cliphist then
+    // does with its exit code.
+    connect(proc, &QProcess::started, this, [this] { setAvailable(true); });
+
+    connect(proc, &QProcess::errorOccurred, this, [this, release](QProcess::ProcessError err) {
         qCWarning(lcClipboard) << "cliphist list process error:" << err;
         // FailedToStart is the only error for which finished() is not also
         // emitted, so it is the only one this handler has to clean up after.
         if (err == QProcess::FailedToStart) {
+            setAvailable(false);
             release();
         }
     });
