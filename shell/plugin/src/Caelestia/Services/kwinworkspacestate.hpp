@@ -42,17 +42,19 @@ protected:
 private:
     friend class KWinDesktop;
     void rebuildWorkspaceList();
+    void scheduleRebuild();
 
     QList<KWinDesktop*> m_desktops;
-    int m_activeId = 1; // Fallback
+    int m_activeId = 0;
     uint32_t m_rows = 1;
+    class QTimer* m_rebuildTimer = nullptr;
 };
 
 class KWinDesktop : public QObject, public QtWayland::org_kde_plasma_virtual_desktop
 {
     Q_OBJECT
 public:
-    KWinDesktop(KWinWorkspaceState *manager, struct ::org_kde_plasma_virtual_desktop *desktop);
+    KWinDesktop(KWinWorkspaceState *manager, struct ::org_kde_plasma_virtual_desktop *desktop, const QString &id, uint32_t position);
     ~KWinDesktop() override;
 
     QString id() const { return m_id; }

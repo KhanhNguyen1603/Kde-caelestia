@@ -73,11 +73,23 @@ PageBase {
         ToggleRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
-            last: true
             text: qsTr("Broadcast Caelestia info")
             subtext: qsTr("Broadcast shell uptime and system info")
             checked: GlobalConfig.services.arpcCaelestiaInfo
             onToggled: GlobalConfig.services.arpcCaelestiaInfo = checked
+        }
+
+        StepperRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            last: true
+            label: qsTr("Clear when idle")
+            subtext: GlobalConfig.services.arpcIdleTimeout > 0 ? qsTr("Hide the presence after %1 minutes away").arg(Math.round(GlobalConfig.services.arpcIdleTimeout / 60)) : qsTr("Never hide the presence (minutes)")
+            value: Math.round(GlobalConfig.services.arpcIdleTimeout / 60)
+            from: 0
+            to: 60
+            stepSize: 1
+            onMoved: v => GlobalConfig.services.arpcIdleTimeout = Math.round(v * 60)
         }
 
         SectionHeader {

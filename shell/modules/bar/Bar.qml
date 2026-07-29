@@ -448,6 +448,13 @@ Item {
                 }
             }
             DelegateChoice {
+                roleValue: "showDesktop"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen
+                    sourceComponent: ShowDesktop {}
+                }
+            }
+            DelegateChoice {
                 roleValue: "power"
                 delegate: WrappedLoader {
                     sourceComponent: Power {

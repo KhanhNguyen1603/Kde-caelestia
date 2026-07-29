@@ -397,14 +397,21 @@ ERROR: Unrecognized pragma "DefaultEnv QS_NO_RELOAD_POPUP=1"
 ---
 
 <div align="center">
+    <h2>✦ Thanks to ✦</h2>
+</div>
+
+[**0xSolanaceae**](https://github.com/0xSolanaceae), [WinTone01](https://github.com/WinTone01), [Content-Swordfish751](https://www.reddit.com/user/Content-Swordfish751/), [soramanew](https://github.com/soramanew), [tomjod](https://github.com/tomjod), [shivanshs9](https://github.com/shivanshs9), [dxnnv](https://github.com/dxnnv), [Peace-W](https://github.com/Peace-W)
+
+
+---
+
+<div align="center">
     <h2>✦ Credits ✦</h2>
 </div>
 
 - **[Caelestia](https://github.com/caelestia)** for the incredible, otherworldly design language and the original dotfiles.
 - **[ladybug-me](https://github.com/ladybug-me)** for meticulously adapting the dotfiles to KDE Plasma.
-- **[0xSolanaceae](https://github.com/0xSolanaceae)** for showing direction the project needed.
-- **[Content-Swordfish751](https://www.reddit.com/user/Content-Swordfish751/)** for many important contributions.
-- **[Peace-W](https://github.com/Peace-W)** for Nobara fix.
+- **[0xSolanaceae](https://github.com/0xSolanaceae)** for actively maintaining the project.
 - **[dim-ghub](https://github.com/dim-ghub/caelestia-shell)** for the added features in v2.0.0 from his fork.
 - **[nlohmann](https://github.com/nlohmann/json)** for the JSON parser used in the project.
 - **[Haidir](https://bitbucket.org/dirn-typo/yet-another-monochrome-icon-set/src/main/)** for Yet Another Monochrome Icon Set.
@@ -419,7 +426,7 @@ ERROR: Unrecognized pragma "DefaultEnv QS_NO_RELOAD_POPUP=1"
 </div>
 
 - **[ladybug-me](https://github.com/ladybug-me)** — Project owner and KDE port lead; oversees the project while actively maintaining it, resolving issues, and developing new features.
-- **[0xSolanaceae](https://github.com/0xSolanaceae)** — Co-maintainer; actively maintains the project, works on issues, improves tooling and QA, and develops new features.
+- **[0xSolanaceae](https://github.com/0xSolanaceae)** — Maintainer; a driving force behind the project, contributing extensively to development, bug fixes, tooling, testing, and overall project quality.
 
 <div align="center">
     <h2>✦ Support & License ✦</h2>

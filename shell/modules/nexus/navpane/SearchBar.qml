@@ -10,6 +10,10 @@ StyledRect {
     id: root
 
     required property NexusState nState
+    
+    signal searchCommitted()
+    signal upPressed()
+    signal downPressed()
 
     implicitHeight: searchLayout.implicitHeight + Tokens.padding.medium * 2
 
@@ -55,15 +59,17 @@ StyledRect {
             font: Tokens.font.body.large
             onTextChanged: root.nState.searchQuery = text
 
-Keys.onReturnPressed: {
-    const query = text.trim();
-    if (!query)
-        return;
-
-    const results = PageRegistry.fuzzyPages(query);
-    if (results.length > 0)
-        root.nState.currentPageIdx = results[0].pageIdx;
-}
+            Keys.onReturnPressed: {
+                root.searchCommitted();
+            }
+            
+            Keys.onUpPressed: {
+                root.upPressed();
+            }
+            
+            Keys.onDownPressed: {
+                root.downPressed();
+            }
 
             Binding {
                 target: root.nState

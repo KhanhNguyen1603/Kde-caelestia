@@ -12,15 +12,19 @@
 #include <qjsonobject.h>
 #include <qloggingcategory.h>
 #include <qregularexpression.h>
+#include <QStandardPaths>
 
 Q_LOGGING_CATEGORY(lcClipboard, "caelestia.services.clipboard", QtInfoMsg)
 
 namespace caelestia::services {
-
+  
 ClipboardManager::ClipboardManager(QObject* parent)
     : QObject(parent) {
-    const auto runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
-    m_imageCacheDir = runtimeDir + "/caelestia-clipboard";
+    QString runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    if (runtimeDir.isEmpty()) {
+        runtimeDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/caelestia-" + qEnvironmentVariable("USER");
+    }
+    m_imageCacheDir = runtimeDir + "/clipboard";
 
     // Pins live in the state dir, not the runtime dir: they have to outlive a
     // reboot, and they must not sit inside the cache clearHistory() wipes.
@@ -342,6 +346,7 @@ void ClipboardManager::reload() {
         // Pre-warm: decode all image entries in the background so they are
         // already on disk before the user opens the launcher.
         QDir().mkpath(m_imageCacheDir);
+        QFile::setPermissions(m_imageCacheDir, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
         for (const auto& entry : std::as_const(m_items)) {
             const auto map = entry.toMap();
             if (!map.value("isImage").toBool()) continue;
@@ -382,6 +387,7 @@ void ClipboardManager::decodeImage(int id, const QString& outPath) {
         qCWarning(lcClipboard) << "Failed to create cache directory:" << dir.absolutePath();
         return;
     }
+    QFile::setPermissions(dir.absolutePath(), QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
 
     auto* proc = new QProcess(this);
     proc->setProgram("cliphist");
@@ -402,6 +408,7 @@ void ClipboardManager::decodeImage(int id, const QString& outPath) {
             qCWarning(lcClipboard) << "Failed to write decoded clipboard image to:" << outPath;
             return;
         }
+        f.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
         f.write(data);
         f.close();
 
@@ -457,6 +464,8 @@ void ClipboardManager::clearHistory() {
         }
         if (!QDir().mkpath(m_imageCacheDir)) {
             qCWarning(lcClipboard) << "Failed to recreate clipboard image cache directory:" << m_imageCacheDir;
+        } else {
+            QFile::setPermissions(m_imageCacheDir, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
         }
 
         emit clearHistoryFinished(true);
