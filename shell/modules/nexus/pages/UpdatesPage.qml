@@ -113,7 +113,7 @@ PageBase {
                 } else {
                     state = "past";
                 }
-                result.push({ id: versions[i], label: versions[i], state: state, subject: "" });
+                result.push({ id: versions[i], label: versions[i], state: state, subject: "", isRelease: true });
             }
             return result;
         } else {
@@ -148,6 +148,7 @@ PageBase {
                     subject: c.subject || "",
                     state: state,
                     isMerge: !!c.isMerge,
+                    isRelease: false,
                     author: c.author || "",
                     date: c.date || ""
                 });
@@ -394,7 +395,7 @@ PageBase {
         // 4 ── VERSION TIMELINE ────────────────────────────────────────────
         SectionHeader {
             visible: !root.branchDataLoading
-            text: qsTr("Version History")
+            text: UpdateChecker.versionSummaryMode ? qsTr("Version History") : qsTr("Commit History")
         }
 
         ConnectedRect {
@@ -405,8 +406,10 @@ PageBase {
             Layout.fillWidth: true
             // Dev branch can list up to ~150 commits — cap the card height and
             // let it scroll internally instead of pushing the log/actions
-            // below it far down the page.
-            readonly property real maxListHeight: 6 * 48
+            // below it far down the page. Commit rows are taller than plain
+            // release rows, so scale the cap with the timeline's own row
+            // height instead of a hard-coded constant.
+            readonly property real maxListHeight: 6 * timeline.rowHeight
             implicitHeight: Math.min(timeline.implicitHeight, maxListHeight) + Tokens.padding.medium * 2
 
             Flickable {
