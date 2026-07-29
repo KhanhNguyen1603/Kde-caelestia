@@ -61,7 +61,11 @@ StyledRect {
             return (implicitHeight || height) / 2 * Math.min(1, Tokens.rounding.scale);
         return defaultRadius;
     }
-    color: type === ButtonBase.Text ? "transparent" : disabled ? disabledColour : internalChecked ? activeColour : inactiveColour
+    // Text-type buttons have no background - fade the (otherwise unused)
+    // inactiveColour's alpha to 0 instead of switching to the literal
+    // "transparent" string, which would animate the RGB channels through
+    // black as Behavior on color (inherited from StyledRect) interpolates.
+    color: type === ButtonBase.Text ? Qt.alpha(inactiveColour, 0) : disabled ? disabledColour : internalChecked ? activeColour : inactiveColour
 
     // Make size required so we don't forget to set it
     required implicitWidth

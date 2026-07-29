@@ -437,7 +437,10 @@ PanelWindow {
 
                 opacity: root.draggedAway ? 0 : root.targetRegionOpacity
                 borderColor: root.windowBorderColor
-                fillColor: targeted ? root.windowFillColor : "transparent"
+                // Fade alpha to 0 instead of the literal "transparent" string,
+                // which would animate RGB through black via TargetRegion's
+                // Behavior on color.
+                fillColor: targeted ? root.windowFillColor : Qt.alpha(root.windowFillColor, 0)
                 text: `${modelData.class}`
                 radius: 12
             }
@@ -466,7 +469,7 @@ PanelWindow {
 
                 opacity: root.draggedAway ? 0 : root.targetRegionOpacity
                 borderColor: root.windowBorderColor
-                fillColor: targeted ? root.windowFillColor : "transparent"
+                fillColor: targeted ? root.windowFillColor : Qt.alpha(root.windowFillColor, 0)
                 text: `${modelData.namespace}`
                 radius: 12
             }
@@ -495,7 +498,7 @@ PanelWindow {
 
                 opacity: root.draggedAway ? 0 : root.contentRegionOpacity
                 borderColor: root.imageBorderColor
-                fillColor: targeted ? root.imageFillColor : "transparent"
+                fillColor: targeted ? root.imageFillColor : Qt.alpha(root.imageFillColor, 0)
                 text: qsTr("Content region")
             }
         }

@@ -72,7 +72,10 @@ Item {
     StyledRect {
         id: container
 
-        color: dockModel.count > 0 ? Colours.tPalette.m3surfaceContainer : "transparent"
+        // Fade alpha to 0 instead of switching to the literal "transparent"
+        // string, which would animate RGB through black via StyledRect's
+        // inherited Behavior on color.
+        color: dockModel.count > 0 ? Colours.tPalette.m3surfaceContainer : Qt.alpha(Colours.tPalette.m3surfaceContainer, 0)
         radius: Tokens.rounding.full
 
         property int __itemCount: dockModel.count

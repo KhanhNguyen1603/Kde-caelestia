@@ -50,7 +50,9 @@ Item {
                 implicitWidth: contentLayout.implicitWidth + 24
                 
                 background: Rectangle {
-                    color: tabBtn.current ? Colours.palette.m3secondaryContainer : "transparent"
+                    // Fade alpha to 0 instead of the literal "transparent" string,
+                    // which would animate RGB through black.
+                    color: tabBtn.current ? Colours.palette.m3secondaryContainer : Qt.alpha(Colours.palette.m3secondaryContainer, 0)
                     radius: height / 2
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
