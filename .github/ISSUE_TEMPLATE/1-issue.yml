@@ -1,6 +1,5 @@
 name: Bug report
 description: Something's not working right
-labels: ["bug"]
 
 body:
   - type: markdown
@@ -9,6 +8,18 @@ body:
         Thanks for taking the time to report a bug!
 
         A quick search of [existing issues](https://github.com/ladybug-me/caelestia-dots-kde/issues?q=is%3Aissue) helps avoid duplicates - if you find one, give it a thumbs up instead.
+
+  - type: checkboxes
+    attributes:
+      label: Issue type
+      description: Pick one label that best describes this issue.
+      options:
+        - label: "Bug - something is broken or not working correctly"
+          required: false
+        - label: "Help wanted - I need assistance with configuration, setup, or usage"
+          required: false
+    validations:
+      required: true
 
   - type: textarea
     attributes:
@@ -30,17 +41,21 @@ body:
     validations:
       required: false
 
-  - type: textarea
+  - type: input
     attributes:
-      label: Environment
-      description: Distro, Plasma version, anything that helps narrow it down.
-      placeholder: |
-        - Distro: CachyOS
-        - Plasma: 6.3
-        - Installed via: setup.sh
-      render: markdown
+      label: Caelestia version
+      description: What version of Caelestia are you running? Check with `cat ~/.config/caelestia/version` or look for the version string in the shell.
+      placeholder: e.g. v2.2.2
     validations:
-      required: false
+      required: true
+
+  - type: input
+    attributes:
+      label: Distro
+      description: Which Linux distribution are you on?
+      placeholder: e.g. CachyOS, Arch, Fedora
+    validations:
+      required: true
 
   - type: textarea
     attributes:
