@@ -73,6 +73,11 @@ namespace UI {
     }
 
     void splash_screen() {
+        // Drain any buffered stdin before animating — tmux / terminal setup
+        // often leaves escape sequences in the input buffer that would otherwise
+        // trigger the skip-early-return below and make the splash vanish instantly.
+        for (int drain = 0; drain < 10 && !Input::get().empty(); ++drain) { }
+
         vector<string> art;
         if (!g_theme.is_null() && g_theme.contains("splash_screen") && g_theme["splash_screen"].contains("art")) {
             for (auto& line : g_theme["splash_screen"]["art"]) {
