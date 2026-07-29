@@ -370,7 +370,7 @@ StyledRect {
         // Night Light icon
         WrappedLoader {
             name: "nightlight"
-            active: Config.bar.status.showNightLight
+            active: Config.bar.status.showNightLight && HyprSunset.active
 
             sourceComponent: MaterialIcon {
                 animate: true
