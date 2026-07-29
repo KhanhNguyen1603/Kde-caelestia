@@ -399,8 +399,9 @@ void execute() {
 
       // Continuously check for status or terminal resizes
       int exit_code = -1;
-      int status_fd = open("/tmp/caelestia_status", O_RDWR | O_NONBLOCK);
+      int status_fd = open("/tmp/caelestia_status", O_RDONLY | O_NONBLOCK);
       int poll_iterations = 0;
+      const int MAX_POLL_ITERATIONS = 3600; // ~30 minutes at 500ms — safety timeout
       while (true) {
         if (g_resized)
           draw_progress_ui(i);
@@ -411,6 +412,7 @@ void execute() {
             buf[n] = '\0';
             exit_code = atoi(buf);
             close(status_fd);
+            status_fd = -1;
             break;
           }
         }
@@ -419,11 +421,24 @@ void execute() {
         int test_fd = open("/tmp/caelestia_cmd", O_WRONLY | O_NONBLOCK);
         if (test_fd == -1 && errno == ENXIO) {
           exit_code = 1; // treat as failure
-          if (status_fd >= 0)
+          if (status_fd >= 0) {
             close(status_fd);
+            status_fd = -1;
+          }
           break;
         } else if (test_fd != -1) {
           close(test_fd);
+        }
+
+        // Safety timeout: if the worker pane hangs without producing output,
+        // bail out rather than hanging the installer forever.
+        if (poll_iterations >= MAX_POLL_ITERATIONS) {
+          exit_code = 1;
+          if (status_fd >= 0) {
+            close(status_fd);
+            status_fd = -1;
+          }
+          break;
         }
 
         // Adaptive polling: start at 100ms, ramp up to 500ms for long-running scripts
@@ -441,6 +456,7 @@ void execute() {
         if (select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0) {
           char c;
           if (read(STDIN_FILENO, &c, 1) > 0 && c == 3) { // Ctrl+C
+            if (status_fd >= 0) close(status_fd);
             Term::restore();
             system("rm -rf /tmp/caelestia_pass.txt /tmp/caelestia_askpass.sh "
                    "/tmp/caelestia_bin");
