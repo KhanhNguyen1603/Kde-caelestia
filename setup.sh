@@ -58,13 +58,34 @@ silent_refresh_pacman_sources() {
         return 0
     fi
 
+    # Rank mirrors for fastest download speed if reflector is available;
+    # install reflector on-the-fly if missing (single -Sy, not -Syy).
+    if ! command -v reflector >/dev/null 2>&1; then
+        if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+            pacman -Sy --noconfirm reflector >/dev/null 2>&1 || true
+        elif sudo -n true >/dev/null 2>&1; then
+            sudo -n pacman -Sy --noconfirm reflector >/dev/null 2>&1 || true
+        fi
+    fi
+
+    if command -v reflector >/dev/null 2>&1; then
+        echo "[INFO]  Ranking pacman mirrors by download speed..."
+        if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+            reflector --latest 20 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 || echo "[WARN]  reflector failed, continuing with current mirrors."
+        elif sudo -n true >/dev/null 2>&1; then
+            sudo -n reflector --latest 20 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 || echo "[WARN]  reflector failed, continuing with current mirrors."
+        else
+            echo "[WARN]  Skipping mirror ranking (sudo requires a password)."
+        fi
+    fi
+
     if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-        pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
+        pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
         return 0
     fi
 
     if sudo -n true >/dev/null 2>&1; then
-        sudo -n pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
+        sudo -n pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
     else
         echo "[WARN]  Skipping early pacman source refresh (sudo requires a password)."
     fi
@@ -79,20 +100,20 @@ run_arch_pacman_install() {
     fi
 
     if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-        pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources before install. Continuing..."
+        pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources before install. Continuing..."
         pacman "${pacman_args[@]}" "${pkgs[@]}" && return 0
 
         echo "[WARN]  pacman install failed. Refreshing sources and retrying once..."
-        pacman -Syy --noconfirm >/dev/null 2>&1 || true
+        pacman -Sy --noconfirm >/dev/null 2>&1 || true
         pacman "${pacman_args[@]}" "${pkgs[@]}"
         return $?
     fi
 
-    sudo pacman -Syy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources before install. Continuing..."
+    sudo pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources before install. Continuing..."
     sudo pacman "${pacman_args[@]}" "${pkgs[@]}" && return 0
 
     echo "[WARN]  pacman install failed. Refreshing sources and retrying once..."
-    sudo pacman -Syy --noconfirm >/dev/null 2>&1 || true
+    sudo pacman -Sy --noconfirm >/dev/null 2>&1 || true
     sudo pacman "${pacman_args[@]}" "${pkgs[@]}"
 }
 
