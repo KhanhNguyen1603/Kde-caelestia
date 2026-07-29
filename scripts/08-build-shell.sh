@@ -12,6 +12,7 @@ info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
 warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 err()  { echo -e "${RED}[ERR]   $*${RST}"; }
+die()  { echo -e "${RED}[ERR]   $*${RST}"; exit 1; }
 
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"

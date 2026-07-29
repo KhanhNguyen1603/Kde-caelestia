@@ -24,8 +24,9 @@ StyledWindow {
                 isHidden = KWinActiveWindowBridge.activeOutputName === modelData.name;
             }
         } else {
+            // Use Object.values() to safely iterate the monitors cache object
             if (GlobalConfig.forScreen(modelData.name).shimeji.hideOnAllMonitors) {
-                isHidden = Hypr.monitors.values.some(m => !(m.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true));
+                isHidden = Object.values(Hypr.monitors).some(m => !(m.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true));
             } else {
                 isHidden = !(Hypr.monitorFor(modelData)?.activeWorkspace?.toplevels?.values.every(t => t.lastIpcObject?.floating) ?? true);
             }

@@ -107,6 +107,9 @@ export:
 ...
 EOF
 
+# Remove any stale profile left over from a previous run so -s doesn't collide.
+"$KONSAVE_BIN" -r "$PROFILE_NAME" -f >/dev/null 2>&1 || true
+
 info "Saving konsave profile '$PROFILE_NAME'..."
 "$KONSAVE_BIN" -s "$PROFILE_NAME" -f >/dev/null 2>&1 || die "Failed to save the current KDE profile."
 
