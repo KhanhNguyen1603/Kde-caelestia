@@ -19,6 +19,10 @@ SCRIPTS_DIR="$BUNDLE_DIR/scripts"
 export BUNDLE_DIR
 export INSTALL_START_EPOCH="$(date +%s)"
 
+# Prevent concurrent setup runs from racing on git/CMake/config writes.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/caelestia-setup.lock"
+flock -n 9 || { echo "Another Caelestia setup is already running."; exit 1; }
+
 detect_base_distro() {
     local detected="unknown"
 

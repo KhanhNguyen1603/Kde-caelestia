@@ -88,12 +88,12 @@ echo ""
 echo -e "${BOLD}=== Unsafe Pattern Detection ===${RESET}"
 CURL_PIPE_FOUND=0
 for f in $(git ls-files '*.sh'); do
-    if grep -nE 'curl\s+\S+\s*\|.*(ba)?sh' "$f" 2>/dev/null; then
+    if grep -nE 'curl\s.*\|\s*(sudo\s+)?(ba)?sh\b' "$f" 2>/dev/null; then
         log_err "$f contains unsafe 'curl | bash' pattern"
         CURL_PIPE_FOUND=1
     fi
     # Flag wget -O - | sh patterns too
-    if grep -nE 'wget\s+\S+\s+-O\s*-\s*\|.*(ba)?sh' "$f" 2>/dev/null; then
+    if grep -nE 'wget\s.*-O\s*-\s*.*\|\s*(sudo\s+)?(ba)?sh\b' "$f" 2>/dev/null; then
         log_err "$f contains unsafe 'wget -O - | sh' pattern"
         CURL_PIPE_FOUND=1
     fi

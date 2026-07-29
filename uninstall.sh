@@ -81,16 +81,10 @@ echo -e " ${BLUE}Backups in $BUNDLE_DIR/backups/ can be restored during uninstal
 echo
 
 # -- Sudo setup ----------------------------------------------------------------
-while true; do
-    IFS= read -s -p "Enter your sudo password: " SUDO_PASS; echo
-    sudo -k
-    if printf '%s\n' "$SUDO_PASS" | sudo -S -v &>/dev/null; then break
-    else echo -e "${RED}Incorrect password, try again.${RST}"; fi
-done
-export SUDO_PASS
+sudo -v || die "Failed to obtain sudo privileges."
 
 # Keepalive loop
-(while true; do printf '%s\n' "$SUDO_PASS" | sudo -S -v; sleep 55; done) 2>/dev/null &
+(while true; do sudo -v 2>/dev/null || break; sleep 55; done) 2>/dev/null &
 _SUDO_LOOP=$!
 trap 'kill $_SUDO_LOOP 2>/dev/null; true' EXIT
 
@@ -210,8 +204,11 @@ restore_or_remove() {
     rm -rf "$target"
 
     if [[ -n "$backup_dir" ]] && [[ -e "$backup_dir/$backup_subdir/$name" ]]; then
-        cp -r "$backup_dir/$backup_subdir/$name" "$target"
-        ok "Restored $name from backup"
+        if cp -r "$backup_dir/$backup_subdir/$name" "$target"; then
+            ok "Restored $name from backup"
+        else
+            warn "Failed to restore $name from backup - $target is now missing"
+        fi
     else
         skip "No backup for $name - removed without restore"
     fi
@@ -239,7 +236,7 @@ fi
 # Stop and disable keyd (system service)
 if systemctl is-enabled --quiet keyd 2>/dev/null ||
    systemctl is-active  --quiet keyd 2>/dev/null; then
-    printf '%s\n' "$SUDO_PASS" | sudo -S systemctl disable --now keyd 2>/dev/null || true
+    sudo systemctl disable --now keyd 2>/dev/null || true
     ok "Disabled system service: keyd"
 else
     skip "keyd not active"
@@ -530,7 +527,7 @@ if [[ -z "$_RESTORE_SHELL" ]]; then
 fi
 
 if [[ -n "$_RESTORE_SHELL" ]]; then
-    printf '%s\n' "$SUDO_PASS" | sudo -S chsh -s "$_RESTORE_SHELL" "$USER" 2>/dev/null || \
+    sudo chsh -s "$_RESTORE_SHELL" "$USER" 2>/dev/null || \
         warn "Could not change login shell to $_RESTORE_SHELL. Run: chsh -s $_RESTORE_SHELL"
     ok "Login shell reverted to $_RESTORE_SHELL"
 fi
@@ -559,36 +556,36 @@ section "Step 8 - Remove System-level Files"
 
 # keyd config
 if [[ -f /etc/keyd/quickshell.conf ]]; then
-    printf '%s\n' "$SUDO_PASS" | sudo -S rm -f /etc/keyd/quickshell.conf
+    sudo rm -f /etc/keyd/quickshell.conf
     ok "Removed /etc/keyd/quickshell.conf"
     # Remove the directory only if it's now empty
-    printf '%s\n' "$SUDO_PASS" | sudo -S rmdir /etc/keyd 2>/dev/null || true
+    sudo rmdir /etc/keyd 2>/dev/null || true
 fi
 
 # udev rule for uinput
 if [[ -f /etc/udev/rules.d/80-uinput.rules ]]; then
-    printf '%s\n' "$SUDO_PASS" | sudo -S rm -f /etc/udev/rules.d/80-uinput.rules
-    printf '%s\n' "$SUDO_PASS" | sudo -S udevadm control --reload-rules 2>/dev/null || true
+    sudo rm -f /etc/udev/rules.d/80-uinput.rules
+    sudo udevadm control --reload-rules 2>/dev/null || true
     ok "Removed udev rule: 80-uinput.rules"
 fi
 
 # sudoers file for ydotoold
 if [[ -f /etc/sudoers.d/ydotoold-nopasswd ]]; then
-    printf '%s\n' "$SUDO_PASS" | sudo -S rm -f /etc/sudoers.d/ydotoold-nopasswd
+    sudo rm -f /etc/sudoers.d/ydotoold-nopasswd
     ok "Removed sudoers rule: ydotoold-nopasswd"
 fi
 
 # Compatibility symlinks
 for link in /usr/local/bin/sass /usr/local/bin/qdbus6 /usr/local/bin/caelestia; do
     if [[ -L "$link" ]]; then
-        printf '%s\n' "$SUDO_PASS" | sudo -S rm -f "$link"
+        sudo rm -f "$link"
         ok "Removed symlink: $link"
     fi
 done
 
 # Remove the user from the 'input' group if it was added by the installer
 if groups "$USER" | grep -q '\binput\b'; then
-    printf '%s\n' "$SUDO_PASS" | sudo -S gpasswd -d "$USER" input 2>/dev/null || \
+    sudo gpasswd -d "$USER" input 2>/dev/null || \
         warn "Could not remove $USER from input group. Run: sudo gpasswd -d $USER input"
     ok "Removed $USER from 'input' group (takes effect on next login)"
 fi
@@ -652,7 +649,7 @@ if [[ "$REMOVE_PACKAGES" == "true" ]]; then
         echo
         read -r -p "Proceed? [y/N]: " _pkg_confirm
         if [[ "${_pkg_confirm,,}" == "y" || "${_pkg_confirm,,}" == "yes" ]]; then
-            printf '%s\n' "$SUDO_PASS" | sudo -S dnf remove -y "${FEDORA_PACKAGES[@]}" 2>/dev/null || \
+            sudo dnf remove -y "${FEDORA_PACKAGES[@]}" 2>/dev/null || \
                 warn "Some packages could not be removed. Check manually."
             ok "Fedora packages removed"
         else
@@ -662,7 +659,7 @@ if [[ "$REMOVE_PACKAGES" == "true" ]]; then
 
     # Remove caelestia-cli pip package (both global and user)
     if command -v caelestia >/dev/null 2>&1 || python3 -m caelestia --help &>/dev/null 2>&1; then
-        printf '%s\n' "$SUDO_PASS" | sudo -S pip3 uninstall -y caelestia 2>/dev/null || true
+        sudo pip3 uninstall -y caelestia 2>/dev/null || true
         pip3 uninstall -y caelestia 2>/dev/null || true
         ok "Removed caelestia pip package"
     fi

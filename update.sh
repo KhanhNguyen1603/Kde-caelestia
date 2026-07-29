@@ -22,6 +22,10 @@ section() {
 export BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BUNDLE_DIR" || die "Could not enter $BUNDLE_DIR"
 
+# Prevent concurrent update runs from racing on git/CMake/config writes.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/caelestia-update.lock"
+flock -n 9 || { echo "Another Caelestia update is already running."; exit 1; }
+
 section "Step 1 - Source Code Update"
 
 info "Checking dependencies..."
@@ -146,6 +150,7 @@ run_elevated() {
 sudo_keepalive &
 SUDO_KEEPER_PID=$!
 _keeper_started=1
+trap 'kill "$SUDO_KEEPER_PID" 2>/dev/null || true' EXIT
 
 # This script deploys Python bridges and mock hyprctl which the shell needs.
 # Its internal sudo calls will reuse the cached credential without re-prompting.
