@@ -167,8 +167,9 @@ fi
 if [[ -f "$BUNDLE_DIR/assets/org.quickshell.desktop" ]]; then
     echo "  Requesting KWin screencast interface for window previews..."
     mkdir -p "$HOME/.local/share/applications"
-    cp --remove-destination "$BUNDLE_DIR/assets/org.quickshell.desktop" \
-        "$HOME/.local/share/applications/org.quickshell.desktop" 2>/dev/null || true
+    sed "s|^Exec=.*|Exec=$QUICKSHELL_CANONICAL_PATH|" \
+        "$BUNDLE_DIR/assets/org.quickshell.desktop" \
+        > "$HOME/.local/share/applications/org.quickshell.desktop" 2>/dev/null || true
     # KWin reads this through KService, which needs its cache rebuilt.
     kbuildsycoca6 >/dev/null 2>&1 || true
     echo "  [OK]  Window preview interface requested."

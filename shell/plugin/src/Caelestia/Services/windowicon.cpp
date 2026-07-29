@@ -172,7 +172,7 @@ QString WindowIcon::extract(const QString& wmClass, const QString& title) {
     const auto cacheRoot =
         QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QStringLiteral("/caelestia/winicons");
     const auto key = QString::fromLatin1(
-        QCryptographicHash::hash((wmClass + QStringLiteral("|") + title).toUtf8(), QCryptographicHash::Sha256)
+        QCryptographicHash::hash(wmClass.toUtf8(), QCryptographicHash::Sha256)
             .toHex()
             .left(16));
     const auto path = cacheRoot + QStringLiteral("/") + key + QStringLiteral(".png");
