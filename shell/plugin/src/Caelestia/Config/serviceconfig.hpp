@@ -50,6 +50,9 @@ class ServiceConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(QStringList, arpcTargetWindowLabels)
     CONFIG_GLOBAL_PROPERTY(bool, arpcCaelestiaInfo, false)
     CONFIG_GLOBAL_PROPERTY(bool, arpcManualOverride, false)
+    // Seconds of inactivity after which the presence is cleared. 0 disables it,
+    // which keeps the existing always-on behaviour for anyone already using ARPC.
+    CONFIG_GLOBAL_PROPERTY(int, arpcIdleTimeout, 0)
 
 public:
     explicit ServiceConfig(QObject* parent = nullptr)
