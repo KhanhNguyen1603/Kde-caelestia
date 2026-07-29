@@ -5,7 +5,6 @@
 #include <qloggingcategory.h>
 #include <qfilesystemwatcher.h>
 #include <qfile.h>
-#include <unistd.h>
 
 Q_LOGGING_CATEGORY(lcHyprState, "caelestia.services.hyprlandstate", QtInfoMsg)
 
@@ -22,8 +21,7 @@ HyprlandState::HyprlandState(QObject* parent)
     if (his.isEmpty()) {
         qCWarning(lcHyprState) << "$HYPRLAND_INSTANCE_SIGNATURE is unset. Using KDE fallback bridge.";
         m_kwinWatcher = new QFileSystemWatcher(this);
-        QString fallbackRuntimeDir = QString("/run/user/%1").arg(getuid());
-        QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", fallbackRuntimeDir);
+        QString runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR", "/tmp");
         QString filePath = runtimeDir + "/qs_kwin_windows.json";
         if (!QFile::exists(filePath)) {
             QFile f(filePath);
