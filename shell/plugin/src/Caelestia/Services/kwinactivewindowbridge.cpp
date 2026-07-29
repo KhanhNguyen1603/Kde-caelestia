@@ -215,6 +215,22 @@ KWinActiveWindowBridge::KWinActiveWindowBridge(QObject* parent)
             QDBusConnection::ExportAdaptors);
     bus.registerService("dev.caelestia.KWinActiveWindow");
 
+    // Clean up orphan KWin scripts from previous crashed sessions before
+    // injecting a fresh one, so duplicate D-Bus notifications don't pile up.
+    QDBusMessage listMsg =
+        QDBusMessage::createMethodCall("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "loadedScripts");
+    QDBusReply<QStringList> listReply = bus.call(listMsg);
+    if (listReply.isValid()) {
+        for (const auto& name : listReply.value()) {
+            if (name.startsWith("caelestia-active-window-")) {
+                QDBusMessage unloadMsg = QDBusMessage::createMethodCall(
+                    "org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", "unloadScript");
+                unloadMsg << name;
+                bus.call(unloadMsg, QDBus::NoBlock);
+            }
+        }
+    }
+
     injectKWinScript();
 }
 
@@ -587,12 +603,15 @@ void KWinActiveWindowBridge::injectKWinScript() {
     m_scriptName = "caelestia-active-window-" + QString::number(QCoreApplication::applicationPid()) + "-" +
                    QString::number(QDateTime::currentMSecsSinceEpoch());
 
-    QString scriptPath = QDir::tempPath() + "/caelestia-kwin-bridge.js";
-    QFile f(scriptPath);
-    if (f.open(QIODevice::WriteOnly)) {
-        f.write(kScriptSource.toUtf8());
-        f.close();
+    QTemporaryFile f(QDir::tempPath() + "/caelestia-kwin-bridge-XXXXXX.js");
+    f.setAutoRemove(false);
+    if (!f.open()) {
+        qWarning() << "Failed to create temporary file for KWin bridge script";
+        return;
     }
+    f.write(kScriptSource.toUtf8());
+    f.close();
+    const QString scriptPath = f.fileName();
 
     QDBusConnection bus = QDBusConnection::sessionBus();
 
@@ -609,6 +628,10 @@ void KWinActiveWindowBridge::injectKWinScript() {
     } else {
         qWarning() << "Failed to inject KWin active window script:" << reply.error().message();
     }
+
+    // KWin has loaded the script into its own JS engine; the temp file on disk
+    // is no longer needed.
+    QFile::remove(scriptPath);
 }
 
 } // namespace caelestia::services

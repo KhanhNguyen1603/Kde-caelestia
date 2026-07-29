@@ -64,9 +64,30 @@ void DiscordIpc::checkReconnect() {
     if (m_socket->state() == QLocalSocket::ConnectedState || m_socket->state() == QLocalSocket::ConnectingState) return;
 
     QString runtimeDir = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
-    QString pipePath = runtimeDir + "/discord-ipc-0";
 
-    m_socket->connectToServer(pipePath);
+    // Try native Discord IPC paths first: discord-ipc-0 through discord-ipc-9
+    // (multiple concurrent Discord-protocol clients occupy successive slots).
+    for (int slot = 0; slot <= 9; ++slot) {
+        QString pipePath = runtimeDir + "/discord-ipc-" + QString::number(slot);
+        m_socket->connectToServer(pipePath);
+        if (m_socket->waitForConnected(500))
+            return;
+    }
+
+    // Flatpak-packaged Discord / Vesktop sandbox the runtime directory.
+    // Try the well-known Flatpak app-ids.
+    static const QStringList flatpakIds = {
+        "com.discordapp.Discord",
+        "dev.vencord.Vesktop",
+    };
+    for (const auto& id : flatpakIds) {
+        for (int slot = 0; slot <= 9; ++slot) {
+            QString pipePath = runtimeDir + "/app/" + id + "/discord-ipc-" + QString::number(slot);
+            m_socket->connectToServer(pipePath);
+            if (m_socket->waitForConnected(500))
+                return;
+        }
+    }
 }
 
 void DiscordIpc::onSocketConnected() {
