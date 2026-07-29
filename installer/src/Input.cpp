@@ -8,6 +8,10 @@
 
 using namespace std;
 
+// Signal flags defined in main.cpp (global scope, not in any namespace).
+extern volatile sig_atomic_t g_sigint_received;
+extern volatile sig_atomic_t g_sigterm_received;
+
 namespace Input {
     unordered_map<string, string> Key_escapes = {
         {"\x1b", "escape"}, {"\n", "enter"}, {"\r", "enter"},
@@ -31,10 +35,6 @@ namespace Input {
     }
 
     string wait_key(int timeout_ms) {
-        // Declare external signal flags from main.cpp
-        extern volatile sig_atomic_t g_sigint_received;
-        extern volatile sig_atomic_t g_sigterm_received;
-        
         while (!g_quit) {
             if (g_sigint_received || g_sigterm_received) {
                 return "signal_interrupt";
