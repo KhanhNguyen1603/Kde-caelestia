@@ -126,13 +126,13 @@ For detailed debug logs, enable Debug Mode in Nexus -> About -> Advanced, then r
 | Contributor | PRs |
 | --- | ---: |
 | [WinTone01](https://github.com/WinTone01) | 25 |
-| [Copilot](https://github.com/Copilot) | 3 |
 | [tomjod](https://github.com/tomjod) | 1 |
 | [Peace-W](https://github.com/Peace-W) | 1 |
 | [gitxpresso](https://github.com/gitxpresso) | 1 |
-| [0x0nYx](https://github.com/0x0nYx) | 0 |
-| [Utkarsh-tiwari27](https://github.com/Utkarsh-tiwari27) | 0 |
-| [bubbleo0](https://github.com/bubbleo0) | 0 |
+| — | 0 |
+| — | 0 |
+| — | 0 |
+| — | 0 |
 
 </td>
 <td width="50%">

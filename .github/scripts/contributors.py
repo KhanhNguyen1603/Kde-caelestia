@@ -32,6 +32,7 @@ HEADERS = {
 EXCLUDED_LOGINS = {
     "0xSolanaceae",
     "ladybug-me",
+    "Copilot",
     "dependabot[bot]",
     "dependabot-preview[bot]",
     "github-actions[bot]",
@@ -133,8 +134,10 @@ def format_markdown(contributors: list[dict[str, int | str]]) -> str:
             "| --- | ---: |",
         ]
         for c in top_prs:
+            login = str(c['login']) if c['prs'] > 0 else ""
+            link = _contributor_link(login) if login else "—"
             lines.append(
-                f"| {_contributor_link(str(c['login']))} | {c['prs']} |"
+                f"| {link} | {c['prs']} |"
             )
         if not top_prs:
             lines.append("| — | — |")
