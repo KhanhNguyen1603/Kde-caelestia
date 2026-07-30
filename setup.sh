@@ -195,7 +195,7 @@ normalize_line_endings_first() {
     local convert_choice=""
 
     mapfile -t crlf_files < <(
-        find "$BUNDLE_DIR" -path "$BUNDLE_DIR/.git" -prune -o -type f -print0 | \
+        find "$BUNDLE_DIR" -path "$BUNDLE_DIR/.git" -prune -o -type f -name '*.sh' -print0 | \
             xargs -0 grep -Il $'\r' 2>/dev/null || true
     )
 
