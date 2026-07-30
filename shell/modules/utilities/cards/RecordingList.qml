@@ -171,7 +171,7 @@ ColumnLayout {
                 MaterialIcon {
                     Layout.alignment: Qt.AlignHCenter
                     text: "scan_delete"
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     fontStyle: Tokens.font.icon.extraLarge
 
                     opacity: root.props.recordingListExpanded ? 1 : 0
@@ -199,7 +199,7 @@ ColumnLayout {
                     MaterialIcon {
                         Layout.alignment: Qt.AlignHCenter
                         text: "scan_delete"
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
 
                         opacity: !root.props.recordingListExpanded ? 1 : 0
                         scale: !root.props.recordingListExpanded ? 1 : 0
@@ -222,7 +222,7 @@ ColumnLayout {
 
                     StyledText {
                         text: qsTr("No recordings found")
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                     }
                 }
             }

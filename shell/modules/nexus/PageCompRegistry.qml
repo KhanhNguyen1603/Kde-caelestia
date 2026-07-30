@@ -282,21 +282,21 @@ QtObject {
             MaterialIcon {
                 Layout.alignment: Qt.AlignHCenter
                 text: "handyman"
-                color: Colours.palette.m3outlineVariant
+                color: Colours.palette.m3onSurfaceVariant
                 fontStyle: Tokens.font.icon.extraLarge
             }
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
                 text: qsTr("Page under construction")
-                color: Colours.palette.m3outlineVariant
+                color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.title.large
             }
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
                 text: qsTr("This page will be available in a future update.")
-                color: Colours.palette.m3outlineVariant
+                color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.body.large
             }
         }

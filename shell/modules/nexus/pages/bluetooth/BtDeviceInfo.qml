@@ -233,7 +233,7 @@ PageBase {
 
                     StyledText {
                         text: root.device?.batteryAvailable ? Math.round(root.device.battery * 100) + "%" : qsTr("Unavailable")
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                         font: Tokens.font.body.small
                     }
                 }
@@ -273,7 +273,7 @@ PageBase {
 
                 StyledText {
                     text: root.device?.address ?? ""
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     font: Tokens.font.body.small
                 }
             }

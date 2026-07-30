@@ -22,7 +22,7 @@ PageBase {
         IconTextButton {
             text: qsTr("Restart Shell")
             icon: "restart_alt"
-            type: TextButton.Primary
+            type: TextButton.Filled
             onClicked: restartProcess.running = true
 
             Process {
@@ -146,7 +146,7 @@ PageBase {
                 `]
             }
 
-            property bool isBbdxEnabled: bbdxCheck.stdout.trim() === "true"
+            property bool isBbdxEnabled: (bbdxCheck.stdout || "").trim() === "true"
 
             ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing

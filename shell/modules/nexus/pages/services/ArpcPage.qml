@@ -129,7 +129,7 @@ PageBase {
                     StyledText {
                         text: qsTr("Used to fetch game icons for Steam games")
                         font: Tokens.font.label.small
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                         elide: Text.ElideRight
                     }
                 }
@@ -635,7 +635,7 @@ PageBase {
                                         Layout.fillWidth: true
                                         visible: text !== ""
                                         text: windowItem.modelData.class ?? ""
-                                        color: Colours.palette.m3outline
+                                        color: Colours.palette.m3onSurfaceVariant
                                         font: Tokens.font.label.small
                                         elide: Text.ElideRight
                                     }

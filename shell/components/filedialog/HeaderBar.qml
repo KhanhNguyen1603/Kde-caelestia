@@ -38,7 +38,7 @@ StyledRect {
 
                 anchors.centerIn: parent
                 text: "drive_folder_upload"
-                color: root.dialog.cwd.length === 1 ? Colours.palette.m3outline : Colours.palette.m3onSurface
+                color: root.dialog.cwd.length === 1 ? Colours.palette.m3onSurfaceVariant : Colours.palette.m3onSurface
                 grade: 200
             }
         }

@@ -207,7 +207,7 @@ PageBase {
                     }
                     color: (UpdateChecker.hasUpdate || root.updateRunning || root.updateProgress === 1.0)
                         ? Colours.palette.m3primary
-                        : Colours.palette.m3outlineVariant
+                        : Colours.palette.m3onSurfaceVariant
                 }
 
                 StyledText {
@@ -216,7 +216,7 @@ PageBase {
                     font: Tokens.font.title.medium
                     color: (UpdateChecker.hasUpdate || root.updateRunning || root.updateProgress === 1.0)
                         ? Colours.palette.m3onSurface
-                        : Colours.palette.m3outlineVariant
+                        : Colours.palette.m3onSurfaceVariant
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.Wrap
                     maximumLineCount: 2
@@ -242,7 +242,7 @@ PageBase {
                     text: UpdateChecker.versionSummaryMode
                         ? qsTr("Installed: %1").arg(UpdateChecker.currentVersion)
                         : qsTr("Channel: %1").arg(UpdateChecker.currentBranch)
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     font: Tokens.font.label.medium
                 }
 

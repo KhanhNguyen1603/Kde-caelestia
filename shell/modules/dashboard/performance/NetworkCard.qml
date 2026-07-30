@@ -95,7 +95,7 @@ StyledRect {
                 anchors.centerIn: parent
                 text: qsTr("Collecting data...")
                 font: Tokens.font.body.small
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
                 visible: NetworkUsage.downloadBuffer.count < 2
             }
         }

@@ -64,7 +64,7 @@ PageBase {
                     StyledText {
                         text: qsTr("Add a custom class or regex pattern")
                         font: Tokens.font.label.small
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                         elide: Text.ElideRight
                     }
                 }
@@ -321,7 +321,7 @@ PageBase {
                                         Layout.fillWidth: true
                                         visible: text !== ""
                                         text: windowItem.modelData.class ?? ""
-                                        color: Colours.palette.m3outline
+                                        color: Colours.palette.m3onSurfaceVariant
                                         font: Tokens.font.label.small
                                         elide: Text.ElideRight
                                     }

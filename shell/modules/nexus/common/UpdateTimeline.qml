@@ -193,7 +193,7 @@ Item {
                         visible: entry.isRelease
                         fontStyle: Tokens.font.icon.small
                         text: "sell"
-                        color: (entry.isCurrent || entry.isSelected) ? Colours.palette.m3primary : Colours.palette.m3outline
+                        color: (entry.isCurrent || entry.isSelected) ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
                     }
 
                     StyledText {
@@ -258,7 +258,7 @@ Item {
                     visible: !!entry.modelData.subject
                     text: entry.modelData.subject || ""
                     font: Tokens.font.label.small
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     elide: Text.ElideRight
                 }
 
@@ -269,7 +269,7 @@ Item {
                     visible: entry.tooltipText !== ""
                     text: entry.tooltipText
                     font: Tokens.font.label.small
-                    color: Colours.palette.m3outlineVariant
+                    color: Colours.palette.m3onSurfaceVariant
                     elide: Text.ElideRight
                 }
             }

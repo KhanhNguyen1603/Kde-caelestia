@@ -69,7 +69,7 @@ Item {
 
                 text: (root.modelData?.comment || root.modelData?.genericName || root.modelData?.name) ?? ""
                 font: Tokens.font.body.small
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
 
                 elide: Text.ElideRight
                 width: root.width - icon.width - 120 - Tokens.rounding.extraLargeIncreased
@@ -104,7 +104,7 @@ Item {
             MaterialIcon {
                 anchors.centerIn: parent
                 text: Strings.testRegexList(GlobalConfig.launcher.hiddenApps, root.modelData?.id) ? "visibility_off" : "visibility"
-                color: hideIcon.containsMouse ? Colours.palette.m3primary : Colours.palette.m3outline
+                color: hideIcon.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
             }
         }
 

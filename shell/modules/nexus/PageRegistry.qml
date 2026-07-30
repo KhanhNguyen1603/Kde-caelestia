@@ -11,7 +11,7 @@ QtObject {
     }
 
     // Vector Search (Sparse N-Grams)
-    function getNGrams(str: string, n: int) {
+    function getNGrams(str: string, n: int): var {
         let ngrams = {};
         if (!str) return ngrams;
         const s = str.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -37,7 +37,7 @@ QtObject {
 
     property var searchIndex: []
 
-    function extractKeywords(pagePath: string) {
+    function extractKeywords(pagePath: string): var {
         if (!pagePath) return {};
         let url = Qt.resolvedUrl("pages/" + pagePath);
         let xhr = new XMLHttpRequest();

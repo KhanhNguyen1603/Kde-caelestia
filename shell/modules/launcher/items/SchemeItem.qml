@@ -74,7 +74,7 @@ Item {
             StyledText {
                 text: root.modelData?.name ?? ""
                 font: Tokens.font.body.small
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
 
                 elide: Text.ElideRight
                 anchors.left: parent.left

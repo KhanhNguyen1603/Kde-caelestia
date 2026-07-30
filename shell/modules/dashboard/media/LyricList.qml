@@ -237,12 +237,12 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 text: "sentiment_sad"
                 fontStyle: Tokens.font.icon.builders.large.scale(2).build()
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
             }
 
             StyledText {
                 text: qsTr("No lyrics found")
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.title.medium
             }
         }
