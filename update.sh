@@ -118,39 +118,57 @@ if [ ! -f "$BUNDLE_DIR/scripts/03-deploy-configs.sh" ] || [ ! -f "$BUNDLE_DIR/sc
 fi
 
 # Cache sudo credentials once now so sub-scripts don't each re-prompt.
-# sudo -v refreshes the timestamp; a background loop keeps it alive.
-sudo -v || die "Failed to obtain sudo privileges."
+# The keepalive loop refreshes the timestamp with -nv (non-interactive
+# extend) so it never expires, even during long CMake builds.
+#
+# When running without a terminal (e.g. launched from the shell UI), we
+# use ksshaskpass or pkexec for the initial prompt and export
+# SUDO_ASKPASS for every child process.
 
-# Refresh the sudo timestamp every 55 seconds in the background while
-# we run the deployment and build steps (sudo default timeout is 5 min).
-_keeper_started=0
-sudo_keepalive() {
-    while kill -0 $$ 2>/dev/null; do
-        sudo -v 2>/dev/null || break
-        sleep 55
-    done
-}
+if [ "$EUID" -ne 0 ]; then
+    # Determine the best interactive helper for the initial prompt.
+    if [ -t 1 ]; then
+        sudo -v || die "Failed to obtain sudo privileges."
+    elif command -v ksshaskpass &> /dev/null; then
+        export SUDO_ASKPASS="$(command -v ksshaskpass)"
+        sudo -A -v || die "Failed to obtain sudo privileges."
+    elif command -v pkexec &> /dev/null; then
+        info "Requesting administrator privileges via pkexec..."
+        pkexec true || die "Failed to obtain administrator privileges."
+    else
+        die "Cannot elevate privileges — no terminal, ksshaskpass, or pkexec available."
+    fi
 
-# Determine the best escalation helper for GUI environments
+    # Background keepalive: refresh the sudo timestamp every 30 seconds.
+    # Using -nv instead of -v means it quietly extends the timestamp
+    # without ever re-prompting.
+    (
+        while kill -0 "$$" 2>/dev/null; do
+            sleep 30
+            sudo -nv 2>/dev/null || true
+        done
+    ) &
+    SUDO_KEEPER_PID=$!
+    trap 'kill "$SUDO_KEEPER_PID" 2>/dev/null || true' EXIT
+fi
+
+# Determine the best escalation helper for GUI environments.
+# Tries cached credentials first (-n) before falling back to prompting.
 run_elevated() {
     if [ "$EUID" -eq 0 ]; then
         "$@"
+    elif sudo -n true 2>/dev/null; then
+        sudo -n "$@"
     elif [ -t 1 ]; then
         sudo "$@"
-    elif command -v ksshaskpass &> /dev/null; then
-        SUDO_ASKPASS=$(command -v ksshaskpass) sudo -A "$@"
+    elif [ -n "${SUDO_ASKPASS:-}" ]; then
+        sudo -A "$@"
     elif command -v pkexec &> /dev/null; then
         pkexec "$@"
     else
         die "Cannot elevate privileges. Please install ksshaskpass, pkexec, or run from a terminal."
     fi
 }
-
-# Start keepalive in background (only once)
-sudo_keepalive &
-SUDO_KEEPER_PID=$!
-_keeper_started=1
-trap 'kill "$SUDO_KEEPER_PID" 2>/dev/null || true' EXIT
 
 # This script deploys Python bridges and mock hyprctl which the shell needs.
 # Its internal sudo calls will reuse the cached credential without re-prompting.
@@ -160,7 +178,7 @@ info "Building Caelestia Shell UI..."
 bash "$BUNDLE_DIR/scripts/08-build-shell.sh" || die "Shell build failed."
 
 # Kill the keepalive background process now that sudo is no longer needed
-if [ "$_keeper_started" -eq 1 ] && kill -0 "$SUDO_KEEPER_PID" 2>/dev/null; then
+if [ -n "${SUDO_KEEPER_PID:-}" ] && kill -0 "$SUDO_KEEPER_PID" 2>/dev/null; then
     kill "$SUDO_KEEPER_PID" 2>/dev/null || true
 fi
 

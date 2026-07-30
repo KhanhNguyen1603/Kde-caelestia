@@ -18,12 +18,6 @@ BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"
 
 
-# UPDATER ONLY BLOCK START
-
-# This is a temp fix, BREAKS REVERTING TO OLDER VERSIONS
-# ANYTHING EXTRA THAT NEEDS TO BE INSTALLED WHEN MAJOR CHANGES HAPPEN,
-# RUN THE REQUIRED UPDATE
-
 if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
     info "Running standalone update mode... syncing submodules first."
     
@@ -340,10 +334,11 @@ else
     warn "Failed to copy yet-another-monochrome-icon-set."
 fi
 
-# Save current commit for the update checker
+# Save current commit and branch for the update checker
 mkdir -p ~/.config/quickshell/caelestia
 if [ -d "$BUNDLE_DIR/.git" ]; then
     git -C "$BUNDLE_DIR" rev-parse HEAD > ~/.config/quickshell/caelestia/.current_commit 2>/dev/null || true
+    git -C "$BUNDLE_DIR" rev-parse --abbrev-ref HEAD > ~/.config/quickshell/caelestia/.update_branch 2>/dev/null || true
 fi
 
 ok "Caelestia Shell and KDE Bridges built and installed successfully to user directory."
