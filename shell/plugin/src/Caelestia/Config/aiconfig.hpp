@@ -85,6 +85,22 @@ class AiConfig : public ConfigObject {
     CONFIG_PROPERTY(QString, openrouterUrl, u"https://openrouter.ai/api/v1"_s)
     CONFIG_PROPERTY(QString, defaultOpenrouterModel, u""_s)
 
+    // opencode zen and go (https://opencode.ai/docs/zen, https://opencode.ai/docs/go).
+    // Two products behind one gateway and one account, so they share a single key
+    // (OPENCODE_API_KEY) and are separate providers only because the base URL and
+    // model catalogue differ. Neither is plain OpenAI-compatible: each serves some
+    // models over /chat/completions and others over /messages, and zen additionally
+    // serves GPT over /responses and Gemini over /models/[id], which the shell does
+    // not speak. See opencodeWire() and opencodeSupports() in AiAssistant.qml.
+    CONFIG_PROPERTY(bool, enableOpencode, false)
+    CONFIG_PROPERTY(QString, opencodeApiKey, u""_s)
+    CONFIG_PROPERTY(QString, opencodeUrl, u"https://opencode.ai/zen/v1"_s)
+    CONFIG_PROPERTY(QString, defaultOpencodeModel, u""_s)
+
+    CONFIG_PROPERTY(bool, enableOpencodeGo, false)
+    CONFIG_PROPERTY(QString, opencodeGoUrl, u"https://opencode.ai/zen/go/v1"_s)
+    CONFIG_PROPERTY(QString, defaultOpencodeGoModel, u""_s)
+
 public:
     explicit AiConfig(QObject* parent = nullptr)
         : ConfigObject(parent) {}
