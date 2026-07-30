@@ -217,14 +217,17 @@ try:
 
         notif = notify("-p", "Recording started", "Recording...")"""
     launch_new = """        recording_path.unlink(missing_ok=True)
-        subprocess.run(["sh", "-c", "if ! systemctl --user is-active --quiet plasma-xdg-desktop-portal-kde; then systemctl --user restart plasma-xdg-desktop-portal-kde; systemctl --user restart xdg-desktop-portal; sleep 1; fi"])
+        subprocess.run(["sh", "-c", "if ! systemctl --user is-active --quiet plasma-xdg-desktop-portal-kde || ! systemctl --user is-active --quiet xdg-desktop-portal; then systemctl --user restart plasma-xdg-desktop-portal-kde; systemctl --user restart xdg-desktop-portal; sleep 1; fi"])
         proc = subprocess.Popen([RECORDER, *args, "-o", str(recording_path)], start_new_session=True)
         while proc.poll() is None and not recording_path.exists():
             time.sleep(0.1)
         if proc.poll() is not None:
             return
         notif = notify("-p", "Recording started", "Recording...")"""
-    code = code.replace(launch_orig, launch_new)
+    import re
+    # Match the block whether it is unpatched or already patched in any form
+    pattern = r"(?:\s*recording_path\.unlink\(missing_ok=True\)[\s\S]*?)?\s*proc = subprocess\.Popen\(\[RECORDER[\s\S]*?notif = notify\(\"-p\", \"Recording started\", \"Recording\.\.\.\"\)"
+    code = re.sub(pattern, "\n" + launch_new, code)
     
     code = code.replace("[\"app2unit\", \"-O\", new_path]", "[\"xdg-open\", str(new_path)]")
     
