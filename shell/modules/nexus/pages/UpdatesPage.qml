@@ -73,6 +73,9 @@ PageBase {
     // ── Timeline selection state ───────────────────────────────────────────
     property string selectedVersionId: ""
     property string pendingBranch: ""
+    // Customize Installation is collapsed by default (see section 4 below)
+    // so the commit/version timeline stays the visual focus of the page.
+    property bool installOptionsExpanded: false
 
     readonly property bool branchDataLoading: root.pendingBranch !== "" && UpdateChecker.checkingUpdates
 
@@ -94,6 +97,17 @@ PageBase {
     readonly property bool selectionIsRevert: root.timelineSelectionEnabled && root.selectedVersionState === "past"
     readonly property bool selectionIsFuture: root.timelineSelectionEnabled && root.selectedVersionState === "available"
 
+    // Drives both the primary button's visibility and the secondary button's
+    // width (it takes over as the sole, full-width action when the primary
+    // one isn't shown) — see the action row below.
+    readonly property bool primaryActionVisible: {
+        if (root.updateRunning) return false;
+        if (root.updateProgress === 1.0) return true;
+        if (root.selectionIsRevert) return true;
+        if (root.selectionIsFuture && root.selectedVersionId !== "") return true;
+        return UpdateChecker.hasUpdate;
+    }
+
     // ── Timeline data ──────────────────────────────────────────────────────
     readonly property var timelineEntries: {
         if (UpdateChecker.versionSummaryMode && UpdateChecker.availableVersions.length > 0) {
@@ -113,7 +127,7 @@ PageBase {
                 } else {
                     state = "past";
                 }
-                result.push({ id: versions[i], label: versions[i], state: state, subject: "" });
+                result.push({ id: versions[i], label: versions[i], state: state, subject: "", isRelease: true });
             }
             return result;
         } else {
@@ -148,6 +162,7 @@ PageBase {
                     subject: c.subject || "",
                     state: state,
                     isMerge: !!c.isMerge,
+                    isRelease: false,
                     author: c.author || "",
                     date: c.date || ""
                 });
@@ -233,24 +248,24 @@ PageBase {
 
                 StyledProgressBar {
                     Layout.fillWidth: true
+                    Layout.topMargin: Tokens.spacing.extraSmall
                     visible: root.updateRunning
                     value: root.updateProgress
                     indeterminate: root.updateProgress === 0.0 && root.updateRunning
                 }
 
+                // Actions — the primary CTA always fills the remaining row
+                // width (and the whole row, when it's the only action shown)
+                // so it stays prominent and never overflows narrower windows.
                 RowLayout {
-                    Layout.alignment: Qt.AlignHCenter
+                    Layout.fillWidth: true
+                    Layout.topMargin: Tokens.spacing.small
                     spacing: Tokens.spacing.small
 
                     // Primary action button
                     IconTextButton {
-                        visible: {
-                            if (root.updateRunning) return false;
-                            if (root.updateProgress === 1.0) return true;
-                            if (root.selectionIsRevert) return true;
-                            if (root.selectionIsFuture && root.selectedVersionId !== "") return true;
-                            return UpdateChecker.hasUpdate;
-                        }
+                        Layout.fillWidth: true
+                        visible: root.primaryActionVisible
                         text: {
                             if (root.updateProgress === 1.0) return qsTr("Log Out");
                             if (root.selectionIsRevert) return qsTr("Restore");
@@ -258,7 +273,10 @@ PageBase {
                                 return qsTr("Install %1").arg(root.selectedVersionId);
                             return qsTr("Install Update");
                         }
-                        type: TextButton.Primary
+                        type: TextButton.Filled
+                        font: Tokens.font.body.medium
+                        horizontalPadding: Tokens.padding.large
+                        verticalPadding: Tokens.padding.medium
                         icon: {
                             if (root.updateProgress === 1.0) return "logout";
                             if (root.selectionIsRevert) return "history";
@@ -283,11 +301,28 @@ PageBase {
                         }
                     }
 
-                    // Secondary: Stop / Check for updates / Cancel selection
+                    // Secondary: Stop / Check for updates / Cancel selection.
+                    // Takes over the full row width itself whenever the
+                    // primary action is hidden (e.g. while an update runs),
+                    // so there's always exactly one clear, prominent action.
                     IconTextButton {
+                        id: secondaryActionButton
+
+                        readonly property bool isChecking: UpdateChecker.checkingUpdates && !root.updateRunning && root.selectedVersionId === ""
+
+                        Layout.fillWidth: !root.primaryActionVisible
                         visible: root.updateProgress !== 1.0
-                        text: root.updateRunning ? qsTr("Stop") : (root.selectedVersionId !== "" ? qsTr("Cancel") : qsTr("Check"))
+                        disabled: isChecking
+                        text: {
+                            if (root.updateRunning) return qsTr("Stop");
+                            if (root.selectedVersionId !== "") return qsTr("Cancel");
+                            if (isChecking) return qsTr("Checking…");
+                            return qsTr("Check");
+                        }
                         type: TextButton.Tonal
+                        font: Tokens.font.body.medium
+                        horizontalPadding: Tokens.padding.large
+                        verticalPadding: Tokens.padding.medium
                         icon: root.updateRunning ? "stop" : (root.selectedVersionId !== "" ? "close" : "refresh")
                         onClicked: {
                             if (root.updateRunning) {
@@ -297,6 +332,19 @@ PageBase {
                             } else {
                                 UpdateChecker.checkUpdates();
                             }
+                        }
+
+                        // Spin the refresh icon while a check is in flight so
+                        // the button visibly reflects that something is
+                        // happening — previously it gave no feedback at all.
+                        RotationAnimation {
+                            target: secondaryActionButton.iconLabel
+                            property: "rotation"
+                            running: secondaryActionButton.isChecking
+                            loops: Animation.Infinite
+                            from: 0
+                            to: 360
+                            duration: 900
                         }
                     }
                 }
@@ -313,7 +361,7 @@ PageBase {
             label: qsTr("Update channel")
             subtext: UpdateChecker.currentBranch === "main"
                 ? qsTr("Stable releases")
-                : qsTr("Development builds — may be unstable")
+                : qsTr("Development builds - may be unstable")
             menuItems: root.branchItems
             active: root.activeBranchItem
             fallbackText: UpdateChecker.currentBranch
@@ -357,44 +405,10 @@ PageBase {
             }
         }
 
-        // 3 ── INSTALLATION SETTINGS ──────────────────────────────────────
+        // 3 ── VERSION TIMELINE (focus of the page) ────────────────────────
         SectionHeader {
             visible: !root.branchDataLoading
-            text: qsTr("Customize Installation")
-        }
-
-        NavRow {
-            visible: !root.branchDataLoading
-            first: true
-            icon: "folder"
-            label: qsTr("Open Backup Folder")
-            status: qsTr("View your previously backed-up configuration files")
-            onClicked: {
-                backupFolderProcess.running = true;
-            }
-        }
-
-        ToggleRow {
-            visible: !root.branchDataLoading
-            text: qsTr("Deploy Configurations")
-            subtext: qsTr("Update your custom dotfiles in ~/.config")
-            checked: UpdateChecker.deployConfigs
-            onToggled: UpdateChecker.deployConfigs = checked
-        }
-
-        ToggleRow {
-            visible: !root.branchDataLoading
-            last: true
-            text: qsTr("Build Shell UI")
-            subtext: qsTr("Compile and install Quickshell UI updates")
-            checked: UpdateChecker.buildShell
-            onToggled: UpdateChecker.buildShell = checked
-        }
-
-        // 4 ── VERSION TIMELINE ────────────────────────────────────────────
-        SectionHeader {
-            visible: !root.branchDataLoading
-            text: qsTr("Version History")
+            text: UpdateChecker.versionSummaryMode ? qsTr("Version History") : qsTr("Commit History")
         }
 
         ConnectedRect {
@@ -405,8 +419,10 @@ PageBase {
             Layout.fillWidth: true
             // Dev branch can list up to ~150 commits — cap the card height and
             // let it scroll internally instead of pushing the log/actions
-            // below it far down the page.
-            readonly property real maxListHeight: 6 * 48
+            // below it far down the page. Commit rows are taller than plain
+            // release rows, so scale the cap with the timeline's own row
+            // height instead of a hard-coded constant.
+            readonly property real maxListHeight: 6 * timeline.rowHeight
             implicitHeight: Math.min(timeline.implicitHeight, maxListHeight) + Tokens.padding.medium * 2
 
             Flickable {
@@ -441,6 +457,76 @@ PageBase {
                     }
                 }
             }
+        }
+
+        // 4 ── INSTALLATION SETTINGS ───────────────────────────────────────
+        // Collapsed by default and tucked below the timeline so these
+        // rarely-changed options don't compete with the commit/version
+        // history for space or attention.
+        ConnectedRect {
+            visible: !root.branchDataLoading
+            first: true
+            last: !root.installOptionsExpanded
+            Layout.fillWidth: true
+            implicitHeight: installHeaderRow.implicitHeight + Tokens.padding.medium * 2
+
+            StateLayer {
+                onClicked: root.installOptionsExpanded = !root.installOptionsExpanded
+            }
+
+            RowLayout {
+                id: installHeaderRow
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.medium
+                anchors.leftMargin: Tokens.padding.largeIncreased
+                anchors.rightMargin: Tokens.padding.largeIncreased
+                spacing: Tokens.spacing.medium
+
+                MaterialIcon {
+                    text: "tune"
+                    color: Colours.palette.m3onSurfaceVariant
+                    fontStyle: Tokens.font.icon.medium
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("Customize Installation")
+                    font: Tokens.font.body.small
+                }
+
+                MaterialIcon {
+                    text: root.installOptionsExpanded ? "expand_less" : "expand_more"
+                    color: Colours.palette.m3onSurfaceVariant
+                    fontStyle: Tokens.font.icon.medium
+                }
+            }
+        }
+
+        NavRow {
+            visible: !root.branchDataLoading && root.installOptionsExpanded
+            icon: "folder"
+            label: qsTr("Open Backup Folder")
+            status: qsTr("View your previously backed-up configuration files")
+            onClicked: {
+                backupFolderProcess.running = true;
+            }
+        }
+
+        ToggleRow {
+            visible: !root.branchDataLoading && root.installOptionsExpanded
+            text: qsTr("Deploy Configurations")
+            subtext: qsTr("Update your custom dotfiles in ~/.config")
+            checked: UpdateChecker.deployConfigs
+            onToggled: UpdateChecker.deployConfigs = checked
+        }
+
+        ToggleRow {
+            visible: !root.branchDataLoading && root.installOptionsExpanded
+            last: true
+            text: qsTr("Build Shell UI")
+            subtext: qsTr("Compile and install Quickshell UI updates")
+            checked: UpdateChecker.buildShell
+            onToggled: UpdateChecker.buildShell = checked
         }
 
         // 5 ── UPDATE LOG (appears after update runs) ──────────────────────

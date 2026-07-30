@@ -72,36 +72,85 @@ silent_refresh_pacman_sources() {
         return 0
     fi
 
-    # Rank mirrors for fastest download speed if reflector is available;
-    # install reflector on-the-fly if missing (single -Sy, not -Syy).
-    if ! command -v reflector >/dev/null 2>&1; then
-        if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-            pacman -Sy --noconfirm reflector >/dev/null 2>&1 || true
-        elif sudo -n true >/dev/null 2>&1; then
-            sudo -n pacman -Sy --noconfirm reflector >/dev/null 2>&1 || true
-        fi
-    fi
-
-    if command -v reflector >/dev/null 2>&1; then
-        echo "[INFO]  Ranking pacman mirrors by download speed..."
-        if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-            reflector --latest 20 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 || echo "[WARN]  reflector failed, continuing with current mirrors."
-        elif sudo -n true >/dev/null 2>&1; then
-            sudo -n reflector --latest 20 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 || echo "[WARN]  reflector failed, continuing with current mirrors."
-        else
-            echo "[WARN]  Skipping mirror ranking (sudo requires a password)."
-        fi
-    fi
-
+    local have_root=0
     if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
-        pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
-        return 0
+        have_root=1
+    else
+        # Ask for sudo up front (this prompts interactively if there's no
+        # cached/NOPASSWD ticket) instead of silently skipping every step
+        # below with `sudo -n`. A single successful `sudo -v` here caches
+        # credentials for the rest of this function (and the real install
+        # steps later), so the user is only prompted once.
+        echo "[INFO]  Requesting sudo access to refresh/rank pacman mirrors..."
+        if sudo -v; then
+            have_root=1
+        else
+            echo "[WARN]  Skipping pacman mirror refresh/ranking (sudo access not available)."
+        fi
     fi
 
-    if sudo -n true >/dev/null 2>&1; then
-        sudo -n pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
-    else
-        echo "[WARN]  Skipping early pacman source refresh (sudo requires a password)."
+    if (( have_root )); then
+        # Use sudo -n (non-interactive) for all subsequent commands — the
+        # upfront sudo -v above already cached the credential ticket, so
+        # -n will succeed silently without re-prompting. If the ticket
+        # expires, individual steps degrade gracefully via || true.
+        as_root() {
+            if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+                "$@"
+            else
+                sudo -n "$@"
+            fi
+        }
+
+        # Reflector: rank pacman mirrors by speed. Install on-the-fly if
+        # missing (single -Sy, not -Syy).
+        if ! command -v reflector >/dev/null 2>&1; then
+            as_root pacman -Sy --noconfirm reflector >/dev/null 2>&1 || true
+        fi
+
+        if command -v reflector >/dev/null 2>&1; then
+            # Without a --country filter, reflector's candidate pool is every
+            # mirror on earth (it only filters by "recently synced", not by
+            # distance) - it then speed-ranks whatever it picked, but a mirror
+            # halfway around the world can still "win" the rate test yet be
+            # unreliable/overloaded/blocked in practice, leaving pacman to churn
+            # through dead UK/AU/CN/etc. mirrors during the real download. Best-
+            # effort geolocate to scope candidates to the local country; silently
+            # fall back to the previous global behaviour if that lookup fails
+            # (offline, API down, etc.) rather than hard-failing the install.
+            local reflector_country
+            reflector_country=$(curl -fsSL --max-time 3 https://ipapi.co/country_name/ 2>/dev/null || true)
+            local -a reflector_args=(--latest 20 --protocol https --sort rate)
+            if [[ -n "$reflector_country" ]]; then
+                echo "[INFO]  Ranking pacman mirrors by download speed (country: $reflector_country)..."
+                reflector_args+=(--country "$reflector_country")
+            else
+                echo "[INFO]  Ranking pacman mirrors by download speed (country detection failed, using global pool)..."
+            fi
+
+            as_root reflector "${reflector_args[@]}" --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 || echo "[WARN]  reflector failed, continuing with current mirrors."
+        fi
+
+        # CachyOS-based installs pull their (differently-versioned) packages
+        # from a separate cachyos-mirrorlist that reflector above never
+        # touches. cachyos-rate-mirrors re-ranks that (and
+        # cachyos-v3/v4-mirrorlist) with proper geoip + real throughput
+        # testing - without this, installs can be stuck on a slow/
+        # oversubscribed default mirror even on a fast connection.
+        if command -v cachyos-rate-mirrors >/dev/null 2>&1; then
+            echo "[INFO]  Ranking CachyOS mirrors by download speed..."
+            as_root cachyos-rate-mirrors >/dev/null 2>&1 || echo "[WARN]  cachyos-rate-mirrors failed, continuing with current mirrors."
+        fi
+
+        # Pre-install dos2unix if it's missing, so the CRLF-normalization
+        # step later (normalize_line_endings_first) doesn't need to
+        # re-prompt for sudo when it calls run_arch_pacman_install.
+        if ! command -v dos2unix >/dev/null 2>&1; then
+            as_root pacman -Sy --noconfirm dos2unix >/dev/null 2>&1 || true
+        fi
+
+        as_root pacman -Sy --noconfirm >/dev/null 2>&1 || echo "[WARN]  Failed to refresh pacman sources early. Continuing..."
+        unset -f as_root
     fi
 }
 
@@ -132,7 +181,13 @@ run_arch_pacman_install() {
 }
 
 export BASE_DISTRO="$(detect_base_distro)"
-silent_refresh_pacman_sources
+
+# Mirror refresh and CRLF normalization only run in the outer (pre-tmux)
+# shell. The script re-execs itself inside a tmux session later, and
+# those steps are pointless (and re-prompt for sudo) the second time.
+if [[ "${CAELESTIA_TMUX_MASTER:-0}" == "0" ]]; then
+    silent_refresh_pacman_sources
+fi
 
 normalize_line_endings_first() {
     export BASE_DISTRO="$(detect_base_distro)"
@@ -191,9 +246,11 @@ normalize_line_endings_first() {
     done
 }
 
-if ! normalize_line_endings_first; then
-    echo "[FATAL] Line ending normalization step failed. Aborting installer." >&2
-    exit 1
+if [[ "${CAELESTIA_TMUX_MASTER:-0}" == "0" ]]; then
+    if ! normalize_line_endings_first; then
+        echo "[FATAL] Line ending normalization step failed. Aborting installer." >&2
+        exit 1
+    fi
 fi
 
 BIN="$BUNDLE_DIR/caelestia-install"

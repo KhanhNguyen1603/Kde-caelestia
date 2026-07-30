@@ -134,8 +134,11 @@ MouseArea {
             }
             
             radius: parent.radius
+            // Fade alpha to 0 instead of the literal "transparent" string, which
+            // would animate RGB through black via StyledRect's inherited
+            // Behavior on color.
             color: root.transparentBackground
-                ? "transparent"
+                ? Qt.alpha(Colours.palette.m3surfaceContainerLow, 0)
                 : (GlobalConfig.appearance.transparency.enabled && GlobalConfig.appearance.blur)
                     ? Qt.alpha(Colours.palette.m3surfaceContainerLow, GlobalConfig.appearance.transparency.base)
                     : Colours.palette.m3surfaceContainerLow
