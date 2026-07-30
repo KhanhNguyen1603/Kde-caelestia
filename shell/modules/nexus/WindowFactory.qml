@@ -30,19 +30,6 @@ Singleton {
             property int initialPageIdx: 0
             property int initialSubPageIdx: -1
 
-            // Unlike StyledWindow-based panels (bar/dock/drawers), which keep
-            // the native window fully transparent and get all their
-            // translucency from a single layer of widget-drawn rects on top
-            // of the compositor blur, this FloatingWindow used to bake
-            // Colours.tPalette.m3surface (already alpha'd by the "Base
-            // opacity" slider) into the native window background too. That
-            // stacked a second translucent layer underneath Nexus's own
-            // blob/panel backgrounds, making detached Nexus windows look far
-            // more opaque than the in-shell panels. Match StyledWindow's
-            // convention: only the RGB is used as a same-colour opaque
-            // fallback when transparency is off; when it's on, the window
-            // itself is fully see-through and Nexus's own layers provide the
-            // (correctly single-layered) translucency.
             color: GlobalConfig.appearance.transparency.enabled ? Qt.alpha(Colours.tPalette.m3surface, 0) : Colours.tPalette.m3surface
             surfaceFormat.opaque: false
 
