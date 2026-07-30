@@ -73,6 +73,9 @@ PageBase {
     // ── Timeline selection state ───────────────────────────────────────────
     property string selectedVersionId: ""
     property string pendingBranch: ""
+    // Customize Installation is collapsed by default (see section 4 below)
+    // so the commit/version timeline stays the visual focus of the page.
+    property bool installOptionsExpanded: false
 
     readonly property bool branchDataLoading: root.pendingBranch !== "" && UpdateChecker.checkingUpdates
 
@@ -303,9 +306,19 @@ PageBase {
                     // primary action is hidden (e.g. while an update runs),
                     // so there's always exactly one clear, prominent action.
                     IconTextButton {
+                        id: secondaryActionButton
+
+                        readonly property bool isChecking: UpdateChecker.checkingUpdates && !root.updateRunning && root.selectedVersionId === ""
+
                         Layout.fillWidth: !root.primaryActionVisible
                         visible: root.updateProgress !== 1.0
-                        text: root.updateRunning ? qsTr("Stop") : (root.selectedVersionId !== "" ? qsTr("Cancel") : qsTr("Check"))
+                        disabled: isChecking
+                        text: {
+                            if (root.updateRunning) return qsTr("Stop");
+                            if (root.selectedVersionId !== "") return qsTr("Cancel");
+                            if (isChecking) return qsTr("Checking…");
+                            return qsTr("Check");
+                        }
                         type: TextButton.Tonal
                         font: Tokens.font.body.medium
                         horizontalPadding: Tokens.padding.large
@@ -319,6 +332,19 @@ PageBase {
                             } else {
                                 UpdateChecker.checkUpdates();
                             }
+                        }
+
+                        // Spin the refresh icon while a check is in flight so
+                        // the button visibly reflects that something is
+                        // happening — previously it gave no feedback at all.
+                        RotationAnimation {
+                            target: secondaryActionButton.iconLabel
+                            property: "rotation"
+                            running: secondaryActionButton.isChecking
+                            loops: Animation.Infinite
+                            from: 0
+                            to: 360
+                            duration: 900
                         }
                     }
                 }
@@ -335,7 +361,7 @@ PageBase {
             label: qsTr("Update channel")
             subtext: UpdateChecker.currentBranch === "main"
                 ? qsTr("Stable releases")
-                : qsTr("Development builds — may be unstable")
+                : qsTr("Development builds - may be unstable")
             menuItems: root.branchItems
             active: root.activeBranchItem
             fallbackText: UpdateChecker.currentBranch
@@ -379,41 +405,7 @@ PageBase {
             }
         }
 
-        // 3 ── INSTALLATION SETTINGS ──────────────────────────────────────
-        SectionHeader {
-            visible: !root.branchDataLoading
-            text: qsTr("Customize Installation")
-        }
-
-        NavRow {
-            visible: !root.branchDataLoading
-            first: true
-            icon: "folder"
-            label: qsTr("Open Backup Folder")
-            status: qsTr("View your previously backed-up configuration files")
-            onClicked: {
-                backupFolderProcess.running = true;
-            }
-        }
-
-        ToggleRow {
-            visible: !root.branchDataLoading
-            text: qsTr("Deploy Configurations")
-            subtext: qsTr("Update your custom dotfiles in ~/.config")
-            checked: UpdateChecker.deployConfigs
-            onToggled: UpdateChecker.deployConfigs = checked
-        }
-
-        ToggleRow {
-            visible: !root.branchDataLoading
-            last: true
-            text: qsTr("Build Shell UI")
-            subtext: qsTr("Compile and install Quickshell UI updates")
-            checked: UpdateChecker.buildShell
-            onToggled: UpdateChecker.buildShell = checked
-        }
-
-        // 4 ── VERSION TIMELINE ────────────────────────────────────────────
+        // 3 ── VERSION TIMELINE (focus of the page) ────────────────────────
         SectionHeader {
             visible: !root.branchDataLoading
             text: UpdateChecker.versionSummaryMode ? qsTr("Version History") : qsTr("Commit History")
@@ -465,6 +457,76 @@ PageBase {
                     }
                 }
             }
+        }
+
+        // 4 ── INSTALLATION SETTINGS ───────────────────────────────────────
+        // Collapsed by default and tucked below the timeline so these
+        // rarely-changed options don't compete with the commit/version
+        // history for space or attention.
+        ConnectedRect {
+            visible: !root.branchDataLoading
+            first: true
+            last: !root.installOptionsExpanded
+            Layout.fillWidth: true
+            implicitHeight: installHeaderRow.implicitHeight + Tokens.padding.medium * 2
+
+            StateLayer {
+                onClicked: root.installOptionsExpanded = !root.installOptionsExpanded
+            }
+
+            RowLayout {
+                id: installHeaderRow
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.medium
+                anchors.leftMargin: Tokens.padding.largeIncreased
+                anchors.rightMargin: Tokens.padding.largeIncreased
+                spacing: Tokens.spacing.medium
+
+                MaterialIcon {
+                    text: "tune"
+                    color: Colours.palette.m3onSurfaceVariant
+                    fontStyle: Tokens.font.icon.medium
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("Customize Installation")
+                    font: Tokens.font.body.small
+                }
+
+                MaterialIcon {
+                    text: root.installOptionsExpanded ? "expand_less" : "expand_more"
+                    color: Colours.palette.m3onSurfaceVariant
+                    fontStyle: Tokens.font.icon.medium
+                }
+            }
+        }
+
+        NavRow {
+            visible: !root.branchDataLoading && root.installOptionsExpanded
+            icon: "folder"
+            label: qsTr("Open Backup Folder")
+            status: qsTr("View your previously backed-up configuration files")
+            onClicked: {
+                backupFolderProcess.running = true;
+            }
+        }
+
+        ToggleRow {
+            visible: !root.branchDataLoading && root.installOptionsExpanded
+            text: qsTr("Deploy Configurations")
+            subtext: qsTr("Update your custom dotfiles in ~/.config")
+            checked: UpdateChecker.deployConfigs
+            onToggled: UpdateChecker.deployConfigs = checked
+        }
+
+        ToggleRow {
+            visible: !root.branchDataLoading && root.installOptionsExpanded
+            last: true
+            text: qsTr("Build Shell UI")
+            subtext: qsTr("Compile and install Quickshell UI updates")
+            checked: UpdateChecker.buildShell
+            onToggled: UpdateChecker.buildShell = checked
         }
 
         // 5 ── UPDATE LOG (appears after update runs) ──────────────────────

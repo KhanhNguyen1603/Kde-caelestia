@@ -22,8 +22,8 @@ Item {
     readonly property bool richMode: root.entries.some(e => !e.isRelease && (!!e.author || !!e.subject))
     readonly property int rowHeight: root.richMode ? 68 : 44
     readonly property int gutterWidth: 32
-    readonly property real dotRadius: 5
-    readonly property real currentDotRadius: 9
+    readonly property real dotRadius: root.richMode ? 6 : 5
+    readonly property real currentDotRadius: 10
 
     // Conventional-commit prefix → { label, colour } lookup. Gives the dev
     // timeline a colourful, git-log-style look while keeping the mapping
@@ -60,7 +60,7 @@ Item {
         width: 2
         height: Math.max(0, root.entries.length - 1) * root.rowHeight
         color: Colours.palette.m3outlineVariant
-        opacity: 0.45
+        opacity: 0.6
     }
 
     Repeater {
@@ -160,7 +160,7 @@ Item {
                     // (main branch) keep the original neutral tone.
                     return entry.isRelease ? Colours.palette.m3outlineVariant : entry.typeColor;
                 }
-                opacity: (entry.isAvailable && !entry.isSelected) ? 0 : (entry.isPast && !entry.isRelease ? 0.6 : 1)
+                opacity: (entry.isAvailable && !entry.isSelected) ? 0 : (entry.isPast && !entry.isRelease ? 0.85 : 1)
                 border.color: {
                     if (!entry.isAvailable || entry.isSelected) return "transparent";
                     return entry.isRelease ? Colours.palette.m3primary : entry.typeColor;
@@ -200,10 +200,15 @@ Item {
                         Layout.fillWidth: true
                         text: entry.modelData.label
                         font: entry.isCurrent ? Tokens.font.body.medium : Tokens.font.body.small
+                        // Colour-code the hash/label itself by commit type
+                        // (not just the small dot) so the dev timeline reads
+                        // as an unmistakably colourful git log at a glance.
+                        // Releases (main branch) stay neutral to keep that
+                        // channel visually plain/compact by contrast.
                         color: {
                             if (entry.isCurrent || entry.isSelected) return Colours.palette.m3primary;
-                            if (entry.isAvailable) return Colours.palette.m3onSurface;
-                            return Colours.palette.m3outline;
+                            if (entry.isRelease) return entry.isAvailable ? Colours.palette.m3onSurface : Colours.palette.m3outline;
+                            return entry.typeColor;
                         }
                         elide: Text.ElideRight
                         Behavior on color { ColorAnimation { duration: 150 } }
@@ -214,7 +219,7 @@ Item {
                     StyledRect {
                         visible: entry.typeInfo !== null
                         Layout.alignment: Qt.AlignVCenter
-                        color: Qt.alpha(entry.typeColor, 0.18)
+                        color: Qt.alpha(entry.typeColor, 0.22)
                         radius: Tokens.rounding.full
                         implicitWidth: chipText.implicitWidth + Tokens.padding.small * 2
                         implicitHeight: chipText.implicitHeight + Tokens.padding.extraSmall
