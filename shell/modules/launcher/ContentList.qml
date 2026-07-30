@@ -57,6 +57,7 @@ Item {
     state: showAnimations ? "animations" : (showWindowSwitcher ? "windowSwitcher" : (showKeybinds ? "keybinds" : (showWallpapers ? "wallpapers" : "apps")))
 
     Behavior on state {
+        enabled: !root.visibilities.skipLauncherAnim
         SequentialAnimation {
             Anim {
                 target: root
@@ -425,13 +426,13 @@ Item {
     }
 
     Behavior on implicitWidth {
-        enabled: root.visibilities.launcher
+        enabled: root.visibilities.launcher && !root.visibilities.skipLauncherAnim
 
         Anim {}
     }
 
     Behavior on implicitHeight {
-        enabled: root.visibilities.launcher
+        enabled: root.visibilities.launcher && !root.visibilities.skipLauncherAnim
 
         Anim {}
     }
