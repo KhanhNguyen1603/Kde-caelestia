@@ -62,6 +62,9 @@ KeybindsModel::KeybindsModel(QObject* parent)
         &KeybindsModel::onShortcutRegistered);
     connect(GlobalShortcutDispatcher::instance(), &GlobalShortcutDispatcher::shortcutUnregistered, this,
         &KeybindsModel::onShortcutUnregistered);
+    // Re-evaluate blinker state whenever the collision index is rebuilt
+    connect(GlobalShortcutDispatcher::instance(), &GlobalShortcutDispatcher::collisionIndexChanged, this,
+        &KeybindsModel::keybindsChanged);
 
     m_saveTimer = new QTimer(this);
     m_saveTimer->setSingleShot(true);
@@ -222,10 +225,13 @@ QString KeybindsModel::getKeyCollisionForPart(const QString& actionName, const Q
     if (actionName.isEmpty() || keyPart.isEmpty())
         return QString();
 
-    GlobalShortcut* sc = GlobalShortcut::findByName(actionName);
-    if (!sc) return QString();
+    // Query the central collision index which is backed by stolen-shortcuts.json.
+    // Using a portable key string as the lookup key matches what the dispatcher stores.
+    QKeySequence seq(keyPart.trimmed());
+    if (seq.isEmpty())
+        return QString();
 
-    return sc->getCollisionNameForKey(keyPart);
+    return GlobalShortcutDispatcher::instance()->collisionForKey(seq.toString(QKeySequence::PortableText));
 }
 
 void KeybindsModel::onShortcutUnregistered(GlobalShortcut* sc) {

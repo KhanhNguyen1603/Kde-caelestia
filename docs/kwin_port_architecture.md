@@ -74,32 +74,14 @@ Provides real-time tracking of KDE Plasma virtual desktops (workspaces).
 ### `GlobalShortcut` (Component)
 A QML component used to register global keyboard shortcuts through KDE's native `kglobalaccel` system.
 
-**Properties:**
-* `name` (`QString`): The unique identifier for the shortcut.
-* `key` (`QString`): The current active key sequence trigger (e.g., `"Meta+Shift+S"`). Multiple key sequences can be separated by semicolons.
-* `defaultKey` (`QString`): The original fallback key assigned at startup, used when resetting custom overrides.
-* `description` (`QString`): A human-readable description of what the shortcut does (visible in the UI).
-
-**Signals:**
-* `activated()`: Emitted globally when the user presses the registered key sequence.
+**Properties:** `name`, `key` (semicolon-separated multi-key), `description`  
+**Signal:** `activated()`
 
 ### `KeybindsModel` & `GlobalShortcutDispatcher` (Singletons)
-* **`GlobalShortcutDispatcher`**: A bridging singleton since static C++ methods cannot emit signals. `GlobalShortcut` instances register themselves into a static `QHash` registry on creation and fire signals through this dispatcher.
-* **`KeybindsModel`**: A `QAbstractListModel` singleton exposing the entire list of registered shortcuts to QML. It observes the dispatcher for new shortcuts, applies any user overrides from `~/.config/quickshell/keybinds.json`, and exposes them for the Nexus settings UI. The model is populated directly with `GlobalShortcut` instances as row data. Overrides are persisted to disk using a 300ms debounce timer to prevent IO thrashing.
+- **`GlobalShortcutDispatcher`**: Singleton relay for cross-instance signals and the central **collision index** (`key → friendly label`), backed by `stolen-shortcuts.json`.
+- **`KeybindsModel`**: `QAbstractListModel` singleton that loads defaults, merges user overrides from `~/.config/caelestia/keybinds.json`, and drives the Nexus shortcut manager UI.
 
-**`KeybindsModel` Methods (Invokables):**
-* `void setKey(const QString& name, const QString& newKey)`: Changes the keybind for the specified shortcut and saves the override to disk.
-* `void resetKey(const QString& name)`: Resets the shortcut back to its original `defaultKey` and removes the override.
-* `QVariantList query(const QString& searchText = "")`: Returns a filtered list of shortcuts. Used mostly for backward compatibility with older UI components like the app launcher.
-* `QString getKeyCollision(const QString& actionName)`: Returns the name of the external application/action that this shortcut collides with.
-* `QString getKeyCollisionForPart(const QString& actionName, const QString& keyPart)`: Returns the collision name for a specific key sequence within a multi-part shortcut, allowing fine-grained UI conflict highlighting per key pill.
-
-**Under the Hood: Key Theft & Conflict Resolution**
-To guarantee that Caelestia's hotkeys always work, the C++ backend overrides existing KDE shortcuts on startup and restores them on exit:
-1. It queries `KGlobalAccel::globalShortcutsByKey(seq)` to find any conflicts with other registered KDE components.
-2. For every conflict, it spawns an asynchronous `QProcess` executing a direct `gdbus` call (bypassing bash shells and applying strict `GVariant` string escaping via `escapeGVariantString`) to unbind the combo from the foreign component.
-3. **Performance First**: Since synchronous `QProcess::waitForFinished()` calls on `gdbus` would severely block the main Qt thread during startup, all steal commands run concurrently. A `std::shared_ptr<QAtomicInt>` pending counter tracks them, and only the final process to finish registers the shortcut with `KGlobalAccel::self()->setShortcut(..., NoAutoloading)`. A generation counter (`m_registerGeneration`) protects against rapid consecutive property updates.
-4. Upon shell destruction, a similar detached `gdbus` call restores the original keybinds back to their respective components (e.g., Spectacle or KWin).
+> **Full documentation** — shortcut theft, conflict resolution, crash-safe recovery, the diff-based update logic, and the Nexus UI integration are all covered in detail in **[`docs/shortcut_architecture.md`](shortcut_architecture.md)**.
 
 ---
 
@@ -107,15 +89,8 @@ To guarantee that Caelestia's hotkeys always work, the C++ backend overrides exi
 
 All keyboard shortcuts in Caelestia are declared inside `Shortcuts.qml` under `shell/modules/` using the `CustomShortcut` QML wrapper under `shell/components/misc/`.
 
-### Compositor Adaptation
 The `CustomShortcut` wrapper dynamically inspects the environment at startup:
-- **Hyprland**: If `$HYPRLAND_INSTANCE_SIGNATURE` is present, it loads `Quickshell.Hyprland`'s `GlobalShortcut` component. Key bindings are defined in `hyprland.conf` by mapping action names. (This should be removed in future)
-- **KDE (KWin)**: If not on Hyprland, it loads the C++ `Caelestia.GlobalShortcut` component, registering the hotkeys directly with KDE's global shortcut daemon.
+- **Hyprland**: loads `Quickshell.Hyprland.GlobalShortcut`; bindings come from `hyprland.conf`.
+- **KDE (KWin)**: loads `Caelestia.GlobalShortcut`, registering directly with KDE's global shortcut daemon.
 
-### Nexus Shortcut Manager & Overrides
-In the KDE port, all Caelestia keybinds are managed fully natively inside the **Nexus settings panel**:
-1. **Source of Truth**: The C++ singleton `KeybindsModel` relies on `keybindsdefaults.hpp` to populate the default map. It conditionally loads plugins (e.g., ignoring "krohnkite" shortcuts if the KWin Krohnkite script is disabled in settings).
-2. **Dynamic UI Rendering**: The model exposes its rows directly to QML, replacing legacy regex grouping patterns. The UI (in `ShortcutManagerPage.qml`) binds directly to the model's roles (`name`, `key`, `description`, etc).
-3. **Key Capture & Persistence**: When a user clicks a row in Nexus, a modal `KeyCaptureDialog` intercepts physical keystrokes (`Keys.onPressed`) in QML. The new combination is sent to `KeybindsModel::setKey()`, instantly rebinding the C++ backend and saving the override to `~/.config/quickshell/keybinds.json`.
-
-Because of this unified manager, leaving `key` empty in `Shortcuts.qml` simply registers the action without a default keybind, allowing the user to map it in Nexus later. (It also registers in KDE System Settings -> Shortcuts -> quickshell, but the in-shell Nexus manager is the intended frontend).
+See [`docs/shortcut_architecture.md`](shortcut_architecture.md) for full details on the shortcut loading pipeline, Nexus manager, and user override persistence.
