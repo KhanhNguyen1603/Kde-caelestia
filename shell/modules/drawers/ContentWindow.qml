@@ -751,9 +751,22 @@ StyledWindow {
                 if (root.screen.name === screenName) {
                     desktopContextMenuAnchor.x = x - panels.leftMargin;
                     desktopContextMenuAnchor.y = y - panels.topMargin;
-                    desktopContextMenu.expanded = true;
+                    if (desktopContextMenu.expanded) {
+                        // Close first so the menu repositions on reopen
+                        desktopContextMenu.expanded = false;
+                        desktopMenuReopen.restart();
+                    } else {
+                        desktopContextMenu.expanded = true;
+                    }
                 }
             }
+        }
+
+        Timer {
+            id: desktopMenuReopen
+            interval: 300
+            repeat: false
+            onTriggered: desktopContextMenu.expanded = true
         }
 
         Item {
