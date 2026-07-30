@@ -30,8 +30,6 @@ cd ~/caelestia-dots-kde
 bash ./setup.sh
 ```
 
-> Tested on CachyOS and Fedora 44 KDE Edition.
-
 ### Updating
 
 - **GUI:** Shell Settings -> Updates -> select branch -> Install Updates
