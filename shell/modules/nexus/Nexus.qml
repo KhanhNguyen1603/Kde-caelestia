@@ -67,47 +67,6 @@ Item {
         borderBottom: Tokens.padding.medium
     }
 
-    BlobRect {
-        id: windowBtnRect
-
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: root.nState.isWindow ? 0 : Tokens.padding.extraSmall
-
-        group: blobGroup
-        opacity: root.blobColour.a
-        radius: Tokens.rounding.medium
-
-        implicitWidth: windowBtn.implicitWidth + (root.nState.isWindow ? Tokens.padding.extraSmall : Tokens.padding.small) * 2
-        implicitHeight: windowBtn.implicitHeight + (root.nState.isWindow ? Tokens.padding.extraSmall : Tokens.padding.small)
-    }
-
-    IconButton {
-        id: windowBtn
-
-        anchors.centerIn: windowBtnRect
-        icon: nState.isWindow ? "close" : "pip"
-        type: IconButton.Text
-        label.fill: 0
-        inactiveOnColour: hovered ? nState.isWindow ? Colours.palette.m3error : Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
-        stateLayer.opacity: 0
-        onClicked: {
-            if (!nState.isWindow) {
-                WindowFactory.create();
-                root.close();
-                return;
-            }
-            root.requestClose();
-        }
-
-        label.scale: pressed ? 0.8 : 1
-        label.renderType: Text.QtRendering
-
-        Behavior on label.scale {
-            Anim {}
-        }
-    }
-
     NavPane {
         id: navPane
 
@@ -132,8 +91,9 @@ Item {
     }
 
     // ── Update-in-progress close confirmation ───────────────────────────────
-    // Guards the close paths above (in-app close button, native window close
-    // via WindowFactory) so an in-progress update isn't silently abandoned.
+    // Guards against closing (via native window close through WindowFactory,
+    // or programmatic close) while an update is in progress so it isn't
+    // silently abandoned.
     Item {
         id: closeConfirmDialog
 
