@@ -40,6 +40,7 @@ class LauncherConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(QString, actionPrefix, u">"_s)
     CONFIG_GLOBAL_PROPERTY(bool, enableDangerousActions, false)
     CONFIG_PROPERTY(int, dragThreshold, 50)
+    CONFIG_PROPERTY(bool, showPowerMenu, true)
     CONFIG_PROPERTY(int, hoverThickness, 5)
     CONFIG_PROPERTY(int, hoverWidth, 50)
     CONFIG_GLOBAL_PROPERTY(bool, vimKeybinds, false)

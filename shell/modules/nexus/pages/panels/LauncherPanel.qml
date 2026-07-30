@@ -45,8 +45,15 @@ PageBase {
             text: qsTr("Display")
         }
 
-        StepperRow {
+        ToggleRow {
             first: true
+            text: qsTr("Show power menu")
+            subtext: qsTr("Show the quick session controls (shutdown, sleep, logout) at the bottom")
+            checked: Config.launcher.showPowerMenu
+            onToggled: GlobalConfig.launcher.showPowerMenu = checked
+        }
+
+        StepperRow {
             label: qsTr("Max items shown")
             value: Config.launcher.maxShown
             from: 1
