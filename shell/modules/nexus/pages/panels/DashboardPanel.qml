@@ -314,13 +314,23 @@ PageBase {
 
         StepperRow {
             first: true
-            label: qsTr("Hover trigger width")
-            subtext: qsTr("Width of the screen edge strip that opens the dashboard")
+            label: qsTr("Hover trigger depth")
+            subtext: qsTr("Distance in from the screen edge that opens the dashboard")
             value: Config.dashboard.hoverThickness
             from: 1
             to: 100
             stepSize: 1
             onMoved: v => GlobalConfig.dashboard.hoverThickness = v
+        }
+
+        StepperRow {
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("How much of the top edge opens the dashboard, as a percentage of its width")
+            value: Config.dashboard.hoverWidth
+            from: 10
+            to: 100
+            stepSize: 5
+            onMoved: v => GlobalConfig.dashboard.hoverWidth = v
         }
 
         StepperRow {

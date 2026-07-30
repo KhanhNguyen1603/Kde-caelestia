@@ -91,14 +91,24 @@ PageBase {
         }
 
         StepperRow {
-            last: true
-            label: qsTr("Hover trigger width")
-            subtext: qsTr("Width of the screen edge strip that opens the OSD sliders")
+            label: qsTr("Hover trigger depth")
+            subtext: qsTr("Distance in from the screen edge that opens the OSD sliders")
             value: Config.osd.hoverThickness
             from: 1
             to: 100
             stepSize: 1
             onMoved: v => GlobalConfig.osd.hoverThickness = v
+        }
+
+        StepperRow {
+            last: true
+            label: qsTr("Hover trigger height")
+            subtext: qsTr("How much of the side edge opens the OSD sliders, as a percentage of their height")
+            value: Config.osd.hoverWidth
+            from: 10
+            to: 100
+            stepSize: 5
+            onMoved: v => GlobalConfig.osd.hoverWidth = v
         }
 
         SectionHeader {

@@ -65,13 +65,23 @@ PageBase {
         }
 
         StepperRow {
-            label: qsTr("Hover trigger width")
-            subtext: qsTr("Width of the screen edge strip that opens the launcher")
+            label: qsTr("Hover trigger depth")
+            subtext: qsTr("Distance in from the screen edge that opens the launcher")
             value: Config.launcher.hoverThickness
             from: 1
             to: 100
             stepSize: 1
             onMoved: v => GlobalConfig.launcher.hoverThickness = v
+        }
+
+        StepperRow {
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("How much of the bottom edge opens the launcher, as a percentage of its width")
+            value: Config.launcher.hoverWidth
+            from: 10
+            to: 100
+            stepSize: 5
+            onMoved: v => GlobalConfig.launcher.hoverWidth = v
         }
 
         StepperRow {

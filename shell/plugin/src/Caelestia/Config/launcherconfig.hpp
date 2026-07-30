@@ -41,6 +41,7 @@ class LauncherConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(bool, enableDangerousActions, false)
     CONFIG_PROPERTY(int, dragThreshold, 50)
     CONFIG_PROPERTY(int, hoverThickness, 5)
+    CONFIG_PROPERTY(int, hoverWidth, 50)
     CONFIG_GLOBAL_PROPERTY(bool, vimKeybinds, false)
     CONFIG_GLOBAL_PROPERTY(bool, confirmClearClipboard, true)
     CONFIG_GLOBAL_PROPERTY(QStringList, favouriteApps, QStringList({ u"firefox"_s, u"org.kde.dolphin"_s }))
