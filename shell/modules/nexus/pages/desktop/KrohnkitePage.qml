@@ -80,6 +80,7 @@ PageBase {
             onToggled: {
                 GlobalConfig.general.krohnkiteEnabled = checked;
                 GlobalConfig.save();
+                showLogout = true;
                 Quickshell.execDetached(["bash", "-c", `
                     if [[ "${checked ? 'true' : 'false'}" == "true" ]]; then
                         qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript "krohnkite" 2>/dev/null || true

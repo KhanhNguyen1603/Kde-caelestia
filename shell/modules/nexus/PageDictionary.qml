@@ -21,9 +21,9 @@ QtObject {
             ]
         },
         {
-            label: qsTr("Desktop"),
+            label: qsTr("Desktop & Tiling"),
             icon: "desktop_windows",
-            description: qsTr("Enable KDE Desktop, addons, right click menu"),
+            description: qsTr("KDE Desktop, addons, right click menu"),
             category: "personalization",
             settings: [
                 { label: qsTr("KDE Desktop Integration"), keywords: ["plasma", "icons", "desktop"] },

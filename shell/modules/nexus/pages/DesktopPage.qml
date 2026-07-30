@@ -10,7 +10,7 @@ import qs.modules.nexus.common
 PageBase {
     id: root
 
-    title: qsTr("Desktop")
+    title: qsTr("Desktop & Tiling")
 
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
