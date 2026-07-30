@@ -193,6 +193,21 @@ QtObject {
                 { label: qsTr("Device Info"), keywords: ["hardware", "specs", "cpu", "ram"] },
                 { label: qsTr("OS Version"), keywords: ["caelestia", "quickshell", "release"] }
             ]
+        },
+
+        // AI
+        // Last, to stay aligned with PageCompRegistry.pageComps — this list is
+        // indexed by position, so entries cannot be reordered independently.
+        {
+            label: qsTr("AI Assistant"),
+            icon: "smart_toy",
+            description: qsTr("Claude Code, accounts, providers"),
+            category: "controls",
+            settings: [
+                { label: qsTr("Claude Code"), keywords: ["claude", "cli", "subscription", "login"] },
+                { label: qsTr("Accounts"), keywords: ["claude", "account", "login", "switch"] },
+                { label: qsTr("Providers"), keywords: ["ollama", "openai", "chatgpt", "gemini", "openrouter", "api key"] }
+            ]
         }
     ]
 }
