@@ -50,7 +50,12 @@ Item {
                 enabled: Config.dashboard.showTerminal
             }
         ];
-        return allTabs.filter(tab => tab.enabled);
+        const filtered = allTabs.filter(tab => tab.enabled);
+        // Clamp currentTab to valid range when tabs are removed (e.g. disabling a tab in settings)
+        if (filtered.length > 0 && dashState.currentTab >= filtered.length) {
+            dashState.currentTab = filtered.length - 1;
+        }
+        return filtered;
     }
 
     readonly property real nonAnimWidth: view.implicitWidth + viewWrapper.anchors.margins * 2
