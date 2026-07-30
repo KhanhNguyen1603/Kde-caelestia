@@ -45,9 +45,7 @@ bash ./uninstall.sh
 
 ## Screenshots
 
-<video width="400" controls>
-  <source src="assets/caelestia-demo-screenshot.mp4" type="video/mp4">
-</video>
+https://github.com/user-attachments/assets/4c3e20c9-5050-4cc8-8e9c-32fd0594ac8b
 
 | Shell | Theming |
 |:---:|:---:|
@@ -84,23 +82,23 @@ bash ./uninstall.sh
 <details>
 <summary><b>Wallpaper & colors</b></summary>
 
-Use the built-in wallpaper manager (`Super + Space`, then `> Wallpaper`). Dynamic color schemes update automatically with your wallpaper. Do **not** use the default KDE wallpaper manager.
+Use the built-in wallpaper manager (`Super`, then `>Wallpaper`). Dynamic color schemes update automatically with your wallpaper. Do **not** use the default KDE wallpaper manager.
 
-To browse all settings, open `Super + Space`, then `> Settings` to launch the Nexus settings panel - navigate to **Appearance** for wallpaper, colors, and themes.
+To browse all settings, `Super`, then `>Settings` to launch the Nexus settings panel - navigate to **Appearance** for wallpaper, colors, and themes.
 
 </details>
 
 <details>
 <summary><b>Keyboard shortcuts</b></summary>
 
-Use the built-in keyboard shortcut manager (`Super + Space`, then `> Keybinds`).
+Use the built-in keyboard shortcut manager (`Super`, then `>Settings` to launch the Nexus settings panel - navigate to **Shortcuts**).
 
 </details>
 
 <details>
 <summary><b>Greeter animations</b></summary>
 
-Replace `morning.gif`, `afternoon.gif`, `evening.gif`, and `night.gif` in `shell/assets/`, then re-run `setup.sh`.
+Replace `morning.gif`, `afternoon.gif`, `evening.gif`, and `night.gif` in `shell/assets/`, then run `bash scripts/08-build-shell.sh`.
 
 </details>
 

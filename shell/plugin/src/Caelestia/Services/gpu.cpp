@@ -8,6 +8,7 @@
 #include <qdir.h>
 #include <qfile.h>
 #include <qregularexpression.h>
+#include <QTimer>
 
 namespace caelestia::services {
 
@@ -32,12 +33,17 @@ Gpu::Gpu(QObject* parent)
         setUserType(parseType(svc->gpuType()));
     });
 
-    // Detection must run before any ServiceRef appears: callers may gate the ref on
-    // `type !== Gpu.None`, which would otherwise deadlock the detection.
-    if (m_userType == Auto) {
-        detectTypeOnce();
-    }
-    detectNameOnce();
+    // Defer the initial GPU detection by 5 seconds to prevent waking up a runtime-suspended
+    // discrete GPU (e.g., Nvidia) during Qt Wayland's initial screen enumeration.
+    // If the dGPU wakes up while Qt is picking the primary screen for its animation
+    // loop, Qt may lock the refresh rate to the dGPU's monitor rather than the iGPU's,
+    // causing an animation refresh-rate mismatch on multi-monitor setups (Issue #169, #314).
+    QTimer::singleShot(5000, this, [this] {
+        if (m_userType == Auto) {
+            detectTypeOnce();
+        }
+        detectNameOnce();
+    });
 }
 
 Gpu::Type Gpu::type() const {
