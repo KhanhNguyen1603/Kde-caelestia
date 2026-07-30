@@ -22,7 +22,7 @@ PageBase {
         IconTextButton {
             text: qsTr("Restart Shell")
             icon: "restart_alt"
-            type: TextButton.Primary
+            type: TextButton.Filled
             onClicked: restartProcess.running = true
 
             Process {
@@ -63,6 +63,17 @@ PageBase {
                 subtext: qsTr("Everything appears as its own floating widget (Very Experimental)")
                 checked: GlobalConfig.appearance.islands
                 onToggled: GlobalConfig.appearance.islands = checked
+            }
+
+            StepperRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                label: qsTr("Border thickness")
+                subtext: qsTr("Thickness of the shell border in pixels. Set to 0 for a borderless look")
+                value: GlobalConfig.border.thickness
+                from: 0
+                to: 50
+                stepSize: 1
+                onMoved: v => GlobalConfig.border.thickness = v
             }
 
             ToggleRow {
@@ -146,7 +157,7 @@ PageBase {
                 `]
             }
 
-            property bool isBbdxEnabled: bbdxCheck.stdout.trim() === "true"
+            property bool isBbdxEnabled: (bbdxCheck.stdout || "").trim() === "true"
 
             ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing

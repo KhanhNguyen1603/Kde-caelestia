@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <deque>
 
 namespace Runner {
     struct Step {
@@ -12,7 +11,7 @@ namespace Runner {
 
     extern std::vector<Step> steps;
 
-    std::string show_error_dialog(const std::string& step_name, int term_w, int term_h);
-    void draw_progress_ui(int current_step, const std::deque<std::string>& log_lines, const std::string& current_line = "");
+    std::string show_error_dialog(const std::string& step_name, const std::string& script_path, int term_w, int term_h);
+    void draw_progress_ui(int current_step);
     void execute();
 }

@@ -358,7 +358,9 @@ ColumnLayout {
                         if (passwordContainer.activeFocus) {
                             return Colours.palette.m3primary;
                         }
-                        return root.shouldBeVisible ? Colours.palette.m3outline : "transparent";
+                        // Fade alpha to 0 instead of the literal "transparent" string,
+                        // which would animate RGB through black via Behavior on border.color.
+                        return root.shouldBeVisible ? Colours.palette.m3outline : Qt.alpha(Colours.palette.m3outline, 0);
                     }
 
                     Behavior on border.color {
@@ -386,7 +388,7 @@ ColumnLayout {
 
                     anchors.centerIn: parent
                     text: qsTr("Password")
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     font.pointSize: Tokens.font.mono.medium.pointSize * root.fontScale
                     opacity: passwordContainer.passwordBuffer ? 0 : 1
 

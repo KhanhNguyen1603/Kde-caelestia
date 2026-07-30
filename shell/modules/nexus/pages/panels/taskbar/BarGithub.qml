@@ -98,7 +98,7 @@ PageBase {
                     StyledText {
                         text: qsTr("Used to fetch your contribution graph (read:user)")
                         font: Tokens.font.label.small
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                         elide: Text.ElideRight
                     }
                 }

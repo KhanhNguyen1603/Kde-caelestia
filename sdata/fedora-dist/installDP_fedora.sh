@@ -217,7 +217,7 @@ for pkg in "${COPR_PKGS[@]}"; do
             rm -rf "$tmpdir"
             ;;
         starship)
-            if curl -sS https://starship.rs/install.sh | sh -s -- -y; then
+            if curl -sS https://starship.rs/install.sh | sh -s -- -y; then  # ci:allow-curl-pipe
                 log "starship installed successfully."
             else
                 err "Manual build for $pkg failed."

@@ -357,7 +357,7 @@ StyledWindow {
                             anchors.verticalCenterOffset: Centering.pixelAlign(parent.height, height)
                             text: nonAnimPlaceholder.text
                             animate: true
-                            color: Colours.palette.m3outline
+                            color: Colours.palette.m3onSurfaceVariant
                             font: nonAnimPlaceholder.font
                             opacity: root.buffer ? 0 : 1
 

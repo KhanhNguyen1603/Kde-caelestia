@@ -24,7 +24,7 @@ Item {
     // enough to finish instead of taking the request down with it when it closes.
     readonly property bool aiBusy: aiLoader.item ? (aiLoader.item.isTyping || aiLoader.item.inAgentLoop) : false
 
-    readonly property bool aiEnabled: GlobalConfig.ai.enableAiAssistant && (GlobalConfig.ai.enableOllama || GlobalConfig.ai.enableClaudeCode || GlobalConfig.ai.enableClaude || GlobalConfig.ai.enableOpenai || GlobalConfig.ai.enableGemini || GlobalConfig.ai.enableOpenrouter)
+    readonly property bool aiEnabled: GlobalConfig.ai.enableAiAssistant && (GlobalConfig.ai.enableOllama || GlobalConfig.ai.enableClaudeCode || GlobalConfig.ai.enableClaude || GlobalConfig.ai.enableOpenai || GlobalConfig.ai.enableGemini || GlobalConfig.ai.enableOpenrouter || GlobalConfig.ai.enableOpencode || GlobalConfig.ai.enableOpencodeGo)
 
     Connections {
         target: GlobalConfig.ai
@@ -35,6 +35,8 @@ Item {
         function onEnableOpenaiChanged() { checkAiTab(); }
         function onEnableGeminiChanged() { checkAiTab(); }
         function onEnableOpenrouterChanged() { checkAiTab(); }
+        function onEnableOpencodeChanged() { checkAiTab(); }
+        function onEnableOpencodeGoChanged() { checkAiTab(); }
         function onShowNewsChanged() { checkAiTab(); }
     }
 

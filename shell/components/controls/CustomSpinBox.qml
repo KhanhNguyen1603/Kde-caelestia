@@ -13,7 +13,6 @@ RowLayout {
     property real max: Infinity
     property real min: -Infinity
     property real step: 1
-    property alias repeatRate: timer.interval
 
     property bool isEditing: false
     property string displayText: root.value.toString()
@@ -21,6 +20,13 @@ RowLayout {
     signal valueModified(value: real)
 
     spacing: Tokens.spacing.small
+
+    implicitWidth: 156
+
+    function _round(v) {
+        const decimals = root.step < 1 ? Math.max(1, Math.ceil(-Math.log10(root.step))) : 0;
+        return Math.round(v * Math.pow(10, decimals)) / Math.pow(10, decimals);
+    }
 
     onValueChanged: {
         if (!root.isEditing) {
@@ -30,6 +36,9 @@ RowLayout {
 
     StyledTextField {
         id: textField
+
+        Layout.preferredWidth: 62
+        horizontalAlignment: TextInput.AlignHCenter
 
         inputMethodHints: Qt.ImhFormattedNumbersOnly
         text: root.isEditing ? text : root.displayText
@@ -49,7 +58,7 @@ RowLayout {
         onAccepted: {
             const numValue = parseFloat(text);
             if (!isNaN(numValue)) {
-                const clampedValue = Math.max(root.min, Math.min(root.max, numValue));
+                const clampedValue = root._round(Math.max(root.min, Math.min(root.max, numValue)));
                 root.value = clampedValue;
                 root.displayText = clampedValue.toString();
                 root.valueModified(clampedValue);
@@ -62,7 +71,7 @@ RowLayout {
             if (text !== root.displayText) {
                 const numValue = parseFloat(text);
                 if (!isNaN(numValue)) {
-                    const clampedValue = Math.max(root.min, Math.min(root.max, numValue));
+                    const clampedValue = root._round(Math.max(root.min, Math.min(root.max, numValue)));
                     root.value = clampedValue;
                     root.displayText = clampedValue.toString();
                     root.valueModified(clampedValue);
@@ -78,93 +87,32 @@ RowLayout {
         rightPadding: Tokens.padding.medium
 
         background: StyledRect {
-            implicitWidth: 100
             radius: Tokens.rounding.medium
             color: Colours.tPalette.m3surfaceContainerHigh
         }
     }
 
-    StyledRect {
-        radius: Tokens.rounding.medium
-        color: Colours.palette.m3primary
+    StyledSlider {
+        id: slider
 
-        implicitWidth: implicitHeight
-        implicitHeight: upIcon.implicitHeight + Tokens.padding.small
+        Layout.fillWidth: true
 
-        StateLayer {
-            id: upState
+        from: isFinite(root.min) ? root.min : -Number.MAX_SAFE_INTEGER
+        to: isFinite(root.max) ? root.max : Number.MAX_SAFE_INTEGER
+        stepSize: root.step
+        value: root.value
 
-            color: Colours.palette.m3onPrimary
-
-            onPressAndHold: timer.start()
-            onReleased: timer.stop()
-
-            onClicked: {
-                let newValue = Math.min(root.max, root.value + root.step);
-                // Round to avoid floating point precision errors
-                const decimals = root.step < 1 ? Math.max(1, Math.ceil(-Math.log10(root.step))) : 0;
-                newValue = Math.round(newValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
-                root.value = newValue;
-                root.displayText = newValue.toString();
-                root.valueModified(newValue);
+        // onInteraction fires with a 0-1 visual position from StyledSlider's
+        // custom MouseArea, NOT the Slider's value property (which stays
+        // bound to root.value and never moves).
+        onInteraction: v => {
+            const raw = root.min + v * (root.max - root.min);
+            const rounded = root._round(raw);
+            if (root.value !== rounded) {
+                root.value = rounded;
+                root.displayText = rounded.toString();
+                root.valueModified(rounded);
             }
-        }
-
-        MaterialIcon {
-            id: upIcon
-
-            anchors.centerIn: parent
-            text: "keyboard_arrow_up"
-            color: Colours.palette.m3onPrimary
-        }
-    }
-
-    StyledRect {
-        radius: Tokens.rounding.medium
-        color: Colours.palette.m3primary
-
-        implicitWidth: implicitHeight
-        implicitHeight: downIcon.implicitHeight + Tokens.padding.small
-
-        StateLayer {
-            id: downState
-
-            onClicked: {
-                let newValue = Math.max(root.min, root.value - root.step);
-                // Round to avoid floating point precision errors
-                const decimals = root.step < 1 ? Math.max(1, Math.ceil(-Math.log10(root.step))) : 0;
-                newValue = Math.round(newValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
-                root.value = newValue;
-                root.displayText = newValue.toString();
-                root.valueModified(newValue);
-            }
-
-            color: Colours.palette.m3onPrimary
-
-            onPressAndHold: timer.start()
-            onReleased: timer.stop()
-        }
-
-        MaterialIcon {
-            id: downIcon
-
-            anchors.centerIn: parent
-            text: "keyboard_arrow_down"
-            color: Colours.palette.m3onPrimary
-        }
-    }
-
-    Timer {
-        id: timer
-
-        interval: 100
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: {
-            if (upState.pressed)
-                upState.clicked();
-            else if (downState.pressed)
-                downState.clicked();
         }
     }
 }

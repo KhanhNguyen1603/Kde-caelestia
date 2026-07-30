@@ -54,7 +54,7 @@ Item {
 
                 text: root.modelData?.desc ?? ""
                 font: Tokens.font.body.small
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
 
                 elide: Text.ElideRight
                 width: root.width - icon.width - Tokens.rounding.extraLargeIncreased

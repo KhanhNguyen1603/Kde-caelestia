@@ -128,7 +128,7 @@ PageBase {
                     StyledText {
                         Layout.fillWidth: true
                         text: Audio.streams.length === 0 ? qsTr("No apps playing audio") : Audio.streams.length === 1 ? qsTr("1 app playing audio") : qsTr("%1 apps playing audio").arg(Audio.streams.length)
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                         font: Tokens.font.label.small
                         elide: Text.ElideRight
                         animate: true
@@ -242,7 +242,7 @@ PageBase {
             Layout.leftMargin: Tokens.padding.small
             Layout.bottomMargin: Tokens.spacing.medium
             text: qsTr("Mute notification sounds for specific apps")
-            color: Colours.palette.m3outline
+            color: Colours.palette.m3onSurfaceVariant
             font: Tokens.font.body.small
             wrapMode: Text.WordWrap
         }

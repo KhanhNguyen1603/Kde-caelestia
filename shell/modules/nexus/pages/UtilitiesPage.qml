@@ -84,11 +84,31 @@ PageBase {
         }
 
         ToggleRow {
-            last: true
             text: qsTr("Brightness slider")
             subtext: qsTr("Show the brightness OSD slider")
             checked: Config.osd.enableBrightness
             onToggled: GlobalConfig.osd.enableBrightness = checked
+        }
+
+        StepperRow {
+            label: qsTr("Hover trigger depth")
+            subtext: qsTr("Distance in from the screen edge that opens the OSD sliders")
+            value: Config.osd.hoverThickness
+            from: 1
+            to: 100
+            stepSize: 1
+            onMoved: v => GlobalConfig.osd.hoverThickness = v
+        }
+
+        StepperRow {
+            last: true
+            label: qsTr("Hover trigger height")
+            subtext: qsTr("How much of the side edge opens the OSD sliders, as a percentage of their height")
+            value: Config.osd.hoverWidth
+            from: 10
+            to: 100
+            stepSize: 5
+            onMoved: v => GlobalConfig.osd.hoverWidth = v
         }
 
         SectionHeader {

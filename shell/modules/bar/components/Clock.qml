@@ -134,7 +134,7 @@ StyledRect {
             Layout.fillWidth: true
             visible: Config.bar.clock.showDate
             implicitHeight: 1
-            color: Colours.palette.m3outlineVariant
+            color: Colours.palette.m3onSurfaceVariant
         }
 
         StyledText {

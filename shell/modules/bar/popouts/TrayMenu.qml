@@ -237,7 +237,7 @@ StackView {
                                         anchors.leftMargin: icon.active ? Tokens.spacing.medium * menu.scaleOffset : 0
 
                                         text: labelMetrics.elidedText
-                                        color: item.modelData.enabled ? Colours.palette.m3onSurface : Colours.palette.m3outline
+                                        color: item.modelData.enabled ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
                                         font.pointSize: Tokens.font.body.medium.pointSize * menu.fontScale
                                     }
 
@@ -263,7 +263,7 @@ StackView {
 
                                         sourceComponent: MaterialIcon {
                                             text: "chevron_right"
-                                            color: item.modelData.enabled ? Colours.palette.m3onSurface : Colours.palette.m3outline
+                                            color: item.modelData.enabled ? Colours.palette.m3onSurface : Colours.palette.m3onSurfaceVariant
                                             fontStyle.pointSize: Tokens.font.icon.medium.pointSize * menu.fontScale
                                         }
                                     }

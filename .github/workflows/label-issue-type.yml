@@ -1,0 +1,28 @@
+name: Label issue type
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply label based on issue body
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ toJson(github.event.issue.body) }}
+        run: |
+          set -euo pipefail
+
+          BODY=$(printf '%s' "$ISSUE_BODY" | sed -E 's/^"(.*)"$/\1/' | sed 's/\\"/"/g' | sed 's/\\n/\n/g')
+
+          if printf '%s' "$BODY" | grep -qi "Bug - something is broken"; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "bug"
+          elif printf '%s' "$BODY" | grep -qi "Help wanted - I need assistance"; then
+            gh issue edit "$ISSUE_NUMBER" --add-label "help wanted"
+          fi

@@ -44,6 +44,30 @@ PageBase {
         StepperRow {
             Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
             Layout.fillWidth: true
+            label: qsTr("Hover trigger depth")
+            subtext: qsTr("Distance in from the screen edge that opens the quick toggles")
+            value: Config.utilities.hoverThickness
+            from: 1
+            to: 100
+            stepSize: 1
+            onMoved: v => GlobalConfig.utilities.hoverThickness = v
+        }
+
+        StepperRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("How much of that edge opens the quick toggles, as a percentage of their width")
+            value: Config.utilities.hoverWidth
+            from: 10
+            to: 100
+            stepSize: 5
+            onMoved: v => GlobalConfig.utilities.hoverWidth = v
+        }
+
+        StepperRow {
+            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+            Layout.fillWidth: true
             last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the quick toggle opens")

@@ -276,12 +276,23 @@ Item {
         property real idealX: (parent.width - width) / 2
         property real minX: leftLayout.x + leftLayout.width + Tokens.spacing.medium
         property real maxX: rightLayout.x - width - Tokens.spacing.medium
-        x: isHorizontal ? Math.max(minX, Math.min(idealX, maxX)) : undefined
 
         property real idealY: (parent.height - height) / 2
         property real minY: leftLayout.y + leftLayout.height + Tokens.spacing.medium
         property real maxY: rightLayout.y - height - Tokens.spacing.medium
-        y: !isHorizontal ? Math.max(minY, Math.min(idealY, maxY)) : undefined
+
+        // Plain ternaries assigning `undefined` to x/y (a real-typed property)
+        // trigger "Unable to assign [undefined] to y/x" warnings even though
+        // the other branch is unreachable at the same time. Bindings with a
+        // `when` guard simply don't apply instead of assigning undefined.
+        Binding on x {
+            when: isHorizontal
+            value: Math.max(middleLayout.minX, Math.min(middleLayout.idealX, middleLayout.maxX))
+        }
+        Binding on y {
+            when: !isHorizontal
+            value: Math.max(middleLayout.minY, Math.min(middleLayout.idealY, middleLayout.maxY))
+        }
 
         columns: isHorizontal ? -1 : 1
         rows: isHorizontal ? 1 : -1
@@ -445,6 +456,13 @@ Item {
                     sourceComponent: GithubActivity {
                         popouts: root.popouts
                     }
+                }
+            }
+            DelegateChoice {
+                roleValue: "showDesktop"
+                delegate: WrappedLoader {
+                    visible: !root.fullscreen
+                    sourceComponent: ShowDesktop {}
                 }
             }
             DelegateChoice {

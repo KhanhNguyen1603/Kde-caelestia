@@ -11,10 +11,55 @@
 #include <chrono>
 #include <unordered_map>
 #include <vector>
+#include <fcntl.h>
+#include <unistd.h>
 
 using namespace std;
 
 std::map<std::string, std::string> g_answers;
+
+namespace {
+
+// Writes password to a file with secure permissions (0600) atomically at
+// creation time — avoids the TOCTOU race of creating with default umask then
+// chmod'ing afterwards.
+bool write_password_file_secure(const string& path, const string& password) {
+    // Mode 0600 ensures only the owner can read, from the moment of creation.
+    // This avoids the TOCTOU window of creating with default umask then chmod.
+    int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0600);
+    if (fd == -1) {
+        return false;
+    }
+    string data = password + "\n";
+    ssize_t written = write(fd, data.c_str(), data.size());
+    close(fd);
+    return written == static_cast<ssize_t>(data.size());
+}
+
+// Sets up the sudo askpass environment after a successful password
+// verification. Creates the password file, askpass helper, sudo wrapper,
+// screen inhibitor, and exports SUDO_PASS.
+void setup_sudo_environment(const string& pw) {
+    system("mkdir -p /tmp/caelestia_bin");
+
+    // Write password with secure permissions from the start (no TOCTOU window)
+    write_password_file_secure("/tmp/caelestia_pass.txt", pw);
+
+    // Askpass script
+    system("echo '#!/bin/bash\ncat /tmp/caelestia_pass.txt' > /tmp/caelestia_askpass.sh && chmod 700 /tmp/caelestia_askpass.sh");
+
+    // Sudo wrapper to force -A
+    system("echo '#!/bin/bash\nexport SUDO_ASKPASS=/tmp/caelestia_askpass.sh\nexec /usr/bin/sudo -A \"$@\"' > /tmp/caelestia_bin/sudo && chmod 700 /tmp/caelestia_bin/sudo");
+
+    // Also export SUDO_PASS for some scripts (like 09-system-tweaks.sh) that might rely on it
+    setenv("SUDO_PASS", pw.c_str(), 1);
+
+    // Start background keep-awake for display (sleep inhibitor)
+    system("systemd-inhibit --what=idle:sleep --who=\"Caelestia Installer\" --why=\"Installation in progress\" bash -c 'while :; do sleep 600; done' >/dev/null 2>&1 & echo $! > /tmp/caelestia_inhibit.pid");
+    system("qdbus6 org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.Inhibit \"Caelestia Installer\" \"Installation in progress\" > /tmp/caelestia_kde_inhibit.cookie 2>/dev/null");
+}
+
+} // anonymous namespace
 
 namespace UI {
     bool loading_text(int x, int y, const string& text, const string& color_name) {
@@ -28,6 +73,11 @@ namespace UI {
     }
 
     void splash_screen() {
+        // Drain any buffered stdin before animating — tmux / terminal setup
+        // often leaves escape sequences in the input buffer that would otherwise
+        // trigger the skip-early-return below and make the splash vanish instantly.
+        for (int drain = 0; drain < 10 && !Input::get().empty(); ++drain) { }
+
         vector<string> art;
         if (!g_theme.is_null() && g_theme.contains("splash_screen") && g_theme["splash_screen"].contains("art")) {
             for (auto& line : g_theme["splash_screen"]["art"]) {
@@ -168,30 +218,7 @@ while (!g_quit) {
                     fflush(pipe);
                     int status = pclose(pipe);
                     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-                                // Create askpass wrapper instead of relying on /etc/sudoers.d
-                                system("mkdir -p /tmp/caelestia_bin");
-                                
-                                // Write password securely using C++ streams
-                                {
-                                    std::ofstream pass_file("/tmp/caelestia_pass.txt");
-                                    if (pass_file.is_open()) {
-                                        pass_file << pw << "\n";
-                                        pass_file.close();
-                                    }
-                                }
-                                system("chmod 600 /tmp/caelestia_pass.txt");
-                                
-                                // Askpass script
-                                system("echo '#!/bin/bash\ncat /tmp/caelestia_pass.txt' > /tmp/caelestia_askpass.sh && chmod 700 /tmp/caelestia_askpass.sh");
-                                
-                                // Sudo wrapper to force -A
-                                system("echo '#!/bin/bash\nexport SUDO_ASKPASS=/tmp/caelestia_askpass.sh\nexec /usr/bin/sudo -A \"$@\"' > /tmp/caelestia_bin/sudo && chmod 700 /tmp/caelestia_bin/sudo");
-                                
-                                // Also export SUDO_PASS for some scripts (like 09-system-tweaks.sh) that might rely on it
-                                setenv("SUDO_PASS", pw.c_str(), 1);
-                        // Start background keep-awake for display (sleep inhibitor)
-                        system("systemd-inhibit --what=idle:sleep --who=\"Caelestia Installer\" --why=\"Installation in progress\" bash -c 'while :; do sleep 600; done' >/dev/null 2>&1 & echo $! > /tmp/caelestia_inhibit.pid");
-                        system("qdbus6 org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.Inhibit \"Caelestia Installer\" \"Installation in progress\" > /tmp/caelestia_kde_inhibit.cookie 2>/dev/null");
+                        setup_sudo_environment(pw);
                         return true;
                     } else {
                         attempts++;
@@ -238,30 +265,7 @@ while (!g_quit) {
                             fflush(pipe);
                             int status = pclose(pipe);
                             if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-                                // Create askpass wrapper instead of relying on /etc/sudoers.d
-                                system("mkdir -p /tmp/caelestia_bin");
-                                
-                                // Write password securely using C++ streams
-                                {
-                                    std::ofstream pass_file("/tmp/caelestia_pass.txt");
-                                    if (pass_file.is_open()) {
-                                        pass_file << pw << "\n";
-                                        pass_file.close();
-                                    }
-                                }
-                                system("chmod 600 /tmp/caelestia_pass.txt");
-                                
-                                // Askpass script
-                                system("echo '#!/bin/bash\ncat /tmp/caelestia_pass.txt' > /tmp/caelestia_askpass.sh && chmod 700 /tmp/caelestia_askpass.sh");
-                                
-                                // Sudo wrapper to force -A
-                                system("echo '#!/bin/bash\nexport SUDO_ASKPASS=/tmp/caelestia_askpass.sh\nexec /usr/bin/sudo -A \"$@\"' > /tmp/caelestia_bin/sudo && chmod 700 /tmp/caelestia_bin/sudo");
-                                
-                                // Also export SUDO_PASS for some scripts
-                                setenv("SUDO_PASS", pw.c_str(), 1);
-                                
-                                system("systemd-inhibit --what=idle:sleep --who=\"Caelestia Installer\" --why=\"Installation in progress\" bash -c 'while :; do sleep 600; done' >/dev/null 2>&1 & echo $! > /tmp/caelestia_inhibit.pid");
-                                system("qdbus6 org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.Inhibit \"Caelestia Installer\" \"Installation in progress\" > /tmp/caelestia_kde_inhibit.cookie 2>/dev/null");
+                                setup_sudo_environment(pw);
                                 return true;
                             } else {
                                 attempts++;

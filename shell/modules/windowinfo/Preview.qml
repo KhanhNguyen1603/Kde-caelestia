@@ -43,21 +43,21 @@ Item {
                 MaterialIcon {
                     Layout.alignment: Qt.AlignHCenter
                     text: "web_asset_off"
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     fontStyle: Tokens.font.icon.builders.extraLarge.scale(3).build()
                 }
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     text: qsTr("No active client")
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     font: Tokens.font.body.builders.large.size(28).weight(Font.Medium).build()
                 }
 
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     text: qsTr("Try switching to a window")
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     font: Tokens.font.body.large
                 }
             }

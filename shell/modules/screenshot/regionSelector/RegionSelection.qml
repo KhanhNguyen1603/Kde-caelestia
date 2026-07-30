@@ -64,7 +64,7 @@ PanelWindow {
     readonly property real falsePositivePreventionRatio: 0.5
 
     // Screen & interaction vars
-    readonly property real monitorScale: screen.devicePixelRatio || 1.0
+    readonly property real monitorScale: (frozenImage.sourceSize.width > 0 && root.screen.width > 0) ? (frozenImage.sourceSize.width / root.screen.width) : (screen.devicePixelRatio || 1.0)
     readonly property real monitorOffsetX: screen.x || 0
     readonly property real monitorOffsetY: screen.y || 0
     property string activeWorkspaceId: ""
@@ -312,6 +312,7 @@ PanelWindow {
     }
 
     Image { // For freezing
+        id: frozenImage
         anchors.fill: parent
         source: root.frozenImageSource
         cache: false
@@ -406,7 +407,7 @@ PanelWindow {
         // The thing to the bottom-right with an icon
         CursorGuide {
             z: 9999
-            visible: root.phase === RegionSelection.Phase.Select
+            active: root.phase === RegionSelection.Phase.Select && root.visible
             x: mouseArea.mouseX
             y: mouseArea.mouseY
             action: root.action
@@ -437,7 +438,10 @@ PanelWindow {
 
                 opacity: root.draggedAway ? 0 : root.targetRegionOpacity
                 borderColor: root.windowBorderColor
-                fillColor: targeted ? root.windowFillColor : "transparent"
+                // Fade alpha to 0 instead of the literal "transparent" string,
+                // which would animate RGB through black via TargetRegion's
+                // Behavior on color.
+                fillColor: targeted ? root.windowFillColor : Qt.alpha(root.windowFillColor, 0)
                 text: `${modelData.class}`
                 radius: 12
             }
@@ -466,7 +470,7 @@ PanelWindow {
 
                 opacity: root.draggedAway ? 0 : root.targetRegionOpacity
                 borderColor: root.windowBorderColor
-                fillColor: targeted ? root.windowFillColor : "transparent"
+                fillColor: targeted ? root.windowFillColor : Qt.alpha(root.windowFillColor, 0)
                 text: `${modelData.namespace}`
                 radius: 12
             }
@@ -495,7 +499,7 @@ PanelWindow {
 
                 opacity: root.draggedAway ? 0 : root.contentRegionOpacity
                 borderColor: root.imageBorderColor
-                fillColor: targeted ? root.imageFillColor : "transparent"
+                fillColor: targeted ? root.imageFillColor : Qt.alpha(root.imageFillColor, 0)
                 text: qsTr("Content region")
             }
         }

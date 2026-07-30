@@ -17,6 +17,12 @@ Region {
     readonly property real borderThickness: Config.border.thickness
     readonly property real clampedThickness: Config.border.clampedThickness
 
+    // A closed panel's input region must be at least as deep as its hover trigger,
+    // otherwise the pointer never reaches the area Interactions tests against.
+    function edgeExtent(hoverThickness: real): real {
+        return Math.max(borderThickness, hoverThickness);
+    }
+
     readonly property real barLeftWidth: Config.bar.position === "left" ? bar.clampedThickness : clampedThickness
     readonly property real barRightWidth: Config.bar.position === "right" ? bar.clampedThickness : clampedThickness
     readonly property real barTopHeight: Config.bar.position === "top" ? bar.clampedThickness : clampedThickness
@@ -31,13 +37,13 @@ Region {
     R {
         panel: root.panels.dashboard
         y: 0
-        height: panel.height * (1 - root.panels.dashboard.offsetScale) + root.borderThickness
+        height: panel.height * (1 - root.panels.dashboard.offsetScale) + root.edgeExtent(root.Config.dashboard.hoverThickness)
     }
 
     R {
         panel: root.panels.launcher
         y: root.win.height - height
-        height: panel.height * (1 - root.panels.launcher.offsetScale) + root.borderThickness
+        height: panel.height * (1 - root.panels.launcher.offsetScale) + root.edgeExtent(root.Config.launcher.hoverThickness)
     }
 
     R {
@@ -61,7 +67,7 @@ Region {
 
         panel: root.panels.osdWrapper
         x: root.Config.bar.position === "right" ? 0 : root.win.width - osdRegion.width
-        width: panel.width * (1 - root.panels.osd.offsetScale) + root.borderThickness + sessionRegion.width
+        width: panel.width * (1 - root.panels.osd.offsetScale) + root.edgeExtent(root.Config.osd.hoverThickness) + sessionRegion.width
     }
 
     R {
@@ -73,7 +79,7 @@ Region {
     R {
         panel: root.panels.utilities
         y: root.Config.bar.position === "bottom" ? 0 : root.win.height - height
-        height: panel.height * (1 - root.panels.utilities.offsetScale) + root.borderThickness
+        height: panel.height * (1 - root.panels.utilities.offsetScale) + root.edgeExtent(root.Config.utilities.hoverThickness)
     }
 
     R {

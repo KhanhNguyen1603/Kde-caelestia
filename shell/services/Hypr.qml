@@ -14,9 +14,33 @@ Singleton {
     id: root
 
     readonly property var toplevels: ToplevelManager.toplevels
-    readonly property var workspaces: ({ "1": { id: 1, name: "1", windows: 1 } })
+    // Workspaces mock: must support .values (used like a Map/iterable throughout the
+    // codebase).  Provide sane defaults so optional-chaining paths do not crash.
+    readonly property var workspaces: (() => {
+        const ws = {
+            "1": { id: 1, name: "1", windows: 0, lastIpcObject: null, monitor: 0,
+                   toplevels: { values: [] }, workspace: { id: 1 } }
+        };
+        ws["1"].lastIpcObject = ws["1"];
+        // Inject .values() and .values as both a function and a property for
+        // compatibility — the codebase uses both forms.
+        ws.values = Object.values(ws).filter(v => typeof v === "object" && v !== null && v.id !== undefined);
+        ws.values.find = function(pred) { return Array.prototype.find.call(this, pred); };
+        ws.values.filter = function(pred) { return Array.prototype.filter.call(this, pred); };
+        ws.values.map = function(pred) { return Array.prototype.map.call(this, pred); };
+        ws.values.some = function(pred) { return Array.prototype.some.call(this, pred); };
+        return ws;
+    })()
     property var monitorState: []
     property var _monitorCache: ({})
+
+    // Referenced by focusedWorkspace/activeWsId below as the single mock
+    // workspace id used throughout the KDE fallback bridge (there is no real
+    // Hyprland workspace concept under KWin). This property was previously
+    // never declared, so every read of root.mockActiveWs resolved to
+    // undefined - causing "Cannot call method 'toString' of undefined" and
+    // "Unable to assign [undefined] to ..." warnings wherever it was used.
+    readonly property int mockActiveWs: 1
     
     readonly property var monitors: {
         let _ = root.monitorState;
@@ -32,8 +56,10 @@ Singleton {
                         property real scale: 1.0
                         property real x: 0
                         property real y: 0
-                        property var activeWorkspace: ({ id: 1 })
-                        property var specialWorkspace: ({ name: "" })
+                        // activeWorkspace must include toplevels.values for
+                        // optional-chaining code paths (e.g. hasFullscreen checks)
+                        property var activeWorkspace: ({ id: 1, toplevels: { values: [] } })
+                        property var specialWorkspace: ({ name: "", toplevels: { values: [] } })
                         property var lastIpcObject: null
                         Component.onCompleted: lastIpcObject = this
                     }
@@ -44,7 +70,16 @@ Singleton {
                 root._monitorCache[s.name] = fallback;
             }
         }
-        return root._monitorCache;
+        // Inject .values so for-of loops and .some()/.find() on Hypr.monitors work.
+        // The codebase expects monitors to behave like a Map/iterable.
+        const cache = root._monitorCache;
+        const vals = Object.values(cache).filter(v => typeof v === "object" && v !== null);
+        cache.values = vals;
+        cache.values.find = function(pred) { return Array.prototype.find.call(vals, pred); };
+        cache.values.filter = function(pred) { return Array.prototype.filter.call(vals, pred); };
+        cache.values.some = function(pred) { return Array.prototype.some.call(vals, pred); };
+        cache.values.every = function(pred) { return Array.prototype.every.call(vals, pred); };
+        return cache;
     }
 
     // Native Wayland/DBus state bindings are handled by Caelestia C++ services
@@ -159,8 +194,8 @@ Singleton {
                     property real scale: 1.0
                     property real x: 0
                     property real y: 0
-                    property var activeWorkspace: ({ id: 1 })
-                    property var specialWorkspace: ({ name: "" })
+                    property var activeWorkspace: ({ id: 1, toplevels: { values: [] } })
+                    property var specialWorkspace: ({ name: "", toplevels: { values: [] } })
                     property var lastIpcObject: null
                     Component.onCompleted: lastIpcObject = this
                 }

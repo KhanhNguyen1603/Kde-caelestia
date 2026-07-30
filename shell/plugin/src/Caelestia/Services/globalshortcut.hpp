@@ -6,6 +6,33 @@
 #include <QString>
 #include <QList>
 #include <QKeySequence>
+#include <QHash>
+#include <memory>
+#include <QAtomicInt>
+
+class GlobalShortcut;
+
+class GlobalShortcutDispatcher : public QObject {
+    Q_OBJECT
+public:
+    static GlobalShortcutDispatcher* instance();
+
+    // Returns the friendly label (e.g. "Spectacle - Launch Spectacle") for a
+    // stolen key sequence, or an empty string if the key is not in the index.
+    Q_INVOKABLE QString collisionForKey(const QString& portableKeyString) const;
+
+    // Rebuilds the dispatcher's collision index from all current in-memory
+    // stolen shortcuts. Called by GlobalShortcut::persistStolenShortcuts().
+    void rebuildCollisionIndex();
+
+    QHash<QString, QString> m_collisionIndex; // portable key → friendly label
+
+signals:
+    void shortcutRegistered(GlobalShortcut* sc);
+    void shortcutUnregistered(GlobalShortcut* sc);
+    void collisionIndexChanged();
+};
+
 
 class GlobalShortcut : public QObject
 {
@@ -27,6 +54,10 @@ public:
 
     QString description() const;
     void setDescription(const QString &description);
+    
+    QString getCollisionName() const;
+    QString getCollisionNameForKey(const QString& keyPart) const;
+    int stolenCount() const { return m_stolenShortcuts.size(); }
 
 signals:
     void nameChanged();
@@ -34,18 +65,34 @@ signals:
     void descriptionChanged();
     void activated();
 
+public:
+    static GlobalShortcut* findByName(const QString& name);
+    static QList<GlobalShortcut*> allShortcuts();
+    // Rebuilds the dispatcher's collision index by scanning all instances.
+    // Declared here so it can access the private m_stolenShortcuts member.
+    static void rebuildCollisionIndex();
+
 private:
     void updateShortcut();
+    void persistStolenShortcuts() const;
 
     QString m_name;
     QString m_key;
     QString m_description;
     QAction *m_action;
+    
+    int m_registerGeneration = 0;
+
+    static QHash<QString, GlobalShortcut*> s_registry;
 
     struct StolenShortcut {
         QString component;
         QString action;
-        QList<QKeySequence> keys;
+        QList<QKeySequence> keys;          // KDE app's original keys (for restoration)
+        QString componentFriendlyName;
+        QString actionFriendlyName;
+        QKeySequence triggerKey;           // which of our seqs caused this steal
     };
     QList<StolenShortcut> m_stolenShortcuts;
+    QList<QKeySequence> m_activeKeys;      // key sequences currently bound by this shortcut
 };

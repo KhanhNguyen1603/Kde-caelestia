@@ -12,16 +12,11 @@ info() { echo -e "${CYAN}[INFO]  $*${RST}"; }
 ok()   { echo -e "${GREEN}[OK]    $*${RST}"; }
 warn() { echo -e "${YELLOW}[WARN]  $*${RST}"; }
 err()  { echo -e "${RED}[ERR]   $*${RST}"; }
+die()  { echo -e "${RED}[ERR]   $*${RST}"; exit 1; }
 
 BUNDLE_DIR="${BUNDLE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SHELL_DIR="$BUNDLE_DIR/shell"
 
-
-# UPDATER ONLY BLOCK START
-
-# This is a temp fix, BREAKS REVERTING TO OLDER VERSIONS
-# ANYTHING EXTRA THAT NEEDS TO BE INSTALLED WHEN MAJOR CHANGES HAPPEN,
-# RUN THE REQUIRED UPDATE
 
 if [[ "${CAELESTIA_SETUP_RUNNING:-0}" == "0" ]]; then
     info "Running standalone update mode... syncing submodules first."
@@ -216,14 +211,17 @@ try:
 
         notif = notify("-p", "Recording started", "Recording...")"""
     launch_new = """        recording_path.unlink(missing_ok=True)
-        subprocess.run(["sh", "-c", "if ! systemctl --user is-active --quiet plasma-xdg-desktop-portal-kde; then systemctl --user restart plasma-xdg-desktop-portal-kde; systemctl --user restart xdg-desktop-portal; sleep 1; fi"])
+        subprocess.run(["sh", "-c", "if ! systemctl --user is-active --quiet plasma-xdg-desktop-portal-kde || ! systemctl --user is-active --quiet xdg-desktop-portal; then systemctl --user restart plasma-xdg-desktop-portal-kde; systemctl --user restart xdg-desktop-portal; sleep 1; fi"])
         proc = subprocess.Popen([RECORDER, *args, "-o", str(recording_path)], start_new_session=True)
         while proc.poll() is None and not recording_path.exists():
             time.sleep(0.1)
         if proc.poll() is not None:
             return
         notif = notify("-p", "Recording started", "Recording...")"""
-    code = code.replace(launch_orig, launch_new)
+    import re
+    # Match the block whether it is unpatched or already patched in any form
+    pattern = r"(?:\s*recording_path\.unlink\(missing_ok=True\)[\s\S]*?)?\s*proc = subprocess\.Popen\(\[RECORDER[\s\S]*?notif = notify\(\"-p\", \"Recording started\", \"Recording\.\.\.\"\)"
+    code = re.sub(pattern, "\n" + launch_new, code)
     
     code = code.replace("[\"app2unit\", \"-O\", new_path]", "[\"xdg-open\", str(new_path)]")
     
@@ -336,10 +334,11 @@ else
     warn "Failed to copy yet-another-monochrome-icon-set."
 fi
 
-# Save current commit for the update checker
+# Save current commit and branch for the update checker
 mkdir -p ~/.config/quickshell/caelestia
 if [ -d "$BUNDLE_DIR/.git" ]; then
     git -C "$BUNDLE_DIR" rev-parse HEAD > ~/.config/quickshell/caelestia/.current_commit 2>/dev/null || true
+    git -C "$BUNDLE_DIR" rev-parse --abbrev-ref HEAD > ~/.config/quickshell/caelestia/.update_branch 2>/dev/null || true
 fi
 
 ok "Caelestia Shell and KDE Bridges built and installed successfully to user directory."

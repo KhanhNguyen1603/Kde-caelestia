@@ -73,7 +73,7 @@ StyledSwitch {
 
                 visible: root.subtext
                 text: root.subtext
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.label.small
                 elide: Text.ElideRight
             }

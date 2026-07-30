@@ -441,7 +441,7 @@ Item {
                 StyledText {
                     text: root.selectedWallpaper?.resolution || ""
                     font: Tokens.font.body.small
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                 }
 
                 Item {
@@ -451,7 +451,7 @@ Item {
                 StyledText {
                     text: "%1 / %2".arg(root.selectedIndex + 1).arg(root.currentResults.length)
                     font: Tokens.font.body.small
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                 }
             }
         }

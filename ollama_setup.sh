@@ -21,7 +21,7 @@ section "Ollama AI Setup for Caelestia"
 
 # 1. Install Ollama
 section "Step 1/4 - Install Ollama"
-curl -fsSL https://ollama.com/install.sh | sh
+curl -fsSL https://ollama.com/install.sh | sh  # ci:allow-curl-pipe
 
 # 2. Enable and start the systemd service
 section "Step 2/4 - Enable and Start Ollama Daemon"

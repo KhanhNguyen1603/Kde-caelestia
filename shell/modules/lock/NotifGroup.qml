@@ -163,7 +163,7 @@ StyledRect {
                 StyledText {
                     animate: true
                     text: root.notifs[0]?.timeStr ?? ""
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     font: Tokens.font.body.small
                 }
 

@@ -9,6 +9,7 @@ import Caelestia.Config
 import qs.components
 import qs.services
 import qs.utils
+import Caelestia
 
 StyledRect {
     id: root
@@ -363,6 +364,18 @@ StyledRect {
                 enabled: isHorizontal
 
                 Anim {}
+            }
+        }
+
+        // Night Light icon
+        WrappedLoader {
+            name: "nightlight"
+            active: Config.bar.status.showNightLight && HyprSunset.active
+
+            sourceComponent: MaterialIcon {
+                animate: true
+                text: "bedtime"
+                color: root.colour
             }
         }
 

@@ -101,7 +101,7 @@ Item {
         fetchOllamaModels();
         fetchClaudeCodeModels();
         fetchClaudeModels();
-        const compat = ["openai", "gemini", "openrouter"];
+        const compat = root.openaiCompatProviders;
         for (var i = 0; i < compat.length; i++) {
             if (providerList.indexOf(compat[i]) !== -1)
                 fetchOpenaiCompatModels(compat[i]);
@@ -424,10 +424,17 @@ Item {
     }
 
     // Resolve the Anthropic API key: ANTHROPIC_API_KEY env var wins, config field is the fallback.
-    // OpenAI, Gemini and OpenRouter all expose the same /chat/completions and
-    // /models API, so they share one request/parse path and differ only in the
-    // three values below.
-    readonly property bool isOpenaiCompat: provider === "openai" || provider === "gemini" || provider === "openrouter"
+    // These providers all expose the same /models catalogue and take the same
+    // /chat/completions request, so they share one model list, key handling and
+    // request path, and differ only in base URL and key.
+    readonly property bool isOpenaiCompat: root.openaiCompatProviders.indexOf(provider) !== -1
+
+    // opencode is the exception: it is in the list above because it shares all of
+    // that, but only for part of its catalogue — the rest needs Anthropic Messages,
+    // and it authenticates with x-api-key. See opencodeWire() and setAuthHeader().
+    readonly property bool isOpencode: provider === "opencode" || provider === "opencode-go"
+
+    readonly property var openaiCompatProviders: ["openai", "gemini", "openrouter", "opencode", "opencode-go"]
 
     function openaiCompatBase(p) {
         const which = p || provider;
@@ -435,7 +442,61 @@ Item {
             return GlobalConfig.ai.geminiUrl || "https://generativelanguage.googleapis.com/v1beta/openai";
         if (which === "openrouter")
             return GlobalConfig.ai.openrouterUrl || "https://openrouter.ai/api/v1";
+        if (which === "opencode")
+            return GlobalConfig.ai.opencodeUrl || "https://opencode.ai/zen/v1";
+        if (which === "opencode-go")
+            return GlobalConfig.ai.opencodeGoUrl || "https://opencode.ai/zen/go/v1";
         return GlobalConfig.ai.openaiUrl || "https://api.openai.com/v1";
+    }
+
+    // Which wire format an opencode model needs. The gateway routes by model rather
+    // than by product, and the split differs between zen and go — minimax is
+    // OpenAI-compatible on zen but Anthropic-compatible on go — so this is keyed on
+    // both. Prefixes rather than full ids, so a new point release of an existing
+    // family keeps working; when opencode adds a family, this is what needs updating.
+    readonly property var opencodeAnthropicPrefixes: ({
+        "opencode": ["claude-", "qwen"],
+        "opencode-go": ["minimax-", "qwen"]
+    })
+
+    // zen serves GPT over /responses and Gemini over /models/[id]. Neither is a
+    // format the shell speaks, so those models are kept out of the picker instead
+    // of being offered and then failing on send.
+    readonly property var opencodeUnsupportedPrefixes: ({
+        "opencode": ["gpt-", "gemini-"],
+        "opencode-go": []
+    })
+
+    function opencodeWire(p, model) {
+        const prefixes = root.opencodeAnthropicPrefixes[p] || [];
+        for (var i = 0; i < prefixes.length; i++)
+            if ((model || "").indexOf(prefixes[i]) === 0)
+                return "anthropic";
+        return "openai";
+    }
+
+    function opencodeSupports(p, model) {
+        const prefixes = root.opencodeUnsupportedPrefixes[p] || [];
+        for (var i = 0; i < prefixes.length; i++)
+            if ((model || "").indexOf(prefixes[i]) === 0)
+                return false;
+        return true;
+    }
+
+    // True when the request for the active provider and model must be built and
+    // parsed as Anthropic Messages rather than OpenAI chat completions.
+    readonly property bool anthropicWire: isClaude || (isOpencode && opencodeWire(provider, activeModel()) === "anthropic")
+
+    // opencode's /messages endpoint ignores Authorization and answers "Missing API
+    // key"; x-api-key is read by both of its endpoints, so it is the one that works
+    // whichever wire the chosen model needs. The others take the bearer token.
+    function setAuthHeader(xhr, p) {
+        const which = p || provider;
+        const key = root.getApiKeyFor(which);
+        if (which === "opencode" || which === "opencode-go")
+            xhr.setRequestHeader("x-api-key", key);
+        else
+            xhr.setRequestHeader("Authorization", "Bearer " + key);
     }
 
     // The API key for a provider. The environment variable wins over the config
@@ -450,8 +511,15 @@ Item {
     // across once and then cleared.
     property var keyringKeys: ({})
 
+    // zen and go are one opencode account, so both read and write the same entry
+    // rather than making the user paste the key twice.
+    function keyringOwner(p) {
+        const which = p || provider;
+        return which === "opencode-go" ? "opencode" : which;
+    }
+
     function keyringAttr(p) {
-        return "caelestia-ai-" + (p || provider);
+        return "caelestia-ai-" + root.keyringOwner(p);
     }
 
     function loadKeyring(p) {
@@ -478,7 +546,7 @@ Item {
     }
 
     function storeKeyring(p, key) {
-        const which = p || provider;
+        const which = root.keyringOwner(p || provider);
         const m = root.keyringKeys;
         m[which] = key;
         root.keyringKeys = Object.assign({}, m);
@@ -520,6 +588,9 @@ Item {
         } else if (which === "openrouter") {
             envName = "OPENROUTER_API_KEY";
             configured = GlobalConfig.ai.openrouterApiKey;
+        } else if (which === "opencode" || which === "opencode-go") {
+            envName = "OPENCODE_API_KEY";
+            configured = GlobalConfig.ai.opencodeApiKey;
         }
         const envKey = Quickshell.env(envName);
         if (envKey && envKey.trim() !== "")
@@ -527,7 +598,7 @@ Item {
 
         // Keyring next. A value still sitting in the config is a leftover from
         // before keyring storage — hand it back this once, migrateKeys() moves it.
-        const stored = root.keyringKeys[which];
+        const stored = root.keyringKeys[root.keyringOwner(which)];
         if (stored && stored !== "")
             return stored;
         return (configured || "").trim();
@@ -538,7 +609,8 @@ Item {
         "claude": "anthropicApiKey",
         "openai": "openaiApiKey",
         "gemini": "geminiApiKey",
-        "openrouter": "openrouterApiKey"
+        "openrouter": "openrouterApiKey",
+        "opencode": "opencodeApiKey"
     })
 
     function loadAllKeys() {
@@ -563,12 +635,23 @@ Item {
             return GlobalConfig.ai.defaultClaudeCodeModel || "default";
         if (isClaude)
             return GlobalConfig.ai.defaultClaudeModel || root.claudeModelsList[0] || "";
-        if (isOpenaiCompat) {
-            const cfgKey = provider === "openai" ? "defaultOpenaiModel"
-                         : provider === "gemini" ? "defaultGeminiModel" : "defaultOpenrouterModel";
-            return GlobalConfig.ai[cfgKey] || root.openaiCompatModelList()[0] || "";
-        }
+        if (isOpenaiCompat)
+            return GlobalConfig.ai[root.defaultModelField(provider)] || root.openaiCompatModelList()[0] || "";
         return GlobalConfig.ai.defaultOllamaModel || root.ollamaModelsList[0] || "";
+    }
+
+    // The config field holding the saved model choice for an OpenAI-compatible provider.
+    function defaultModelField(p) {
+        const which = p || provider;
+        if (which === "gemini")
+            return "defaultGeminiModel";
+        if (which === "openrouter")
+            return "defaultOpenrouterModel";
+        if (which === "opencode")
+            return "defaultOpencodeModel";
+        if (which === "opencode-go")
+            return "defaultOpencodeGoModel";
+        return "defaultOpenaiModel";
     }
 
     // Providers exposed in the provider selector (respecting the enable toggles).
@@ -586,6 +669,10 @@ Item {
             l.push("gemini");
         if (GlobalConfig.ai.enableOpenrouter)
             l.push("openrouter");
+        if (GlobalConfig.ai.enableOpencode)
+            l.push("opencode");
+        if (GlobalConfig.ai.enableOpencodeGo)
+            l.push("opencode-go");
         if (l.length === 0)
             l.push("ollama");
         return l;
@@ -602,6 +689,10 @@ Item {
             return "Gemini";
         if (p === "openrouter")
             return "OpenRouter";
+        if (p === "opencode")
+            return "opencode Zen";
+        if (p === "opencode-go")
+            return "opencode Go";
         return "Ollama";
     }
 
@@ -1228,14 +1319,16 @@ Item {
         if (!force && root.modelsFetched[which])
             return;
         const key = root.getApiKeyFor(which);
-        // OpenRouter publishes its catalogue without auth; the other two need the key.
-        if (key === "" && which !== "openrouter")
+        // OpenRouter and opencode publish their catalogues without auth; the rest
+        // need the key.
+        const publicCatalogue = which === "openrouter" || which === "opencode" || which === "opencode-go";
+        if (key === "" && !publicCatalogue)
             return;
 
         var xhr = new XMLHttpRequest();
         xhr.open("GET", root.openaiCompatBase(which) + "/models", true);
         if (key !== "")
-            xhr.setRequestHeader("Authorization", "Bearer " + key);
+            root.setAuthHeader(xhr, which);
         xhr.onreadystatechange = () => {
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return;
@@ -1256,6 +1349,10 @@ Item {
                 }
                 // Only chat-capable models are useful here — drop embedding/audio/image ones.
                 list = list.filter(m => !/embed|whisper|tts|audio|image|vision-preview|moderation|rerank|dall-e/i.test(m));
+                // opencode lists models the shell has no wire format for; offering them
+                // would only produce a failed send once the user picked one.
+                if (which === "opencode" || which === "opencode-go")
+                    list = list.filter(m => root.opencodeSupports(which, m));
                 list.sort();
                 if (list.length === 0)
                     return;
@@ -1270,7 +1367,7 @@ Item {
                 root.modelsFetched = seen;
 
                 // Keep the saved default honest: if it isn't offered, fall back to the first.
-                const cfgKey = which === "openai" ? "defaultOpenaiModel" : (which === "gemini" ? "defaultGeminiModel" : "defaultOpenrouterModel");
+                const cfgKey = root.defaultModelField(which);
                 if (list.indexOf(GlobalConfig.ai[cfgKey]) === -1)
                     GlobalConfig.ai[cfgKey] = list[0];
             } catch (e) {
@@ -1506,19 +1603,33 @@ Item {
         if (root.isOpenaiCompat) {
             if (root.getApiKey() === "")
                 return;
-            xhr.open("POST", root.openaiCompatBase() + "/chat/completions", true);
+            // Same per-model wire split as sendPrompt — an opencode model on /messages
+            // needs the Anthropic shape here too.
+            const useAnthropic = root.anthropicWire;
+            xhr.open("POST", root.openaiCompatBase() + (useAnthropic ? "/messages" : "/chat/completions"), true);
             xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.setRequestHeader("Authorization", "Bearer " + root.getApiKey());
+            root.setAuthHeader(xhr);
+            if (useAnthropic)
+                xhr.setRequestHeader("anthropic-version", "2023-06-01");
             xhr.onreadystatechange = () => {
                 if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
                     try {
                         var oaiParsed = JSON.parse(xhr.responseText);
-                        if (oaiParsed.choices && oaiParsed.choices.length > 0 && oaiParsed.choices[0].message)
+                        if (useAnthropic) {
+                            if (oaiParsed.content && oaiParsed.content.length > 0 && oaiParsed.content[0].text)
+                                root.applyGeneratedTitle(chatId, oaiParsed.content[0].text);
+                        } else if (oaiParsed.choices && oaiParsed.choices.length > 0 && oaiParsed.choices[0].message) {
                             root.applyGeneratedTitle(chatId, oaiParsed.choices[0].message.content || "");
+                        }
                     } catch (e) {}
                 }
             };
-            xhr.send(JSON.stringify({
+            xhr.send(JSON.stringify(useAnthropic ? {
+                model: root.activeModel(),
+                max_tokens: 32,
+                system: titleSystem,
+                messages: [{ role: "user", content: "Message: " + safeMsg + "\nTitle:" }]
+            } : {
                 model: root.activeModel(),
                 messages: [
                     { role: "system", content: titleSystem },
@@ -1614,7 +1725,9 @@ Item {
                 "claude": "ANTHROPIC_API_KEY",
                 "openai": "OPENAI_API_KEY",
                 "gemini": "GEMINI_API_KEY",
-                "openrouter": "OPENROUTER_API_KEY"
+                "openrouter": "OPENROUTER_API_KEY",
+                "opencode": "OPENCODE_API_KEY",
+                "opencode-go": "OPENCODE_API_KEY"
             };
             addAiMessage("⚠️ No " + root.providerLabel(root.provider) + " API key configured. Set the "
                 + (envNames[root.provider] || "API") + " environment variable, or add a key in the AI settings.");
@@ -1651,6 +1764,10 @@ Item {
         root.currentRequest = xhr;
 
         var model = root.activeModel();
+        // Anthropic Messages vs OpenAI chat completions is a property of the model on
+        // opencode, not of the provider, so the endpoint, body and stream parsing all
+        // key off this rather than off isClaude.
+        const useAnthropic = root.anthropicWire;
         if (root.isClaude) {
             var claudeBase = GlobalConfig.ai.anthropicUrl || "https://api.anthropic.com";
             xhr.open("POST", claudeBase + "/v1/messages", true);
@@ -1660,9 +1777,11 @@ Item {
             // QML's XMLHttpRequest presents a browser-like origin; this header opts into direct access.
             xhr.setRequestHeader("anthropic-dangerous-direct-browser-access", "true");
         } else if (root.isOpenaiCompat) {
-            xhr.open("POST", root.openaiCompatBase() + "/chat/completions", true);
+            xhr.open("POST", root.openaiCompatBase() + (useAnthropic ? "/messages" : "/chat/completions"), true);
             xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.setRequestHeader("Authorization", "Bearer " + root.getApiKey());
+            root.setAuthHeader(xhr);
+            if (useAnthropic)
+                xhr.setRequestHeader("anthropic-version", "2023-06-01");
             if (root.provider === "openrouter") {
                 // OpenRouter attributes requests to an app via these; harmless elsewhere.
                 xhr.setRequestHeader("HTTP-Referer", "https://github.com/ladybug-me/caelestia-dots-kde");
@@ -1716,7 +1835,7 @@ Item {
                         var chunkContent = "";
                         var chunkReasoning = "";
 
-                        if (root.isClaude) {
+                        if (useAnthropic) {
                             // Anthropic streams Server-Sent Events; only "data:" lines carry JSON.
                             if (line.indexOf("event:") === 0) {
                                 processedTextLength += rawLine.length + 1;
@@ -2001,7 +2120,7 @@ Item {
         }
         
         var requestBody;
-        if (root.isClaude) {
+        if (useAnthropic) {
             // Anthropic Messages API: system prompt is a top-level field; messages must
             // carry non-empty content and cannot include the streaming placeholder.
             var claudeMessages = [];
@@ -2267,12 +2386,8 @@ Item {
                          GlobalConfig.ai.claudeCodeEffort = "default";
                      } else if (root.isClaude)
                          GlobalConfig.ai.defaultClaudeModel = item.modelData;
-                     else if (root.provider === "openai")
-                         GlobalConfig.ai.defaultOpenaiModel = item.modelData;
-                     else if (root.provider === "gemini")
-                         GlobalConfig.ai.defaultGeminiModel = item.modelData;
-                     else if (root.provider === "openrouter")
-                         GlobalConfig.ai.defaultOpenrouterModel = item.modelData;
+                     else if (root.isOpenaiCompat)
+                         GlobalConfig.ai[root.defaultModelField(root.provider)] = item.modelData;
                      else
                          GlobalConfig.ai.defaultOllamaModel = item.modelData;
                  }

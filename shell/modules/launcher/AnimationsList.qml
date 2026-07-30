@@ -141,7 +141,7 @@ StyledListView {
                 StyledText {
                     text: modelData ? (modelData.path === "default" ? qsTr("Use default shell animations") : qsTr("Click to apply animation")) : ""
                     font: Tokens.font.body.small
-                    color: Colours.palette.m3outline
+                    color: Colours.palette.m3onSurfaceVariant
                     elide: Text.ElideRight
                 }
             }

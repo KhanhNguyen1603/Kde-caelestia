@@ -110,6 +110,7 @@ class BarStatus : public ConfigObject {
     CONFIG_PROPERTY(QStringList, peripheralBatteryExcluded)
     CONFIG_PROPERTY(bool, showLockStatus, true)
     CONFIG_PROPERTY(bool, showNotifications, true)
+    CONFIG_PROPERTY(bool, showNightLight, true)
 
 public:
     explicit BarStatus(QObject* parent = nullptr)
@@ -241,6 +242,7 @@ class BarConfig : public ConfigObject {
             vmap({ { u"id"_s, u"perfNetwork"_s }, { u"enabled"_s, false }, { u"zone"_s, u"right"_s } }),
             vmap({ { u"id"_s, u"perfGpu"_s }, { u"enabled"_s, false }, { u"zone"_s, u"right"_s } }),
             vmap({ { u"id"_s, u"perfBattery"_s }, { u"enabled"_s, false }, { u"zone"_s, u"right"_s } }),
+            vmap({ { u"id"_s, u"showDesktop"_s }, { u"enabled"_s, true }, { u"zone"_s, u"right"_s } }),
             vmap({ { u"id"_s, u"power"_s }, { u"enabled"_s, true }, { u"zone"_s, u"right"_s } }),
         })
     CONFIG_PROPERTY(QStringList, excludedScreens)

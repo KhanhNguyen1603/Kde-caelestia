@@ -30,6 +30,15 @@ class ServiceConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(qreal, brightnessIncrement, 0.1)
     CONFIG_GLOBAL_PROPERTY(qreal, maxVolume, 1.0)
     CONFIG_GLOBAL_PROPERTY(bool, smartScheme, true)
+
+    // Automatic light/dark switching.
+    CONFIG_GLOBAL_PROPERTY(bool, autoSchemeEnabled, false)
+    // "solar" derives the times from weatherLocation; "fixed" uses the two below.
+    CONFIG_GLOBAL_PROPERTY(QString, autoSchemeMode, u"solar"_s)
+    // "HH:MM", local time. Also used as the fallback when solar times cannot be
+    // computed (no location set, or polar day/night).
+    CONFIG_GLOBAL_PROPERTY(QString, autoSchemeLightTime, u"07:00"_s)
+    CONFIG_GLOBAL_PROPERTY(QString, autoSchemeDarkTime, u"19:00"_s)
     CONFIG_GLOBAL_PROPERTY(QString, defaultPlayer, u"Spotify"_s)
     CONFIG_GLOBAL_PROPERTY(QVariantList, playerAliases,
         { vmap({ { u"from"_s, u"com.github.th_ch.youtube_music"_s }, { u"to"_s, u"YT Music"_s } }) })
@@ -47,8 +56,12 @@ class ServiceConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(bool, arpcSteamAutoDetect, false)
     CONFIG_GLOBAL_PROPERTY(QStringList, arpcSteamBlacklist)
     CONFIG_GLOBAL_PROPERTY(QStringList, arpcTargetWindows)
+    CONFIG_GLOBAL_PROPERTY(QStringList, arpcTargetWindowLabels)
     CONFIG_GLOBAL_PROPERTY(bool, arpcCaelestiaInfo, false)
     CONFIG_GLOBAL_PROPERTY(bool, arpcManualOverride, false)
+    // Seconds of inactivity after which the presence is cleared. 0 disables it,
+    // which keeps the existing always-on behaviour for anyone already using ARPC.
+    CONFIG_GLOBAL_PROPERTY(int, arpcIdleTimeout, 0)
 
 public:
     explicit ServiceConfig(QObject* parent = nullptr)

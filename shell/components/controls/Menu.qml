@@ -134,10 +134,13 @@ MouseArea {
             }
             
             radius: parent.radius
+            // Fade alpha to 0 instead of the literal "transparent" string, which
+            // would animate RGB through black via StyledRect's inherited
+            // Behavior on color.
             color: root.transparentBackground
-                ? "transparent"
+                ? Qt.alpha(Colours.palette.m3surfaceContainerLow, 0)
                 : (GlobalConfig.appearance.transparency.enabled && GlobalConfig.appearance.blur)
-                    ? Colours.mix(Colours.palette.m3surfaceContainerLow, "transparent", GlobalConfig.appearance.transparency.base)
+                    ? Qt.alpha(Colours.palette.m3surfaceContainerLow, GlobalConfig.appearance.transparency.base)
                     : Colours.palette.m3surfaceContainerLow
 
             Flickable {
@@ -173,9 +176,12 @@ MouseArea {
                         required property MenuItem modelData
                         readonly property bool active: modelData === root?.active
 
+                        visible: modelData.visible
+
                         Layout.fillWidth: true
                         implicitWidth: menuOptionRow.implicitWidth + Tokens.padding.medium * 2
-                        implicitHeight: menuOptionRow.implicitHeight + Tokens.padding.medium * 2
+                        implicitHeight: visible ? menuOptionRow.implicitHeight + Tokens.padding.medium * 2 : 0
+
 
                         radius: active ? Tokens.rounding.medium : Tokens.rounding.extraSmall
                         topLeftRadius: index === 0 ? Tokens.rounding.medium : radius

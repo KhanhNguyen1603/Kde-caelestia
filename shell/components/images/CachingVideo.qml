@@ -13,6 +13,7 @@ Item {
     property bool isFirstInstance: false
 
     property alias playing: mediaPlayer.playing
+    property alias fillMode: videoOutput.fillMode
     property alias playbackState: mediaPlayer.playbackState
 
     function checkPauseState() {

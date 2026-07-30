@@ -258,7 +258,7 @@ PageBase {
             Layout.fillWidth: true
             last: true
             text: qsTr("Hyprland splash")
-            visible: Quickshell.env("XDG_CURRENT_DESKTOP").includes("Hyprland")
+            //visible: Quickshell.env("XDG_CURRENT_DESKTOP").includes("Hyprland")
             subtext: qsTr("Show the current Hyprland splash text")
             checked: Config.dashboard.showHyprlandSplash
             onToggled: GlobalConfig.dashboard.showHyprlandSplash = checked
@@ -314,6 +314,26 @@ PageBase {
 
         StepperRow {
             first: true
+            label: qsTr("Hover trigger depth")
+            subtext: qsTr("Distance in from the screen edge that opens the dashboard")
+            value: Config.dashboard.hoverThickness
+            from: 1
+            to: 100
+            stepSize: 1
+            onMoved: v => GlobalConfig.dashboard.hoverThickness = v
+        }
+
+        StepperRow {
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("How much of the top edge opens the dashboard, as a percentage of its width")
+            value: Config.dashboard.hoverWidth
+            from: 10
+            to: 100
+            stepSize: 5
+            onMoved: v => GlobalConfig.dashboard.hoverWidth = v
+        }
+
+        StepperRow {
             last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the dashboard opens")

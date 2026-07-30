@@ -61,7 +61,7 @@ Item {
         MaterialIcon {
             anchors.centerIn: parent
             text: "image"
-            color: Colours.tPalette.m3outline
+            color: Colours.tPalette.m3onSurfaceVariant
             fontStyle: Tokens.font.icon.builders.extraLarge.scale(2).weight(Font.DemiBold).build()
             visible: !Images.isVideo(root.modelData.name)
         }
@@ -69,7 +69,7 @@ Item {
         MaterialIcon {
             anchors.centerIn: parent
             text: "videocam"
-            color: Colours.tPalette.m3outline
+            color: Colours.tPalette.m3onSurfaceVariant
             fontStyle: Tokens.font.icon.builders.extraLarge.scale(2).weight(Font.DemiBold).build()
             visible: Images.isVideo(root.modelData.name) && Wallpapers.thumbFor(root.modelData.path) === ""
         }

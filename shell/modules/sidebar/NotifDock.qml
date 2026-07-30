@@ -43,7 +43,7 @@ Item {
             opacity: root.notifCount > 0 ? 1 : 0
 
             text: root.notifCount
-            color: Colours.palette.m3outline
+            color: Colours.palette.m3onSurfaceVariant
             font: Tokens.font.label.large
 
             Behavior on anchors.leftMargin {
@@ -66,7 +66,7 @@ Item {
             anchors.leftMargin: Tokens.spacing.extraSmall
 
             text: root.notifCount > 0 ? qsTr("notification%1").arg(root.notifCount === 1 ? "" : "s") : qsTr("Notifications")
-            color: Colours.palette.m3outline
+            color: Colours.palette.m3onSurfaceVariant
             font: Tokens.font.label.large
             elide: Text.ElideRight
         }

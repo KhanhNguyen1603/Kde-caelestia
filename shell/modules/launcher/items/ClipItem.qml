@@ -14,17 +14,33 @@ Item {
     required property var modelData
     required property var list
 
+    readonly property bool isPinned: root.modelData?.isPinned ?? false
+
     function clicked() {
         if (!root.modelData)
             return;
         root.list.visibilities.launcher = false;
         const preview = root.modelData.preview.length > 30 ? root.modelData.preview.slice(0, 30) + "..." : root.modelData.preview;
-        Quickshell.execDetached(["sh", "-c", "cliphist decode " + root.modelData.id + " | wl-copy"]);
+
+        // A pinned entry may have rotated out of cliphist, so `cliphist decode`
+        // can no longer produce it — the stored bytes are the source of truth.
+        if (root.isPinned)
+            Clipboard.copyPinned(root.modelData.pinId);
+        else
+            Quickshell.execDetached(["sh", "-c", "cliphist decode " + root.modelData.id + " | wl-copy"]);
+
         Toaster.toast(qsTr("Copied to clipboard"), preview, "content_paste");
     }
 
     Component.onCompleted: {
         if (!root.modelData?.isImage) return;
+
+        // A pinned image has its own stored copy; nothing pre-warms it and no
+        // imageReady will ever arrive for it.
+        if (root.isPinned) {
+            imagePreview.imagePath = root.modelData.imagePath ?? "";
+            return;
+        }
 
         // Check whether the image was already pre-warmed during reload()
         const cached = Clipboard.getImagePath(root.modelData.id);
@@ -94,7 +110,7 @@ Item {
         StyledText {
             anchors.left: icon.right
             anchors.leftMargin: Tokens.spacing.medium
-            anchors.right: favIcon.left
+            anchors.right: pinIcon.left
             anchors.rightMargin: Tokens.spacing.small
             anchors.verticalCenter: parent.verticalCenter
 
@@ -105,7 +121,7 @@ Item {
         }
 
         MouseArea {
-            id: favIcon
+            id: pinIcon
 
             width: 32
             height: 32
@@ -113,25 +129,19 @@ Item {
             anchors.right: parent.right
             hoverEnabled: true
             onClicked: {
-                const clipId = String(root.modelData?.id);
-                if (!clipId)
+                if (!root.modelData)
                     return;
-                const favClips = GlobalConfig.launcher.favouriteClips ? [...GlobalConfig.launcher.favouriteClips] : [];
-                if (favClips.includes(clipId)) {
-                    const idx = favClips.indexOf(clipId);
-                    if (idx !== -1)
-                        favClips.splice(idx, 1);
-                } else {
-                    favClips.push(clipId);
-                }
-                GlobalConfig.launcher.favouriteClips = favClips;
+                if (root.isPinned)
+                    Clipboard.unpin(root.modelData.pinId);
+                else
+                    Clipboard.pin(root.modelData.id);
             }
 
             MaterialIcon {
                 anchors.centerIn: parent
-                text: GlobalConfig.launcher.favouriteClips && GlobalConfig.launcher.favouriteClips.includes(String(root.modelData?.id)) ? "favorite" : "favorite_border"
-                fill: GlobalConfig.launcher.favouriteClips && GlobalConfig.launcher.favouriteClips.includes(String(root.modelData?.id)) ? 1 : 0
-                color: favIcon.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                text: root.isPinned ? "keep" : "keep_off"
+                fill: root.isPinned ? 1 : 0
+                color: pinIcon.containsMouse ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
             }
         }
     }

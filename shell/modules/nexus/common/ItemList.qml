@@ -40,7 +40,7 @@ ConnectedRect {
             MaterialIcon {
                 Layout.alignment: Qt.AlignHCenter
                 text: root.placeholderIcon
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
                 fontStyle: Tokens.font.icon.large
                 animate: true
             }
@@ -48,7 +48,7 @@ ConnectedRect {
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
                 text: root.placeholderText
-                color: Colours.palette.m3outline
+                color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.body.large
                 animate: true
             }

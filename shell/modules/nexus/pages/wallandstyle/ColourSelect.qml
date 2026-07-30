@@ -65,7 +65,7 @@ PageBase {
                     StyledText {
                         text: "Configure advanced color engine settings and integrations"
                         font: Tokens.font.body.medium
-                        color: Colours.palette.m3outline
+                        color: Colours.palette.m3onSurfaceVariant
                     }
                 }
                 
@@ -154,7 +154,7 @@ PageBase {
                                 Layout.fillWidth: true
                                 text: modeDelegateRect.modelData?.description ?? ""
                                 font: Tokens.font.body.medium
-                                color: modeDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3outline
+                                color: modeDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
                                 wrapMode: Text.Wrap
                             }
                         }
@@ -248,7 +248,7 @@ PageBase {
                                 Layout.fillWidth: true
                                 text: delegateRect.modelData?.name ?? ""
                                 font: Tokens.font.body.medium
-                                color: delegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3outline
+                                color: delegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
                             }
                         }
                         
@@ -329,7 +329,7 @@ PageBase {
                                 Layout.fillWidth: true
                                 text: varDelegateRect.modelData?.description ?? ""
                                 font: Tokens.font.body.medium
-                                color: varDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3outline
+                                color: varDelegateRect.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
                                 wrapMode: Text.Wrap
                             }
                         }

@@ -64,7 +64,7 @@ Item {
             content: root
             visibilities: root.visibilities
             panels: root.panels
-            maxHeight: root.maxHeight - searchWrapper.implicitHeight - sessionFooter.implicitHeight - root.padding * 2 - root.footerSpacing * 2
+            maxHeight: root.maxHeight - searchWrapper.implicitHeight - sessionFooter.implicitHeight - root.padding * 2 - (sessionFooter.visible ? root.footerSpacing * 2 : root.footerSpacing)
             search: search
             padding: root.padding
             rounding: root.rounding
@@ -74,17 +74,19 @@ Item {
     StyledRect {
         id: sessionFooter
 
+        visible: Config.launcher.showPowerMenu
+
         color: Colours.layer(Colours.palette.m3surfaceContainerLow, 2)
         radius: Tokens.rounding.extraLarge
 
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: searchWrapper.top
-        anchors.bottomMargin: root.footerSpacing
+        anchors.bottomMargin: visible ? root.footerSpacing : 0
         anchors.leftMargin: root.padding
         anchors.rightMargin: root.padding
 
-        implicitHeight: footerLayout.implicitHeight + Tokens.padding.medium * 2
+        implicitHeight: visible ? (footerLayout.implicitHeight + Tokens.padding.medium * 2) : 0
 
         ColumnLayout {
             id: footerLayout
@@ -228,11 +230,11 @@ Item {
                         list.currentList?.decrementCurrentIndex();
                         event.accepted = true;
                     }
-                } else if (event.key === Qt.Key_Tab) {
-                    list.currentList?.incrementCurrentIndex();
-                    event.accepted = true;
                 } else if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
                     list.currentList?.decrementCurrentIndex();
+                    event.accepted = true;
+                } else if (event.key === Qt.Key_Tab) {
+                    list.currentList?.incrementCurrentIndex();
                     event.accepted = true;
                 }
             }

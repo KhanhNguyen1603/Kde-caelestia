@@ -19,10 +19,9 @@ Item {
 
     readonly property alias content: content
     readonly property alias winfo: winfo
-    readonly property alias nexus: nexus
 
-    readonly property real nonAnimWidth: content.shouldBeActive ? content.implicitWidth : winfo.shouldBeActive ? winfo.implicitWidth : nexus.shouldBeActive ? nexus.implicitWidth : content.implicitWidth
-    readonly property real nonAnimHeight: content.shouldBeActive ? content.implicitHeight : winfo.shouldBeActive ? winfo.implicitHeight : nexus.shouldBeActive ? nexus.implicitHeight : content.implicitHeight
+    readonly property real nonAnimWidth: content.shouldBeActive ? content.implicitWidth : winfo.shouldBeActive ? winfo.implicitWidth : content.implicitWidth
+    readonly property real nonAnimHeight: content.shouldBeActive ? content.implicitHeight : winfo.shouldBeActive ? winfo.implicitHeight : content.implicitHeight
     readonly property Item current: (content.item as Content)?.current ?? null
     readonly property bool isDetached: detachedMode.length > 0
     readonly property bool sidebarOpen: popoutState.sidebarOpen
@@ -35,7 +34,6 @@ Item {
     property real currentCenter
 
     property string detachedMode
-    property string queuedMode
 
     // Dummy object so Tokens attached prop resolves to global config
     // Anim configs are not per-monitor
@@ -53,12 +51,20 @@ Item {
         setAnims(true);
         if (mode === "winfo") {
             detachedMode = mode;
+            focus = true;
         } else {
-            queuedMode = mode;
-            detachedMode = "any";
+            // Map mode strings to Nexus page indices (matching PageCompRegistry order)
+            const pageMap = {
+                "appearance": 0,
+                "network": 3,
+                "bluetooth": 4,
+                "audio": 5
+            };
+            const pageIdx = pageMap[mode] ?? 0;
+            WindowFactory.create(null, { initialPageIdx: pageIdx });
+            close();
         }
         setAnims(false);
-        focus = true;
     }
 
     function close(): void {
@@ -137,29 +143,6 @@ Item {
         onShouldBeActiveChanged: {
             if (!shouldBeActive) {
                 popoutState.selectedClientAddress = "";
-            }
-        }
-    }
-
-    Comp {
-        id: nexus
-
-        shouldBeActive: root.detachedMode === "any"
-        anchors.centerIn: parent
-
-        sourceComponent: StyledClippingRect {
-            radius: Tokens.rounding.extraLarge
-            implicitWidth: nexusInner.implicitWidth
-            implicitHeight: nexusInner.implicitHeight
-
-            Nexus {
-                id: nexusInner
-
-                anchors.fill: parent
-                nState.screen: root.screen
-                nState.animatingContainer: nexus.opacity < 1
-                nState.currentPageIdx: ["appearance", "network", "bluetooth", "audio"].indexOf(root.queuedMode)
-                onClose: root.close()
             }
         }
     }

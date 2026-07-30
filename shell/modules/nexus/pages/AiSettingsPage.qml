@@ -62,7 +62,7 @@ PageBase {
             Layout.fillWidth: true
             Layout.leftMargin: Tokens.padding.largeIncreased
             text: qsTr("Stored in your session keyring, not in shell.json. The %1 environment variable overrides it.").arg(keyField.envName)
-            color: Colours.palette.m3outline
+            color: Colours.palette.m3onSurfaceVariant
             font: Tokens.font.label.small
             wrapMode: Text.Wrap
         }
@@ -108,7 +108,8 @@ PageBase {
     }
 
     function loadStoredKeys() {
-        const provs = ["claude", "openai", "gemini", "openrouter"];
+        // opencode go shares the zen entry, so it is not listed separately.
+        const provs = ["claude", "openai", "gemini", "openrouter", "opencode"];
         for (let i = 0; i < provs.length; i++)
             keyLoadComp.createObject(root, { provider: provs[i] });
     }
@@ -375,11 +376,23 @@ PageBase {
             onToggled: GlobalConfig.ai.enableGemini = checked
         }
         ToggleRow {
-            last: true
             text: qsTr("Enable OpenRouter (API key)")
             subtext: qsTr("One key for many vendors' models; needs OPENROUTER_API_KEY")
             checked: GlobalConfig.ai.enableOpenrouter
             onToggled: GlobalConfig.ai.enableOpenrouter = checked
+        }
+        ToggleRow {
+            text: qsTr("Enable opencode Zen (API key)")
+            subtext: qsTr("Curated coding models, pay as you go; needs OPENCODE_API_KEY")
+            checked: GlobalConfig.ai.enableOpencode
+            onToggled: GlobalConfig.ai.enableOpencode = checked
+        }
+        ToggleRow {
+            last: true
+            text: qsTr("Enable opencode Go (API key)")
+            subtext: qsTr("Monthly opencode subscription; same key as Zen")
+            checked: GlobalConfig.ai.enableOpencodeGo
+            onToggled: GlobalConfig.ai.enableOpencodeGo = checked
         }
 
         // Key entry, shown only for the providers that are actually enabled.
@@ -406,6 +419,13 @@ PageBase {
             value: root.apiKeyFor("openrouter")
             envName: "OPENROUTER_API_KEY"
             onCommitted: v => root.storeApiKey("openrouter", v)
+        }
+        // One field for both opencode products — they are one account.
+        ApiKeyField {
+            visible: GlobalConfig.ai.enableOpencode || GlobalConfig.ai.enableOpencodeGo
+            value: root.apiKeyFor("opencode")
+            envName: "OPENCODE_API_KEY"
+            onCommitted: v => root.storeApiKey("opencode", v)
         }
 
         // ── Claude Code ────────────────────────────────────────────
@@ -517,7 +537,7 @@ PageBase {
                         StyledText {
                             Layout.fillWidth: true
                             text: accRect.isActive ? qsTr("Active") : qsTr("Tap to select")
-                            color: Colours.palette.m3outline
+                            color: Colours.palette.m3onSurfaceVariant
                             font: Tokens.font.label.small
                             elide: Text.ElideRight
                         }
