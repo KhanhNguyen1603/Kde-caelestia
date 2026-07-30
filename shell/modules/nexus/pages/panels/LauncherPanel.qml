@@ -65,6 +65,16 @@ PageBase {
         }
 
         StepperRow {
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("Width of the screen edge strip that opens the launcher")
+            value: Config.launcher.hoverThickness
+            from: 1
+            to: 100
+            stepSize: 1
+            onMoved: v => GlobalConfig.launcher.hoverThickness = v
+        }
+
+        StepperRow {
             last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the launcher opens")

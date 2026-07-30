@@ -84,11 +84,21 @@ PageBase {
         }
 
         ToggleRow {
-            last: true
             text: qsTr("Brightness slider")
             subtext: qsTr("Show the brightness OSD slider")
             checked: Config.osd.enableBrightness
             onToggled: GlobalConfig.osd.enableBrightness = checked
+        }
+
+        StepperRow {
+            last: true
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("Width of the screen edge strip that opens the OSD sliders")
+            value: Config.osd.hoverThickness
+            from: 1
+            to: 100
+            stepSize: 1
+            onMoved: v => GlobalConfig.osd.hoverThickness = v
         }
 
         SectionHeader {

@@ -65,6 +65,17 @@ PageBase {
                 onToggled: GlobalConfig.appearance.islands = checked
             }
 
+            StepperRow {
+                Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
+                label: qsTr("Border thickness")
+                subtext: qsTr("Thickness of the shell border in pixels. Set to 0 for a borderless look")
+                value: GlobalConfig.border.thickness
+                from: 0
+                to: 50
+                stepSize: 1
+                onMoved: v => GlobalConfig.border.thickness = v
+            }
+
             ToggleRow {
                 Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
                 Layout.fillWidth: true

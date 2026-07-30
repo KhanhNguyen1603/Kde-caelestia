@@ -314,6 +314,16 @@ PageBase {
 
         StepperRow {
             first: true
+            label: qsTr("Hover trigger width")
+            subtext: qsTr("Width of the screen edge strip that opens the dashboard")
+            value: Config.dashboard.hoverThickness
+            from: 1
+            to: 100
+            stepSize: 1
+            onMoved: v => GlobalConfig.dashboard.hoverThickness = v
+        }
+
+        StepperRow {
             last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the dashboard opens")
