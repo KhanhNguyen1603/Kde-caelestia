@@ -43,6 +43,7 @@ Item {
     Component.onCompleted: Qt.callLater(() => Apps) // Load apps on init
 
     Behavior on offsetScale {
+        enabled: !visibilities.skipLauncherAnim
         Anim {}
     }
 

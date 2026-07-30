@@ -8,7 +8,7 @@ import qs.services
 import "items"
 import "services"
 
-PathView {
+ListView {
     id: root
 
     required property StyledTextField search
@@ -74,21 +74,13 @@ PathView {
     function decrementCurrentIndex() { Windows.triggerCyclePrev(); }
 
     implicitWidth: Math.min(numItems, count) * itemWidth
-    pathItemCount: numItems
-    cacheItemCount: 4
 
-    snapMode: PathView.SnapToItem
-    preferredHighlightBegin: 0.5
-    preferredHighlightEnd: 0.5
-    highlightRangeMode: PathView.StrictlyEnforceRange
-
-    path: Path {
-        startY: root.height / 2
-        PathAttribute { name: "z"; value: 0 }
-        PathLine { x: root.width / 2; relativeY: 0 }
-        PathAttribute { name: "z"; value: 1 }
-        PathLine { x: root.width; relativeY: 0 }
-    }
+    orientation: ListView.Horizontal
+    snapMode: ListView.SnapToItem
+    preferredHighlightBegin: root.width / 2 - itemWidth / 2
+    preferredHighlightEnd: root.width / 2 + itemWidth / 2
+    highlightRangeMode: ListView.StrictlyEnforceRange
+    highlightMoveDuration: Tokens.anim.durations.expressiveFastSpatial
 
     delegate: WindowSwitcherItem {
         list: root

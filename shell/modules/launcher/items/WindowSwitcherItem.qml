@@ -22,17 +22,39 @@ Item {
         root.list.visibilities.launcher = false;
     }
 
+    property bool _skipOpenAnim: true
+
+    Connections {
+        target: Windows
+        function onSelectedIndexChanged() {
+            root._skipOpenAnim = false;
+        }
+    }
+
+    Timer {
+        interval: 400
+        running: true
+        onTriggered: root._skipOpenAnim = false
+    }
+
     Component.onCompleted: {
-        scale = Qt.binding(() => PathView.isCurrentItem ? 1 : PathView.onPath ? 0.8 : 0);
-        opacity = Qt.binding(() => PathView.onPath ? 1 : 0);
+        scale = Qt.binding(() => ListView.isCurrentItem ? 1 : 0.8);
+        opacity = 1;
+        Qt.callLater(() => {
+            if (root.list && root.list.visibilities) {
+                root.list.visibilities.skipLauncherAnim = false;
+            }
+        });
     }
 
     scale: 0.5
     opacity: 0
-    z: PathView.z ?? 0
+    z: ListView.isCurrentItem ? 1 : 0
 
     implicitWidth: previewBox.width + Tokens.padding.largeIncreased * 2
     implicitHeight: previewBox.height + label.height + Tokens.spacing.small / 2 + Tokens.padding.large + Tokens.padding.medium
+
+    width: list.itemWidth
 
     StateLayer {
         radius: Tokens.rounding.medium
@@ -44,11 +66,11 @@ Item {
 
         anchors.fill: previewBox
         radius: previewBox.radius
-        color: Colours.layer(Colours.palette.m3surfaceContainerHighest, root.PathView.isCurrentItem ? 1 : 0)
-        opacity: root.PathView.isCurrentItem ? 1 : 0
+        color: Colours.layer(Colours.palette.m3surfaceContainerHighest, root.ListView.isCurrentItem ? 1 : 0)
+        opacity: root.ListView.isCurrentItem ? 1 : 0
 
         Behavior on opacity {
-            Anim {}
+            Anim { type: Anim.FastEffects }
         }
     }
 
@@ -124,10 +146,12 @@ Item {
     }
 
     Behavior on scale {
-        Anim {}
+        enabled: !root._skipOpenAnim
+        Anim { type: Anim.FastSpatial }
     }
 
     Behavior on opacity {
-        Anim {}
+        enabled: !root._skipOpenAnim
+        Anim { type: Anim.FastEffects }
     }
 }

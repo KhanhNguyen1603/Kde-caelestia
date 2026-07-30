@@ -237,6 +237,7 @@ Scope {
                 Windows.updateItems();
                 Windows.selectedIndex = (Windows.items.length > 1) ? 1 : 0;
                 Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
+                visibilities.skipLauncherAnim = true;
                 visibilities.launcher = true;
             }
         }
@@ -259,6 +260,7 @@ Scope {
                 Windows.updateItems();
                 Windows.selectedIndex = (Windows.items.length > 1) ? Windows.items.length - 1 : 0;
                 Visibilities.launcherInitialSearch = `${GlobalConfig.launcher.actionPrefix}windows `;
+                visibilities.skipLauncherAnim = true;
                 visibilities.launcher = true;
             }
         }
