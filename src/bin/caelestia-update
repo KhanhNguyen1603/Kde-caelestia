@@ -60,17 +60,27 @@ for cmd in git cmake make; do
 done
 
 # --- Robust Privilege Escalation Wrapper ---
+# The wrapper tries cached credentials first (sudo -n), and only falls
+# back to an interactive prompt when the timestamp is truly expired.
 mkdir -p "$UPD_DIR/bin"
 cat << 'EOF' > "$UPD_DIR/bin/sudo"
 #!/usr/bin/env bash
 if [ "$EUID" -eq 0 ]; then
-    "$@"
-elif [ -t 1 ]; then
-    /usr/bin/sudo "$@"
+    exec "$@"
+fi
+# Try non-interactive first — if the parent keepalive has kept the
+# timestamp fresh this succeeds without any prompt at all.
+if /usr/bin/sudo -n true 2>/dev/null; then
+    exec /usr/bin/sudo -n "$@"
+fi
+# Timestamp expired or never created: fall back to whatever interactive
+# helper is available (terminal, ksshaskpass, pkexec).
+if [ -t 1 ]; then
+    exec /usr/bin/sudo "$@"
 elif command -v ksshaskpass &> /dev/null; then
-    SUDO_ASKPASS=$(command -v ksshaskpass) /usr/bin/sudo -A "$@"
+    exec env SUDO_ASKPASS="$(command -v ksshaskpass)" /usr/bin/sudo -A "$@"
 elif command -v pkexec &> /dev/null; then
-    pkexec "$@"
+    exec pkexec "$@"
 else
     echo "Cannot elevate privileges. Please install ksshaskpass, pkexec, or run from a terminal." >&2
     exit 1
@@ -81,16 +91,42 @@ export PATH="$UPD_DIR/bin:$PATH"
 
 # --- Prime privilege escalation once, then keep it alive ---
 # Several steps below need root (system package update, the shell install
-# step). Authenticate once up front and refresh the cached credential in the
-# background so later sudo calls (which can happen well after the initial
-# prompt, e.g. after a long shell build) reuse it instead of prompting again.
-if [ "$EUID" -ne 0 ] && { [ -t 1 ] || command -v ksshaskpass &> /dev/null; }; then
+# step). Authenticate once up front and refresh the cached credential in
+# the background so later sudo calls (which can happen well after the
+# initial prompt, e.g. after a long shell build) reuse it instead of
+# prompting again.
+if [ "$EUID" -ne 0 ]; then
+    # Determine the best interactive helper for the initial prompt.
+    if [ -t 1 ]; then
+        SUDO_ASK_CMD=(/usr/bin/sudo -v)
+    elif command -v ksshaskpass &> /dev/null; then
+        SUDO_ASK_CMD=(env SUDO_ASKPASS="$(command -v ksshaskpass)" /usr/bin/sudo -A -v)
+    elif command -v pkexec &> /dev/null; then
+        info "Requesting administrator privileges via pkexec..."
+        pkexec true || die "Failed to obtain administrator privileges."
+        SUDO_ASK_CMD=(/usr/bin/sudo -n -v)  # pkexec doesn't prime sudo, try anyway
+    else
+        die "Cannot elevate privileges — no terminal, ksshaskpass, or pkexec available."
+    fi
+
     info "Requesting administrator privileges (used for system update and installing the shell)..."
-    "$UPD_DIR/bin/sudo" -v || die "Failed to obtain administrator privileges."
+    "${SUDO_ASK_CMD[@]}" || die "Failed to obtain administrator privileges."
+
+    # Export SUDO_ASKPASS so any sub-scripts that use raw /usr/bin/sudo -A
+    # (or the wrapper above) can resolve the askpass helper without needing
+    # to re-discover it in a non-tty child.
+    if command -v ksshaskpass &> /dev/null; then
+        export SUDO_ASKPASS="$(command -v ksshaskpass)"
+    fi
+
+    # Background keepalive: refresh the sudo timestamp every 30 seconds
+    # so it never expires, even during long operations like CMake builds.
+    # Using -nv instead of -n true ensures the timestamp is *extended*,
+    # not just checked.
     (
         while kill -0 "$$" 2>/dev/null; do
-            sleep 60
-            sudo -n true 2>/dev/null
+            sleep 30
+            sudo -nv 2>/dev/null || true
         done
     ) &
     SUDO_KEEPALIVE_PID=$!
