@@ -77,12 +77,12 @@ PageBase {
 
         StepperRow {
             label: qsTr("Default timeout")
-            subtext: qsTr("Time before a notification dismisses (ms)")
-            value: GlobalConfig.notifs.defaultExpireTimeout
-            from: 1000
-            to: 60000
-            stepSize: 500
-            onMoved: v => GlobalConfig.notifs.defaultExpireTimeout = Math.round(v)
+            subtext: qsTr("Time before a notification dismisses (seconds)")
+            value: GlobalConfig.notifs.defaultExpireTimeout / 1000
+            from: 1
+            to: 60
+            stepSize: 1
+            onMoved: v => GlobalConfig.notifs.defaultExpireTimeout = Math.round(v * 1000)
         }
 
         StepperRow {
