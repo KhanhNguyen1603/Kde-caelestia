@@ -64,7 +64,7 @@ PanelWindow {
     readonly property real falsePositivePreventionRatio: 0.5
 
     // Screen & interaction vars
-    readonly property real monitorScale: screen.devicePixelRatio || 1.0
+    readonly property real monitorScale: (frozenImage.sourceSize.width > 0 && root.screen.width > 0) ? (frozenImage.sourceSize.width / root.screen.width) : (screen.devicePixelRatio || 1.0)
     readonly property real monitorOffsetX: screen.x || 0
     readonly property real monitorOffsetY: screen.y || 0
     property string activeWorkspaceId: ""
@@ -312,6 +312,7 @@ PanelWindow {
     }
 
     Image { // For freezing
+        id: frozenImage
         anchors.fill: parent
         source: root.frozenImageSource
         cache: false
