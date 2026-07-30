@@ -102,15 +102,25 @@ if [ "$EUID" -ne 0 ]; then
     elif command -v ksshaskpass &> /dev/null; then
         SUDO_ASK_CMD=(env SUDO_ASKPASS="$(command -v ksshaskpass)" /usr/bin/sudo -A -v)
     elif command -v pkexec &> /dev/null; then
-        info "Requesting administrator privileges via pkexec..."
+        # pkexec authenticates via PolicyKit, not sudo's timestamp cache.
+        # There is no way to "prime" sudo from pkexec — each subsequent
+        # elevation will go through pkexec individually. PolicyKit has
+        # its own short-lived authorization caching, so the user won't
+        # be prompted for every single command.
+        info "Requesting administrator privileges via pkexec (PolicyKit)…"
         pkexec true || die "Failed to obtain administrator privileges."
-        SUDO_ASK_CMD=(/usr/bin/sudo -n -v)  # pkexec doesn't prime sudo, try anyway
+        # Skip the sudo keepalive — it's useless without a sudo timestamp.
+        # The sudo wrapper ($UPD_DIR/bin/sudo) will use pkexec for each
+        # elevation via its fallback path.
+        SUDO_ASK_CMD=()  # signal: skip sudo -v below
     else
         die "Cannot elevate privileges — no terminal, ksshaskpass, or pkexec available."
     fi
 
-    info "Requesting administrator privileges (used for system update and installing the shell)..."
-    "${SUDO_ASK_CMD[@]}" || die "Failed to obtain administrator privileges."
+    if [[ ${#SUDO_ASK_CMD[@]} -gt 0 ]]; then
+        info "Requesting administrator privileges (used for system update and installing the shell)..."
+        "${SUDO_ASK_CMD[@]}" || die "Failed to obtain administrator privileges."
+    fi
 
     # Export SUDO_ASKPASS so any sub-scripts that use raw /usr/bin/sudo -A
     # (or the wrapper above) can resolve the askpass helper without needing
@@ -123,14 +133,19 @@ if [ "$EUID" -ne 0 ]; then
     # so it never expires, even during long operations like CMake builds.
     # Using -nv instead of -n true ensures the timestamp is *extended*,
     # not just checked.
-    (
-        while kill -0 "$$" 2>/dev/null; do
-            sleep 30
-            sudo -nv 2>/dev/null || true
-        done
-    ) &
-    SUDO_KEEPALIVE_PID=$!
-    trap '[ -n "${SUDO_KEEPALIVE_PID:-}" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
+    # Only started when we actually have a sudo timestamp to keep alive
+    # (tty or ksshaskpass paths above).  The pkexec path skips this
+    # because PolicyKit handles its own authorization caching.
+    if [[ ${#SUDO_ASK_CMD[@]} -gt 0 ]]; then
+        (
+            while kill -0 "$$" 2>/dev/null; do
+                sleep 30
+                sudo -nv 2>/dev/null || true
+            done
+        ) &
+        SUDO_KEEPALIVE_PID=$!
+        trap '[ -n "${SUDO_KEEPALIVE_PID:-}" ] && kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true' EXIT
+    fi
 fi
 
 # 1. Fetch from GitHub
