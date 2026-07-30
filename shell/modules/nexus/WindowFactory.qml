@@ -30,7 +30,7 @@ Singleton {
             property int initialPageIdx: 0
             property int initialSubPageIdx: -1
 
-            color: Colours.tPalette.m3surface
+            color: GlobalConfig.appearance.transparency.enabled ? Qt.alpha(Colours.tPalette.m3surface, 0) : Colours.tPalette.m3surface
             surfaceFormat.opaque: false
 
             BackgroundEffect.blurRegion: Region {
