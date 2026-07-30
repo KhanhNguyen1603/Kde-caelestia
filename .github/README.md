@@ -45,9 +45,7 @@ bash ./uninstall.sh
 
 ## Screenshots
 
-<video width="400" controls>
-  <source src="assets/caelestia-demo-screenshot.mp4" type="video/mp4">
-</video>
+https://github.com/user-attachments/assets/4c3e20c9-5050-4cc8-8e9c-32fd0594ac8b
 
 | Shell | Theming |
 |:---:|:---:|
