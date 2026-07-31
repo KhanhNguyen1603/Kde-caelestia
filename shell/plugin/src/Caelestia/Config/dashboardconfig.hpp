@@ -40,7 +40,7 @@ class DashboardConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(int, mediaUpdateInterval, 500)
     CONFIG_GLOBAL_PROPERTY(int, resourceUpdateInterval, 1000)
     CONFIG_PROPERTY(int, dragThreshold, 50)
-    CONFIG_PROPERTY(int, hoverThickness, 5)
+    CONFIG_PROPERTY(int, hoverThickness, 10)
     CONFIG_PROPERTY(int, hoverWidth, 50)
     CONFIG_SUBOBJECT(DashboardPerformance, performance)
 

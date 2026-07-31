@@ -159,6 +159,13 @@ GlobalShortcut::~GlobalShortcut() {
     for (const auto& stolen : m_stolenShortcuts) {
         QProcess::startDetached(QStringLiteral("gdbus"), buildRestoreArgs(stolen.component, stolen.action, stolen.keys));
     }
+
+    // Re-persist so the recovery file and collision index reflect the restored
+    // shortcuts. Every mutation in updateShortcut() calls persistStolenShortcuts();
+    // the destructor must do the same, or a hot-reload leaves stale entries on disk
+    // and phantom collisions in the Nexus Shortcut Manager blinker.
+    if (!m_stolenShortcuts.isEmpty())
+        persistStolenShortcuts();
 }
 
 void GlobalShortcut::persistStolenShortcuts() const {

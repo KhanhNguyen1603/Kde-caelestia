@@ -26,24 +26,24 @@ Item {
     property int maxOutputLines: 2000
 
     readonly property var ansiColors: ({
-            30: "#1e1e2e",
-            31: "#f38ba8",
-            32: "#a6e3a1",
-            33: "#f9e2af",
-            34: "#89b4fa",
-            35: "#cba6f7",
-            36: "#89dceb",
-            37: "#cdd6f4"
+            30: Colours.palette.term0,
+            31: Colours.palette.term1,
+            32: Colours.palette.term2,
+            33: Colours.palette.term3,
+            34: Colours.palette.term4,
+            35: Colours.palette.term5,
+            36: Colours.palette.term6,
+            37: Colours.palette.term7
         })
     readonly property var ansiBrightColors: ({
-            90: "#585b70",
-            91: "#f38ba8",
-            92: "#a6e3a1",
-            93: "#f9e2af",
-            94: "#89b4fa",
-            95: "#cba6f7",
-            96: "#89dceb",
-            97: "#cdd6f4"
+            90: Colours.palette.term8,
+            91: Colours.palette.term9,
+            92: Colours.palette.term10,
+            93: Colours.palette.term11,
+            94: Colours.palette.term12,
+            95: Colours.palette.term13,
+            96: Colours.palette.term14,
+            97: Colours.palette.term15
         })
 
     readonly property string prompt: {
@@ -80,9 +80,9 @@ Item {
                 } else if (code === 4) {
                     styles.push("text-decoration: underline;");
                 } else if (code >= 30 && code <= 37) {
-                    styles.push("color: " + (ansiColors[code] || "#cdd6f4") + ";");
+                    styles.push("color: " + (ansiColors[code] || Colours.palette.m3onSurface) + ";");
                 } else if (code >= 90 && code <= 97) {
-                    styles.push("color: " + (ansiBrightColors[code] || "#cdd6f4") + ";");
+                    styles.push("color: " + (ansiBrightColors[code] || Colours.palette.m3onSurface) + ";");
                 }
             }
 
@@ -349,7 +349,7 @@ Item {
                     textFormat: TextEdit.RichText
                     wrapMode: TextEdit.Wrap
                     font: Tokens.font.mono.small
-                    color: "#eceff4" // Nord Snow Storm (Bright off-white for perfect readability)
+                    color: Colours.palette.m3onSurface
                 }
             }
 
@@ -375,7 +375,7 @@ Item {
                     StyledText {
                         text: root.prompt + " ❯"
                         font: Tokens.font.mono.small
-                        color: "#a6e3a1" // Vibrant, bright Catppuccin Green for excellent contrast
+                        color: Colours.palette.term2
                     }
 
                     // Text fields container to overlay ghost autocomplete text behind typing text

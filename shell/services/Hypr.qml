@@ -114,8 +114,8 @@ Singleton {
     }
     readonly property int activeWsId: focusedWorkspace?.id ?? root.mockActiveWs
 
-    readonly property bool capsLock: false
-    readonly property bool numLock: false
+    readonly property bool capsLock: CUtils.capsLock
+    readonly property bool numLock: CUtils.numLock
     readonly property string defaultKbLayout: "??"
     readonly property string kbLayoutFull: "Unknown"
     readonly property string kbLayout: "??"

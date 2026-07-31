@@ -19,6 +19,7 @@ __pycache__/
 
 installer/build/
 caelestia-install
+build
 
 kdotool/
 run.sh

@@ -336,7 +336,7 @@ Scope {
         name: "kcolorpicker"
         description: "Color Picker"
 
-        onPressed: Quickshell.execDetached(["/bin/bash", "-c", "~/.local/bin/kcolorpicker -a"])
+        onPressed: ColorPicker.pickColor()
     }
 
     // qmllint disable unresolved-type

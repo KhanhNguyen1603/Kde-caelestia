@@ -50,12 +50,17 @@ Item {
                 enabled: Config.dashboard.showTerminal
             }
         ];
-        const filtered = allTabs.filter(tab => tab.enabled);
-        // Clamp currentTab to valid range when tabs are removed (e.g. disabling a tab in settings)
-        if (filtered.length > 0 && dashState.currentTab >= filtered.length) {
-            dashState.currentTab = filtered.length - 1;
+        return allTabs.filter(tab => tab.enabled);
+    }
+
+    // Clamp currentTab to valid range only when the set of available tabs changes
+    // (e.g. disabling a tab in settings). NOT on every currentTab switch, to avoid
+    // creating a new array reference that resets the ScriptModel and destroys all
+    // tab delegates.
+    onDashboardTabsChanged: {
+        if (dashboardTabs.length > 0 && dashState.currentTab >= dashboardTabs.length) {
+            dashState.currentTab = dashboardTabs.length - 1;
         }
-        return filtered;
     }
 
     readonly property real nonAnimWidth: view.implicitWidth + viewWrapper.anchors.margins * 2

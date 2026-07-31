@@ -114,6 +114,33 @@ Item {
         loadHistory();
     }
 
+    // ── XHR network error handling ────────────────────────────────
+    // QML's XMLHttpRequest does not fire onreadystatechange for network
+    // failures (DNS, connection refused, timeout). Without an onerror
+    // handler the UI silently hangs with a loading indicator forever.
+
+    function logFetchError(provider) {
+        Logger.log("[AI] Network error fetching models from " + (provider || "unknown"));
+    }
+
+    function handleSendError() {
+        isTyping = false;
+        isThinking = false;
+        inAgentLoop = false;
+        currentActionText = "";
+        // Mark the last (assistant) bubble as failed so the user sees feedback.
+        for (var ei = chatHistory.count - 1; ei >= 0; ei--) {
+            var em = chatHistory.get(ei);
+            if (!em.isUser && !em.isFinished) {
+                chatHistory.setProperty(ei, "isFinished", true);
+                if (!em.text)
+                    chatHistory.setProperty(ei, "text",
+                        "⚠️ Network error — check your connection and try again.");
+                break;
+            }
+        }
+    }
+
     property var ollamaModelsList: []
 
     // Every provider's model list is discovered from that provider, so none of
@@ -156,6 +183,7 @@ Item {
                 Logger.log("[AI] Error parsing Claude models: " + e.message);
             }
         };
+        xhr.onerror = () => { root.logFetchError("Claude"); };
         xhr.send();
     }
 
@@ -1297,6 +1325,7 @@ Item {
                 }
             }
         };
+        xhr.onerror = () => { root.logFetchError("Ollama"); };
         xhr.send();
     }
 
@@ -1374,6 +1403,7 @@ Item {
                 Logger.log("[AI] Error parsing " + root.providerLabel(which) + " models: " + e.message);
             }
         };
+        xhr.onerror = () => { root.logFetchError(which); };
         xhr.send();
     }
 
@@ -1591,6 +1621,7 @@ Item {
                     } catch (e) {}
                 }
             };
+            xhr.onerror = () => {};
             xhr.send(JSON.stringify({
                 model: root.activeModel(),
                 max_tokens: 32,
@@ -1624,6 +1655,7 @@ Item {
                     } catch (e) {}
                 }
             };
+            xhr.onerror = () => {};
             xhr.send(JSON.stringify(useAnthropic ? {
                 model: root.activeModel(),
                 max_tokens: 32,
@@ -1652,6 +1684,7 @@ Item {
                 } catch (e) {}
             }
         };
+        xhr.onerror = () => {};
         xhr.send(JSON.stringify({
             model: GlobalConfig.ai.defaultOllamaModel || "llama3",
             system: titleSystem,
@@ -1815,6 +1848,7 @@ Item {
         
         listView.positionViewAtEnd();
         
+        xhr.onerror = () => { root.handleSendError(); };
         xhr.onreadystatechange = () => {
             if (xhr.readyState === 3 || xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {

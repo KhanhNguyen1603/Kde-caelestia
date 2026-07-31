@@ -11,6 +11,8 @@ jobs:
   label:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Apply label based on issue body
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -19,10 +21,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          REPO="${{ github.repository }}"
           BODY=$(printf '%s' "$ISSUE_BODY" | sed -E 's/^"(.*)"$/\1/' | sed 's/\\"/"/g' | sed 's/\\n/\n/g')
 
           if printf '%s' "$BODY" | grep -qi "Bug - something is broken"; then
-            gh issue edit "$ISSUE_NUMBER" --add-label "bug"
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "bug"
           elif printf '%s' "$BODY" | grep -qi "Help wanted - I need assistance"; then
-            gh issue edit "$ISSUE_NUMBER" --add-label "help wanted"
+            gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "help wanted"
           fi

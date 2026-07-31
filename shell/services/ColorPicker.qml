@@ -28,6 +28,7 @@ Item {
                 let match = text.match(/uint32\s+(\d+)/);
                 if (match) {
                     let decimalColor = parseInt(match[1], 10);
+                    if (decimalColor === 0) return; // KWin returns ARGB 0x00000000 when cancelled
                     // Convert to hex (ignoring alpha to get #RRGGBB)
                     let hex = (decimalColor & 0x00FFFFFF).toString(16).padStart(6, '0');
                     let colorCode = "#" + hex.toUpperCase();

@@ -136,8 +136,6 @@ if [[ -d "$SRC_DIR/bin" ]]; then
             cp --remove-destination "$file" "$HOME/.local/bin/" 2>/dev/null || true
         fi
     done
-    
-    chmod +x "$HOME/.local/bin/kcolorpicker" 2>/dev/null || true
 fi
 
 # Update desktop database
