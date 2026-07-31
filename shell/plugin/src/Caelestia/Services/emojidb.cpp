@@ -23,16 +23,21 @@ EmojiDb::EmojiDb(QObject* parent)
     // Scanning the python site-packages tree avoids hardcoding version numbers
     // and handles both /usr/lib (Arch) and /usr/lib64 (Fedora) layouts.
     const QStringList searchRoots = {
+        QDir::homePath() + QStringLiteral("/.local/lib"),
         QStringLiteral("/usr/lib"),
         QStringLiteral("/usr/lib64"),
     };
     for (const auto& root : searchRoots) {
-        QDirIterator it(root, {QStringLiteral("*/site-packages/caelestia/data/emojis.txt")},
-                        QDir::Files, QDirIterator::Subdirectories);
-        if (it.hasNext()) {
-            m_emojiPath = it.next();
-            break;
+        QDir rootDir(root);
+        const auto dirs = rootDir.entryList({QStringLiteral("python*")}, QDir::Dirs | QDir::NoDotAndDotDot);
+        for (const auto& pydir : dirs) {
+            QString path = rootDir.absoluteFilePath(pydir) + QStringLiteral("/site-packages/caelestia/data/emojis.txt");
+            if (QFile::exists(path)) {
+                m_emojiPath = path;
+                break;
+            }
         }
+        if (!m_emojiPath.isEmpty()) break;
     }
 
     // Frequency file: $XDG_CONFIG_HOME/caelestia/emoji-frequencies.json
