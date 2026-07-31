@@ -36,6 +36,35 @@ StyledRect {
         ? Math.round(previewWidth * 0.55)
         : previewWidth
 
+    // root.model is a snapshot taken when the popout opened, not a live binding, so
+    // it never learns a window closed on its own — that card's screencast dies
+    // (KWin has nothing left to stream) and falls back to the app icon instead of
+    // the card disappearing. Closing a window here therefore also has to patch the
+    // snapshot by hand: drop the closed toplevel, and if none are left, close the
+    // popout outright unless the app is pinned, in which case the empty-state
+    // fallback below is the correct thing to show.
+    function closeToplevel(address: string): void {
+        if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
+            KWinActiveWindowBridge.closeWindow(address);
+        } else {
+            Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${address}" })` : `closewindow address:0x${address}`);
+        }
+
+        if (!root.model || !root.model.toplevels)
+            return;
+
+        const remaining = root.model.toplevels.filter(t => String(t.address) !== String(address));
+        if (remaining.length === root.model.toplevels.length)
+            return;
+
+        if (remaining.length === 0 && !root.model.isPinned) {
+            root.popouts.hasCurrent = false;
+            return;
+        }
+
+        root.popouts.dockModel = Object.assign({}, root.model, { toplevels: remaining });
+    }
+
     radius: Tokens.rounding.medium
     color: Colours.tPalette.m3surfaceContainer
     clip: true
@@ -220,13 +249,8 @@ StyledRect {
                                     anchors.fill: parent
                                     radius: Tokens.rounding.small
                                     onClicked: {
-                                        if (card.modelData.address) {
-                                            if (typeof KWinActiveWindowBridge !== "undefined" && KWinActiveWindowBridge.windowList) {
-                                                KWinActiveWindowBridge.closeWindow(card.modelData.address);
-                                            } else {
-                                                Hypr.dispatch(Hypr.usingLua ? `hl.dsp.window.close({ window = "address:0x${card.modelData.address}" })` : `closewindow address:0x${card.modelData.address}`);
-                                            }
-                                        }
+                                        if (card.modelData.address)
+                                            root.closeToplevel(card.modelData.address);
                                     }
                                 }
 
