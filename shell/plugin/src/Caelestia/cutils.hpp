@@ -14,8 +14,11 @@ class CUtils : public QObject {
 
     Q_PROPERTY(QString version READ version CONSTANT)
     Q_PROPERTY(QString qtVersion READ qtVersion CONSTANT)
+    Q_PROPERTY(bool capsLock READ capsLock NOTIFY capsLockChanged)
+    Q_PROPERTY(bool numLock READ numLock NOTIFY numLockChanged)
 
 public:
+    explicit CUtils(QObject* parent = nullptr);
     // clang-format off
     Q_INVOKABLE void saveItem(QQuickItem* target, const QUrl& path);
     Q_INVOKABLE void saveItem(QQuickItem* target, const QUrl& path, const QRect& rect);
@@ -36,6 +39,16 @@ public:
 
     [[nodiscard]] QString version() const;
     [[nodiscard]] QString qtVersion() const;
+    [[nodiscard]] bool capsLock() const;
+    [[nodiscard]] bool numLock() const;
+
+signals:
+    void capsLockChanged();
+    void numLockChanged();
+
+private:
+    class Private;
+    Private* d;
 };
 
 } // namespace caelestia

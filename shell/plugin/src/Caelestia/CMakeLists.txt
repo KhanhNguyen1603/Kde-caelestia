@@ -14,6 +14,7 @@ qml_module(caelestia-core
         Qt::Sql
         PkgConfig::Qalculate
         KF6::WindowSystem
+        KF6::GuiAddons
 )
 
 # Bake the shell version in so CUtils can expose it without spawning a process

@@ -12,10 +12,29 @@
 #include <qqmlengine.h>
 #include <QStandardPaths>
 #include <KWindowEffects>
+#include <KModifierKeyInfo>
 
 Q_LOGGING_CATEGORY(lcCUtils, "caelestia.cutils", QtInfoMsg)
 
 namespace caelestia {
+
+class CUtils::Private {
+public:
+    KModifierKeyInfo keyInfo;
+};
+
+CUtils::CUtils(QObject* parent)
+    : QObject(parent)
+    , d(new Private) {
+    connect(&d->keyInfo, &KModifierKeyInfo::keyLocked, this, [this](Qt::Key key, bool locked) {
+        Q_UNUSED(locked);
+        if (key == Qt::Key_CapsLock) {
+            emit capsLockChanged();
+        } else if (key == Qt::Key_NumLock) {
+            emit numLockChanged();
+        }
+    });
+}
 
 void CUtils::saveItem(QQuickItem* target, const QUrl& path) {
     this->saveItem(target, path, QRect(), QJSValue(), QJSValue());
@@ -176,6 +195,14 @@ QString CUtils::version() const {
 
 QString CUtils::qtVersion() const {
     return QStringLiteral(QT_VERSION_STR);
+}
+
+bool CUtils::capsLock() const {
+    return d->keyInfo.isKeyLocked(Qt::Key_CapsLock);
+}
+
+bool CUtils::numLock() const {
+    return d->keyInfo.isKeyLocked(Qt::Key_NumLock);
 }
 
 } // namespace caelestia
