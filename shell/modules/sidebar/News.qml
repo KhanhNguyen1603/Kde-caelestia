@@ -23,13 +23,68 @@ Item {
 
     Component.onCompleted: fetchNews()
 
+    // ── Distro-aware news feed ────────────────────────────────────
+    // The feed URL is chosen based on the running distribution so Fedora
+    // users see Fedora news rather than an irrelevant Arch Linux feed.
+
+    function newsFeedUrl() {
+        var process = Qt.createQmlObject(
+            'import QtQuick\n' +
+            'import Quickshell.Io\n' +
+            'Process {\n' +
+            '    id: p\n' +
+            '    command: ["sh", "-c", \'. /etc/os-release 2>/dev/null && echo "$ID"\']\n' +
+            '    stdout: StdioCollector { onStreamFinished: p.destroy(); }\n' +
+            '}', root, "osReleaseProc");
+        return process;
+    }
+
+    property string _distroId: ""
+
     function fetchNews() {
         if (isFetching) return;
         isFetching = true;
         errorMessage = "";
         
+        // Default to Arch; re-read /etc/os-release to decide at fetch time
+        // so the feed is correct even if the shell was started before the OS
+        // release file was updated.
+        var feedUrl = "https://archlinux.org/feeds/news/";
+        if (_distroId === "") {
+            var proc = newsFeedUrl();
+            if (proc && proc.stdout) {
+                proc.stdout.onStreamFinished = function() {
+                    var id = (proc.stdout.text || "").trim();
+                    _distroId = id;
+                    doFetch(id);
+                    if (proc) proc.destroy();
+                };
+                proc.running = true;
+                return;
+            }
+        }
+        doFetch(_distroId);
+    }
+
+    function doFetch(distroId) {
+        var feedUrl = "https://archlinux.org/feeds/news/";
+        // Map known distro IDs to their news/blog feeds. Falls back to
+        // Arch Linux news for unrecognised distributions.
+        var feedMap = {
+            "fedora": "https://fedoramagazine.org/feed/",
+            "arch": "https://archlinux.org/feeds/news/",
+            "cachyos": "https://archlinux.org/feeds/news/",
+            "endeavouros": "https://archlinux.org/feeds/news/",
+            "manjaro": "https://archlinux.org/feeds/news/",
+            "ubuntu": "https://ubuntu.com/blog/feed",
+            "debian": "https://www.debian.org/News/news.en.rss",
+            "opensuse": "https://news.opensuse.org/feed/",
+        };
+        if (feedMap[distroId])
+            feedUrl = feedMap[distroId];
+
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "https://archlinux.org/feeds/news/");
+        xhr.open("GET", feedUrl);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 isFetching = false;

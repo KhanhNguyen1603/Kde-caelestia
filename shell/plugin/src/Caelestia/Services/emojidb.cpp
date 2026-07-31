@@ -3,13 +3,14 @@
 
 #include <algorithm>
 
+#include <qdir.h>
+#include <qdiriterator.h>
 #include <qfile.h>
 #include <qjsondocument.h>
 #include <qjsonobject.h>
 #include <qloggingcategory.h>
 #include <qstandardpaths.h>
 #include <qtextstream.h>
-#include <QDir>
 
 Q_LOGGING_CATEGORY(lcEmojiDb, "caelestia.services.emojidb", QtInfoMsg)
 
@@ -17,18 +18,19 @@ namespace caelestia::services {
 
 EmojiDb::EmojiDb(QObject* parent)
     : QObject(parent) {
-    // Find the emojis.txt — same path used by Emojis.qml
-    // Prefer user-local override, fall back to system package path
-    const auto sysPath = QStringLiteral("/usr/lib/python3.14/site-packages/caelestia/data/emojis.txt");
-    // Also try versioned python paths
-    const QStringList candidates = {
-        sysPath,
-        QStringLiteral("/usr/lib/python3.13/site-packages/caelestia/data/emojis.txt"),
-        QStringLiteral("/usr/lib/python3.12/site-packages/caelestia/data/emojis.txt"),
+    // Find the emojis.txt — same path used by Emojis.qml.
+    // Prefer user-local override, fall back to dynamic system package search.
+    // Scanning the python site-packages tree avoids hardcoding version numbers
+    // and handles both /usr/lib (Arch) and /usr/lib64 (Fedora) layouts.
+    const QStringList searchRoots = {
+        QStringLiteral("/usr/lib"),
+        QStringLiteral("/usr/lib64"),
     };
-    for (const auto& path : candidates) {
-        if (QFile::exists(path)) {
-            m_emojiPath = path;
+    for (const auto& root : searchRoots) {
+        QDirIterator it(root, {QStringLiteral("*/site-packages/caelestia/data/emojis.txt")},
+                        QDir::Files, QDirIterator::Subdirectories);
+        if (it.hasNext()) {
+            m_emojiPath = it.next();
             break;
         }
     }
