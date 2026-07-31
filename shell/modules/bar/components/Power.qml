@@ -19,6 +19,9 @@ Item {
         implicitWidth: implicitHeight
         implicitHeight: icon.implicitHeight + Tokens.padding.small
         radius: Tokens.rounding.full
+        Accessible.name: qsTr("Power and session menu")
+        Accessible.role: Accessible.Button
+        Accessible.description: qsTr("Opens the power, restart, and logout menu")
         onClicked: root.visibilities.session = !root.visibilities.session
     }
 

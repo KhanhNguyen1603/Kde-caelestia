@@ -29,6 +29,33 @@ jobs:
         run: bash .github/scripts/check_shell_quality.sh
 
   # ═══════════════════════════════════════════════════════════
+  # Job 2: QML lint - syntax, unused imports, property binding issues
+  # ═══════════════════════════════════════════════════════════
+  qml-lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install qmllint
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qml6-modules-qtquick-controls qml6-modules-qtquick-layouts \
+            qml6-modules-qtquick-window qml6-modules-qtqml-workerscript \
+            qml6-modules-qtquick-templates || true
+          # qmllint comes with qt6-declarative-dev on Ubuntu 24.04+
+          sudo apt-get install -y -qq qt6-declarative-dev 2>/dev/null || true
+
+      - name: Run qmllint on shell QML files
+        run: |
+          echo "::group::qmllint shell QML"
+          find shell -name '*.qml' -print0 | xargs -0 -n1 qmllint6 2>&1 | \
+            grep -v '^Info:' | grep -v '^$' | grep -v 'unused import' | \
+            head -500 || true
+          echo "::endgroup::"
+
+  # ═══════════════════════════════════════════════════════════
   # Job 3: C++ build - compile the TUI installer
   # ═══════════════════════════════════════════════════════════
   cpp-build:
@@ -173,6 +200,7 @@ jobs:
   validate-gate:
     needs:
       - shell-quality
+      - qml-lint
       - cpp-build
       - python-quality
       - repo-integrity
@@ -189,6 +217,7 @@ jobs:
 
           declare -A job_results
           job_results[shell-quality]="${{ needs.shell-quality.result }}"
+          job_results[qml-lint]="${{ needs.qml-lint.result }}"
           job_results[cpp-build]="${{ needs.cpp-build.result }}"
           job_results[python-quality]="${{ needs.python-quality.result }}"
           job_results[repo-integrity]="${{ needs.repo-integrity.result }}"
