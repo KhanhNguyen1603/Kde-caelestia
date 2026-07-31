@@ -488,8 +488,11 @@ void KWinActiveWindowBridge::setWindowDesktop(const QString& address, int deskto
                 } else if (id == -2) {
                     wins[i].onAllDesktops = true;
                 } else {
-                    let d = workspace.desktops.find((d) => d.x11DesktopNumber == id);
-                    if (d) wins[i].desktops = [d];
+                    let dList = workspace.desktops;
+                    let idx = id - 1;
+                    if (dList && idx >= 0 && idx < dList.length) {
+                        wins[i].desktops = [dList[idx]];
+                    }
                 }
                 break;
             }
