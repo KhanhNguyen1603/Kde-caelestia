@@ -91,7 +91,7 @@ Singleton {
     }
 
     Connections {
-        // enabled: props.running && !props.paused
+        enabled: props.running && !props.paused
         function onSecondsChanged(): void {
             props.elapsed++;
         }
