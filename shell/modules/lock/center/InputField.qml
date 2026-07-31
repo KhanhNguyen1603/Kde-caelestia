@@ -14,6 +14,10 @@ Item {
 
     required property real centerScale
     required property Pam pam
+
+    Accessible.name: qsTr("Password entry")
+    Accessible.role: Accessible.EditableText
+    Accessible.description: qsTr("Type your password to unlock the screen")
     readonly property alias placeholder: placeholder
     readonly property alias placeholderWidth: nonAnimPlaceholder.width
     property string buffer

@@ -7,7 +7,7 @@
 #   Installer behavior: idempotent and safe for reruns
 # ==============================================================
 
-set -uo pipefail
+set -euo pipefail
 export CAELESTIA_SETUP_RUNNING=1
 
 # Hide cursor immediately for cleaner output
