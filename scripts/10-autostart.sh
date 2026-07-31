@@ -47,6 +47,7 @@ cat > "$HOME/.local/bin/caelestia-autostart.sh" << EOF
 #!/bin/bash
 export QML2_IMPORT_PATH="\$HOME/.local/lib/qt6/qml"
 export CAELESTIA_LIB_DIR="\$HOME/.local/lib/caelestia"
+export __NV_PRIME_RENDER_OFFLOAD=0
 export QS_NO_RELOAD_POPUP=1
 export QS_DROP_EXPENSIVE_FONTS=1
 export QSG_RENDER_LOOP=threaded
