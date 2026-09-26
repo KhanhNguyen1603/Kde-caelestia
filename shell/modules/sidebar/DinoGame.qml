@@ -291,8 +291,8 @@ Item {
             width: DinoGameBackend.isDucking ? 59 : 44
             height: DinoGameBackend.isDucking ? 30 : 47
             source: {
-                var prefix = GlobalConfig.general.caelestiaMode ? "kurukuru" : "dino";
-                if (DinoGameBackend.isGameOver) return Paths.absolutePath("root:/assets/" + prefix + (GlobalConfig.general.caelestiaMode ? "_stand.png" : "_crash.png"));
+                var prefix = "dino";
+                if (DinoGameBackend.isGameOver) return Paths.absolutePath("root:/assets/" + prefix + "_crash.png");
                 if (DinoGameBackend.dinoY < 0) return Paths.absolutePath("root:/assets/" + prefix + "_stand.png");
                 if (DinoGameBackend.isDucking) return Math.floor(DinoGameBackend.frameCount / 5) % 2 === 0 ? Paths.absolutePath("root:/assets/" + prefix + "_duck1.png") : Paths.absolutePath("root:/assets/" + prefix + "_duck2.png");
                 return Math.floor(DinoGameBackend.frameCount / 5) % 2 === 0 ? Paths.absolutePath("root:/assets/" + prefix + "_run1.png") : Paths.absolutePath("root:/assets/" + prefix + "_run2.png");
@@ -300,7 +300,7 @@ Item {
             x: 30
             y: parent.height - 30 - height + DinoGameBackend.dinoY
             
-            layer.enabled: !GlobalConfig.general.caelestiaMode
+            layer.enabled: true
             layer.effect: Colouriser {
                 colorizationColor: root.activeColor
                 sourceColor: "white"
