@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 export PATH="$HOME/.local/bin:$PATH"
+export CAELESTIA_FORCE_BUILD_SHELL="${CAELESTIA_FORCE_BUILD_SHELL:-1}"
 
 set -uo pipefail
 

@@ -364,6 +364,9 @@ backup_shell_config() {
 
 backup_shell_config || exit 1
 
+# Force local build on this fork so local C++ modules and QML patches are preserved
+export CAELESTIA_FORCE_BUILD_SHELL="${CAELESTIA_FORCE_BUILD_SHELL:-1}"
+
 SHELL_PREBUILT=0
 if [[ -z "${CAELESTIA_FORCE_BUILD_SHELL:-}" ]] \
     && checkout_may_use_prebuilt \
